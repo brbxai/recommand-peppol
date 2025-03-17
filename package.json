@@ -1,0 +1,25 @@
+{
+  "name": "e-invoice",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "db:generate": "drizzle-kit generate"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/pg": "^8.11.11",
+    "@types/react": "^19.0.0",
+    "drizzle-kit": "^0.30.4",
+    "tsx": "^4.19.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.4.3",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "0.39.3",
+    "postgres": "^3.4.3",
+    "zod": "^3.24.2"
+  }
+}
