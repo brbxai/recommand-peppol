@@ -1,5 +1,5 @@
 {
-  "name": "e-invoice",
+  "name": "peppol",
   "module": "index.ts",
   "type": "module",
   "scripts": {
@@ -17,9 +17,13 @@
   },
   "dependencies": {
     "@hono/zod-validator": "^0.4.3",
+    "decimal.js": "^10.5.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "0.39.3",
+    "fast-xml-parser": "^5.0.9",
+    "hono-openapi": "^0.4.6",
     "postgres": "^3.4.3",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "zod-openapi": "^4.2.3"
   }
 }
