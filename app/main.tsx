@@ -83,16 +83,6 @@ export default function Main({ children }: { children: React.ReactNode }) {
             }
         });
 
-        // User menu items - Session group
-        registerMenuItem({
-            id: 'user.session.logout',
-            title: "Log out",
-            icon: LogOut,
-            onClick: () => {
-                toast.success("Logging out...");
-            }
-        });
-
     }, [registerMenuItem]);
 
     return children;
