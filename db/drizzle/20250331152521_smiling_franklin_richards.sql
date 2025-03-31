@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_subscriptions" ADD COLUMN "plan_name" text NOT NULL;

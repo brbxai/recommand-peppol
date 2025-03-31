@@ -29,6 +29,7 @@
       "@recommand": ["../recommand-framework/index.ts"],
       "@recommand/*": ["../recommand-framework/*"],
       "@core/*": ["../core/*"],
+      "@peppol/*": ["*"],
     }
   }
 }

@@ -1,0 +1,2 @@
+ALTER TABLE "peppol_billing_profiles" ALTER COLUMN "mollie_customer_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "peppol_billing_profiles" ADD CONSTRAINT "peppol_billing_profiles_team_id_unique" UNIQUE("team_id");

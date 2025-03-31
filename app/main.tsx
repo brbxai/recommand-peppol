@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Paperclip, LogOut, User, Settings, Bell, CreditCard } from "lucide-react";
+import { CreditCard, Paperclip } from "lucide-react";
 import { useMenuItemActions } from "@core/lib/menu-store";
 import { toast } from "@core/components/ui/sonner";
 
@@ -44,43 +44,11 @@ export default function Main({ children }: { children: React.ReactNode }) {
             }
         });
 
-        // User menu items - Account group
         registerMenuItem({
-            id: 'user.profile',
-            title: "Profile",
-            icon: User,
-            onClick: () => {
-                toast.success("Opening profile...");
-            }
-        });
-
-        registerMenuItem({
-            id: 'user.settings',
-            title: "Settings",
-            icon: Settings,
-            onClick: () => {
-                toast.success("Opening settings...");
-            }
-        });
-
-        // User menu items - Notifications group
-        registerMenuItem({
-            id: 'user.notifications.bell',
-            title: "Notifications",
-            icon: Bell,
-            onClick: () => {
-                toast.success("Opening notifications...");
-            }
-        });
-
-        // User menu items - Billing group
-        registerMenuItem({
-            id: 'user.billing.payment',
-            title: "Payment",
+            id: 'user.billing.subscription',
+            title: "Subscription",
             icon: CreditCard,
-            onClick: () => {
-                toast.success("Opening payment...");
-            }
+            href: "/billing/subscription",
         });
 
     }, [registerMenuItem]);
