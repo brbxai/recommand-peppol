@@ -6,7 +6,7 @@ import { Button } from "@core/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@core/components/ui/card";
 import { toast } from "@core/components/ui/sonner";
 import { useUser } from "@core/hooks/use-user";
-import { Loader2, XCircle, CheckCircle, Pencil } from "lucide-react";
+import { Loader2, XCircle, CheckCircle, Pencil, Check, CreditCard } from "lucide-react";
 import { allPlans } from "@peppol/data/plans";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
@@ -179,10 +179,20 @@ export default function Page() {
         }
       });
       const data = await response.json();
+      if (!data.success) {
+        toast.error(stringifyActionFailure(data.errors));
+        return;
+      }
 
       setBillingProfile(data.billingProfile);
       setIsEditingProfile(false);
       toast.success('Billing profile updated successfully');
+
+      if (data.checkoutUrl) {
+        // Redirect to Mollie checkout URL
+        window.location.href = data.checkoutUrl;
+      }
+
     } catch (error) {
       toast.error('Failed to update billing profile');
     }
@@ -321,6 +331,18 @@ export default function Page() {
                     <p className="text-muted-foreground">{billingProfile.vatNumber}</p>
                   </div>
                 )}
+                <div className="pt-4">
+                  <div className="flex items-center space-x-2 mt-2">
+                    {billingProfile.isMandateValidated ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    )}
+                    <p className="text-muted-foreground text-sm">
+                      Payment Mandate: {billingProfile.isMandateValidated ? 'Validated' : 'Not validated'}
+                    </p>
+                  </div>
+                </div>
               </div>
             ) : (
               <p className="text-muted-foreground">No billing profile set up yet.</p>
@@ -330,8 +352,9 @@ export default function Page() {
             <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
               <DialogTrigger asChild>
                 <Button>
-                  <Pencil className="h-4 w-4 mr-2" />
-                  {billingProfile ? 'Edit Profile' : 'Set Up Profile'}
+                  {billingProfile && !billingProfile.isMandateValidated && <CreditCard className="h-4 w-4 mr-2" />}
+                  {(billingProfile && billingProfile.isMandateValidated || !billingProfile) && <Pencil className="h-4 w-4 mr-2" />}
+                  {billingProfile ? (billingProfile.isMandateValidated ? 'Edit Billing Profile' : 'Validate Payment Mandate') : 'Set Up Profile'}
                 </Button>
               </DialogTrigger>
               <DialogContent>

@@ -6,6 +6,7 @@ import {
   upsertBillingProfile,
 } from "@peppol/data/billing-profile";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { createFirstPayment, processFirstPayment } from "@peppol/data/mollie";
 
 const server = new Server();
 
@@ -19,6 +20,9 @@ export type BillingProfileData = {
   city: string;
   country: "BE";
   vatNumber: string | null;
+  firstPaymentId: string | null;
+  firstPaymentStatus: 'none' | 'open' | 'pending' | 'authorized' | 'paid' | 'canceled' | 'expired' | 'failed';
+  isMandateValidated: boolean;
 };
 
 const _getBillingProfile = server.get(
@@ -61,14 +65,46 @@ const _upsertBillingProfile = server.put(
     const teamId = c.req.param("teamId");
     const billingProfileData = c.req.valid("json");
 
-    const billingProfile = await upsertBillingProfile(teamId, billingProfileData);
+    const billingProfile = await upsertBillingProfile({
+      teamId,
+      ...billingProfileData,
+    });
 
-    return c.json(actionSuccess({ billingProfile }));
+    // Validate that the billing profile has a Mollie customer ID
+    if (!billingProfile.mollieCustomerId) {
+      return c.json(actionFailure("Billing profile customer not found"), 404);
+    }
+
+    if(billingProfile.isMandateValidated) {
+      return c.json(actionSuccess({ billingProfile, checkoutUrl: null }));
+    }
+
+    // Create first payment
+    const payment = await createFirstPayment(billingProfile.mollieCustomerId, billingProfile.id);
+
+    // If checkout URL is not present, return error
+    if (!payment._links?.checkout?.href) {
+      return c.json(actionFailure("Payment checkout URL not found"), 500);
+    }
+
+    return c.json(actionSuccess({ billingProfile, checkoutUrl: payment._links.checkout.href }));
+  }
+);
+
+server.post(
+  "/mollie/mandate-webhook",
+  async (c) => {
+    const webhookData = await c.req.formData();
+    const paymentId = webhookData.get("id");
+    console.log("Mollie webhook received", webhookData);
+    await processFirstPayment(paymentId as string);
+
+    return c.json(actionSuccess());
   }
 );
 
 export type BillingProfile = 
   | typeof _getBillingProfile 
-  | typeof _upsertBillingProfile 
+  | typeof _upsertBillingProfile;
 
 export default server;

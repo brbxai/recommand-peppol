@@ -1,6 +1,6 @@
 import type { BillingConfig } from "data/plans";
 import { teams } from "@core/db/schema";
-import { timestamp, pgTable, text, jsonb, pgEnum, decimal } from "drizzle-orm/pg-core";
+import { timestamp, pgTable, text, jsonb, pgEnum, decimal, boolean } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { sql } from "drizzle-orm";
 
@@ -25,6 +25,9 @@ export const billingProfiles = pgTable("peppol_billing_profiles", {
     .$defaultFn(() => "bp_" + ulid()),
   teamId: text("team_id").references(() => teams.id).notNull().unique(),
   mollieCustomerId: text("mollie_customer_id"),
+  firstPaymentId: text("first_payment_id"),
+  firstPaymentStatus: paymentStatusEnum("first_payment_status").notNull().default("none"),
+  isMandateValidated: boolean("is_mandate_validated").notNull().default(false),
 
   companyName: text("company_name").notNull(),
   address: text("address").notNull(),

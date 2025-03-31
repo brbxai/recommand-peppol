@@ -1,0 +1,2 @@
+ALTER TABLE "peppol_billing_profiles" ADD COLUMN "first_payment_id" text;--> statement-breakpoint
+ALTER TABLE "peppol_billing_profiles" ADD COLUMN "first_payment_status" "peppol_payment_status" DEFAULT 'none' NOT NULL;

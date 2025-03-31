@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_billing_profiles" ADD COLUMN "is_mandate_validated" boolean DEFAULT false NOT NULL;
