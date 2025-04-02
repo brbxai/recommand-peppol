@@ -6,6 +6,7 @@ export type Plan = {
 export type BillingConfig = {
   name: string;
   basePrice: number;
+  vatRate: number;
   includedMonthlyDocuments: number;
   documentOveragePrice: number;
 }
@@ -16,6 +17,7 @@ export const allPlans: Plan[] = [
     isAvailable: true,
     name: "Developer",
     basePrice: 0,
+    vatRate: 0.21,
     includedMonthlyDocuments: 25,
     documentOveragePrice: 0.3,
   },
@@ -24,6 +26,7 @@ export const allPlans: Plan[] = [
     isAvailable: true,
     name: "Starter",
     basePrice: 29,
+    vatRate: 0.21,
     includedMonthlyDocuments: 200,
     documentOveragePrice: 0.2,
   },
@@ -32,6 +35,7 @@ export const allPlans: Plan[] = [
     isAvailable: true,
     name: "Professional",
     basePrice: 99,
+    vatRate: 0.21,
     includedMonthlyDocuments: 1000,
     documentOveragePrice: 0.1,
   },

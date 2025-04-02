@@ -349,6 +349,11 @@ export default function Page() {
             )}
           </CardContent>
           <CardFooter>
+            <Button
+              onClick={() => billingProfileClient[':teamId']['billing-profile']['end-billing-cycle'].$post({
+                param: { teamId: activeTeam!.id }
+              })}
+            >Test billing period end</Button>
             <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
               <DialogTrigger asChild>
                 <Button>

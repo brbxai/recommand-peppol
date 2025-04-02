@@ -6,7 +6,9 @@ import {
   upsertBillingProfile,
 } from "@peppol/data/billing-profile";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
-import { createFirstPayment, processFirstPayment } from "@peppol/data/mollie";
+import { createFirstPayment, processFirstPayment, processPayment } from "@peppol/data/mollie";
+import { endBillingCycle } from "@peppol/data/billing";
+import { endOfMonth, subMonths } from "date-fns";
 
 const server = new Server();
 
@@ -91,6 +93,17 @@ const _upsertBillingProfile = server.put(
   }
 );
 
+const _endBillingCycle = server.post(
+  "/:teamId/billing-profile/end-billing-cycle",
+  zValidator("param", z.object({ teamId: z.string() })),
+  async (c) => {
+    const teamId = c.req.param("teamId");
+    const endOfPreviousMonth = endOfMonth(subMonths(new Date(), 1));
+    await endBillingCycle(teamId, endOfPreviousMonth);
+    return c.json(actionSuccess());
+  }
+);
+
 server.post(
   "/mollie/mandate-webhook",
   async (c) => {
@@ -103,8 +116,21 @@ server.post(
   }
 );
 
+server.post(
+  "/mollie/payment-webhook",
+  async (c) => {
+    const webhookData = await c.req.formData();
+    const paymentId = webhookData.get("id");
+    console.log("Mollie webhook received", webhookData);
+    await processPayment(paymentId as string);
+
+    return c.json(actionSuccess());
+  }
+)
+
 export type BillingProfile = 
   | typeof _getBillingProfile 
-  | typeof _upsertBillingProfile;
+  | typeof _upsertBillingProfile
+  | typeof _endBillingCycle;
 
 export default server;
