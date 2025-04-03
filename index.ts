@@ -4,6 +4,7 @@ import { Logger } from "@recommand/lib/logger";
 import invoiceServer from "./api/invoice";
 import subscriptionServer from "./api/subscription";
 import billingProfileServer from "./api/billing-profile";
+import companiesServer from "./api/companies";
 
 export let logger: Logger;
 
@@ -17,5 +18,6 @@ export async function init(app: RecommandApp, server: Server) {
 server.route("/", invoiceServer);
 server.route("/", subscriptionServer);
 server.route("/", billingProfileServer);
+server.route("/", companiesServer);
 
 export default server;

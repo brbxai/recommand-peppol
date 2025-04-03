@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -23,7 +24,8 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "failed",
 ]);
 
-export const validCountryCodes = pgEnum("peppol_valid_country_codes", ["BE"]);
+export const zodValidCountryCodes = z.enum(["BE"]);
+export const validCountryCodes = pgEnum("peppol_valid_country_codes", zodValidCountryCodes.options);
 
 export const transferEventDirectionEnum = pgEnum(
   "peppol_transfer_event_direction",
@@ -138,4 +140,25 @@ export const transferEvents = pgTable("peppol_transfer_events", {
     .notNull(),
   direction: transferEventDirectionEnum("direction").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const companies = pgTable("peppol_companies", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "comp_" + ulid()),
+  teamId: text("team_id")
+    .references(() => teams.id)
+    .notNull(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  postalCode: text("postal_code").notNull(),
+  city: text("city").notNull(),
+  country: validCountryCodes("country").notNull(),
+  enterpriseNumber: text("enterprise_number").unique().notNull(),
+  vatNumber: text("vat_number").unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => sql`now()`),
 });
