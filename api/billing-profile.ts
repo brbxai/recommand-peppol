@@ -9,6 +9,7 @@ import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { createFirstPayment, processFirstPayment, processPayment } from "@peppol/data/mollie";
 import { endBillingCycle } from "@peppol/data/billing";
 import { endOfMonth, subMonths } from "date-fns";
+import { requireTeamAccess } from "@core/lib/auth-middleware";
 
 const server = new Server();
 
@@ -29,14 +30,11 @@ export type BillingProfileData = {
 
 const _getBillingProfile = server.get(
   "/:teamId/billing-profile",
+  requireTeamAccess(),
   zValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
-    // TODO: Perform authentication and authorization
-
-    const teamId = c.req.param("teamId");
-
     try {
-      const billingProfile = await getBillingProfile(teamId);
+      const billingProfile = await getBillingProfile(c.var.team.id);
       return c.json(actionSuccess({ billingProfile }));
     } catch (error) {
       if (error instanceof Error && error.message === "Billing profile not found") {
@@ -49,6 +47,7 @@ const _getBillingProfile = server.get(
 
 const _upsertBillingProfile = server.put(
   "/:teamId/billing-profile",
+  requireTeamAccess(),
   zValidator("param", z.object({ teamId: z.string() })),
   zValidator(
     "json",
@@ -62,13 +61,10 @@ const _upsertBillingProfile = server.put(
     })
   ),
   async (c) => {
-    // TODO: Perform authentication and authorization
-
-    const teamId = c.req.param("teamId");
     const billingProfileData = c.req.valid("json");
 
     const billingProfile = await upsertBillingProfile({
-      teamId,
+      teamId: c.var.team.id,
       ...billingProfileData,
     });
 
@@ -95,11 +91,11 @@ const _upsertBillingProfile = server.put(
 
 const _endBillingCycle = server.post(
   "/:teamId/billing-profile/end-billing-cycle",
+  requireTeamAccess(),
   zValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
-    const teamId = c.req.param("teamId");
     const endOfPreviousMonth = endOfMonth(subMonths(new Date(), 1));
-    await endBillingCycle(teamId, endOfPreviousMonth);
+    await endBillingCycle(c.var.team.id, endOfPreviousMonth);
     return c.json(actionSuccess());
   }
 );

@@ -4,11 +4,13 @@ import { validator as zValidator } from "hono-openapi/zod";
 import { actionSuccess } from "@recommand/lib/utils";
 import { simpleInvoiceSchema } from "utils/parsing/simple-invoice/schemas";
 import { simpleInvoiceToUBL } from "utils/parsing/simple-invoice/to-xml";
+import { requireTeamAccess } from "@core/lib/auth-middleware";
 
 const server = new Server();
 
 server.post(
-  "/create",
+  "/:teamId/create",
+  requireTeamAccess(),
   describeRoute({
     description: 'Create an invoice in UBL format',
     responses: {

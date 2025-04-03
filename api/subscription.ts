@@ -8,25 +8,23 @@ import {
 } from "@peppol/data/subscriptions";
 import { allPlans } from "@peppol/data/plans";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { requireTeamAccess } from "@core/lib/auth-middleware";
 
 const server = new Server();
 
 const _getActiveSubscription = server.get(
   "/:teamId/subscription",
+  requireTeamAccess(),
   zValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
-    // TODO: Perform authentication and authorization
-
-    const teamId = c.req.param("teamId");
-
-    const subscription = await getActiveSubscription(teamId);
-
+    const subscription = await getActiveSubscription(c.var.team.id);
     return c.json(actionSuccess({ subscription }));
   }
 );
 
 const _startSubscription = server.post(
   "/:teamId/subscription",
+  requireTeamAccess(),
   zValidator("param", z.object({ teamId: z.string() })),
   zValidator(
     "json",
@@ -35,9 +33,6 @@ const _startSubscription = server.post(
     })
   ),
   async (c) => {
-    // TODO: Perform authentication and authorization
-
-    const teamId = c.req.param("teamId");
     const planId = c.req.valid("json").planId;
 
     // Get plan
@@ -47,7 +42,7 @@ const _startSubscription = server.post(
     }
 
     const subscription = await startSubscription(
-      teamId,
+      c.var.team.id,
       planId,
       plan.name,
       plan
@@ -59,14 +54,10 @@ const _startSubscription = server.post(
 
 const _cancelSubscription = server.post(
   "/:teamId/subscription/cancel",
+  requireTeamAccess(),
   zValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
-    // TODO: Perform authentication and authorization
-
-    const teamId = c.req.param("teamId");
-
-    await cancelSubscription(teamId);
-
+    await cancelSubscription(c.var.team.id);
     return c.json(actionSuccess());
   }
 );
