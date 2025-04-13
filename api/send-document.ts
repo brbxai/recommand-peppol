@@ -88,7 +88,7 @@ server.post(
         recipient = "0208:" + numberOnlyRecipient;
       }
 
-      // TODO: get senderId, countryC1 from team
+      // TODO: get senderId, countryC1, as well as some invoice details from peppol_companies
 
       const response = await sendAs4({
         senderId: "0208:0659689080",
