@@ -7,9 +7,9 @@ import {
 } from "@peppol/data/billing-profile";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { createFirstPayment, processFirstPayment, processPayment } from "@peppol/data/mollie";
-import { endBillingCycle } from "@peppol/data/billing";
+import { endBillingCycle, getCurrentUsage } from "@peppol/data/billing";
 import { endOfMonth, subMonths } from "date-fns";
-import { requireTeamAccess } from "@core/lib/auth-middleware";
+import { requireAdmin, requireTeamAccess } from "@core/lib/auth-middleware";
 
 const server = new Server();
 
@@ -91,15 +91,28 @@ const _upsertBillingProfile = server.put(
 
 const _endBillingCycle = server.post(
   "/:teamId/billing-profile/end-billing-cycle",
-  requireTeamAccess(),
+  requireAdmin(),
   zValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     const endOfPreviousMonth = endOfMonth(subMonths(new Date(), 1));
-    await endBillingCycle(c.var.team.id, endOfPreviousMonth);
+    await endBillingCycle(c.req.param("teamId"), endOfPreviousMonth);
     return c.json(actionSuccess());
   }
 );
 
+const _getCurrentUsage = server.get(
+  "/:teamId/billing-profile/current-usage",
+  requireTeamAccess(),
+  zValidator("param", z.object({ teamId: z.string() })),
+  async (c) => {
+    try {
+      const usage = await getCurrentUsage(c.var.team.id);
+      return c.json(actionSuccess({ usage }));
+    } catch (error) {
+      return c.json(actionFailure("Failed to get current usage"), 500);
+    }
+  }
+);
 server.post(
   "/mollie/mandate-webhook",
   async (c) => {
@@ -127,6 +140,7 @@ server.post(
 export type BillingProfile = 
   | typeof _getBillingProfile 
   | typeof _upsertBillingProfile
-  | typeof _endBillingCycle;
+  | typeof _endBillingCycle
+  | typeof _getCurrentUsage;
 
 export default server;

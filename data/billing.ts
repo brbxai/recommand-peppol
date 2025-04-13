@@ -17,6 +17,24 @@ import Decimal from "decimal.js";
 import { getBillingProfile } from "./billing-profile";
 import { getMandate, requestPayment } from "./mollie";
 
+export async function getCurrentUsage(teamId: string) {
+  const s = startOfMonth(new Date());
+  const e = endOfMonth(new Date());
+  const transmittedDocuments = await db
+    .select({
+      usage: count(),
+    })
+    .from(transferEvents)
+    .where(
+      and(
+        eq(transferEvents.teamId, teamId),
+        gte(transferEvents.createdAt, s),
+        lte(transferEvents.createdAt, e)
+      )
+    );
+  return transmittedDocuments[0].usage;
+}
+
 export async function endBillingCycle(teamId: string, billingDate: Date) {
   const toBeBilled = await db
     .select()

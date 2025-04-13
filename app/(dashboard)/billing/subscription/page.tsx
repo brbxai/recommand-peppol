@@ -50,6 +50,7 @@ type BillingProfileFormData = {
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentSubscription, setCurrentSubscription] = useState<SubscriptionType | null>(null);
+  const [currentUsage, setCurrentUsage] = useState(-1);
   const [billingProfile, setBillingProfile] = useState<BillingProfileData | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<BillingProfileFormData>({
@@ -93,6 +94,24 @@ export default function Page() {
     }
   };
 
+  const fetchCurrentUsage = async () => {
+    if (!activeTeam?.id) return;
+
+    try {
+      const response = await billingProfileClient[':teamId']['billing-profile']['current-usage'].$get({
+        param: { teamId: activeTeam.id }
+      });
+      const data = await response.json();
+
+      if (data.success && data.usage) {
+        setCurrentUsage(data.usage);
+      }
+    } catch (error) {
+      console.error('Error fetching current usage:', error);
+      toast.error('Failed to load current usage');
+    }
+  };
+
   const fetchBillingProfile = async () => {
     if (!activeTeam?.id) return;
 
@@ -122,6 +141,7 @@ export default function Page() {
   useEffect(() => {
     fetchSubscription();
     fetchBillingProfile();
+    fetchCurrentUsage();
   }, [activeTeam?.id]);
 
   const handleStartSubscription = async (planId: string) => {
@@ -232,23 +252,29 @@ export default function Page() {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-medium">Plan</h3>
+                  <h3 className="text-sm">Plan</h3>
                   <p className="text-muted-foreground">{currentSubscription.planName}</p>
                 </div>
                 <div>
-                  <h3 className="font-medium">Monthly Price</h3>
+                  <h3 className="text-sm">Monthly Price</h3>
                   <p className="text-muted-foreground">€{currentSubscription.billingConfig.basePrice.toFixed(2)}</p>
                 </div>
+                {currentUsage !== -1 && (
+                  <div>
+                    <h3 className="text-sm">Transmitted Documents</h3>
+                    <p className="text-muted-foreground">{currentUsage} documents were transmitted this month</p>
+                  </div>
+                )}
                 <div>
-                  <h3 className="font-medium">Included Documents</h3>
+                  <h3 className="text-sm">Included Documents</h3>
                   <p className="text-muted-foreground">{currentSubscription.billingConfig.includedMonthlyDocuments} documents per month</p>
                 </div>
                 <div>
-                  <h3 className="font-medium">Overage Rate</h3>
+                  <h3 className="text-sm">Overage Rate</h3>
                   <p className="text-muted-foreground">€{currentSubscription.billingConfig.documentOveragePrice.toFixed(2)} per document</p>
                 </div>
                 <div>
-                  <h3 className="font-medium">Start Date</h3>
+                  <h3 className="text-sm">Start Date</h3>
                   <p className="text-muted-foreground">{new Date(currentSubscription.startDate).toLocaleDateString()}</p>
                 </div>
               </div>
@@ -304,30 +330,30 @@ export default function Page() {
             {billingProfile ? (
               <div className="space-y-4">
                 <div>
-                  <h3 className="font-medium">Company Name</h3>
+                  <h3 className="text-sm">Company Name</h3>
                   <p className="text-muted-foreground">{billingProfile.companyName}</p>
                 </div>
                 <div>
-                  <h3 className="font-medium">Address</h3>
+                  <h3 className="text-sm">Address</h3>
                   <p className="text-muted-foreground">{billingProfile.address}</p>
                 </div>
                 <div className="flex flex-col md:flex-row items-center gap-2">
                   <div>
-                    <h3 className="font-medium">Postal Code</h3>
+                    <h3 className="text-sm">Postal Code</h3>
                     <p className="text-muted-foreground">{billingProfile.postalCode}</p>
                   </div>
                   <div>
-                    <h3 className="font-medium">City</h3>
+                    <h3 className="text-sm">City</h3>
                     <p className="text-muted-foreground">{billingProfile.city}</p>
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-medium">Country</h3>
+                  <h3 className="text-sm">Country</h3>
                   <p className="text-muted-foreground">{billingProfile.country}</p>
                 </div>
                 {billingProfile.vatNumber && (
                   <div>
-                    <h3 className="font-medium">VAT Number</h3>
+                    <h3 className="text-sm">VAT Number</h3>
                     <p className="text-muted-foreground">{billingProfile.vatNumber}</p>
                   </div>
                 )}
@@ -349,11 +375,11 @@ export default function Page() {
             )}
           </CardContent>
           <CardFooter>
-            <Button
+            {/* <Button
               onClick={() => billingProfileClient[':teamId']['billing-profile']['end-billing-cycle'].$post({
                 param: { teamId: activeTeam!.id }
               })}
-            >Test billing period end</Button>
+            >Test billing period end</Button> */}
             <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
               <DialogTrigger asChild>
                 <Button>
