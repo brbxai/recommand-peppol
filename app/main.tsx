@@ -11,9 +11,7 @@ export default function Main({ children }: { children: React.ReactNode }) {
             id: 'main.history',
             title: "Sent and received",
             icon: History,
-            onClick: () => {
-                toast.success("Clicked History");
-            }
+            href: "/transmitted-documents",
         });
 
         registerMenuItem({
