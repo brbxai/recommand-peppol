@@ -2,6 +2,7 @@ import { companies } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq, and } from "drizzle-orm";
 import { registerCompany, unregisterCompany } from "./phoss-smp";
+import { cleanEnterpriseNumber, cleanVatNumber } from "@peppol/utils/util";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -21,6 +22,50 @@ export async function getCompany(
     .then((rows) => rows[0]);
 }
 
+export async function getCompanyById(
+  companyId: string
+): Promise<Company | undefined> {
+  return await db
+    .select()
+    .from(companies)
+    .where(eq(companies.id, companyId))
+    .then((rows) => rows[0]);
+}
+
+export async function getCompanyByPeppolId(
+  peppolId: string
+): Promise<Company> {
+  // The peppolId might start with iso6523-actorid-upis::
+  if (peppolId.startsWith("iso6523-actorid-upis::")) {
+    peppolId = peppolId.split("::")[1];
+  }
+
+  // The peppolId is in the format of 0208:0659689080 (0208 for enterprise number, 9925 for vat number)
+  if (peppolId.startsWith("0208:")) {
+    const enterpriseNumber = cleanEnterpriseNumber(peppolId.split(":")[1]);
+    if (!enterpriseNumber) {
+      throw new Error(`Invalid peppolId enterprise number (${peppolId})`);
+    }
+    return await db
+      .select()
+      .from(companies)
+      .where(eq(companies.enterpriseNumber, enterpriseNumber))
+      .then((rows) => rows[0]);
+  } else if (peppolId.startsWith("9925:")) {
+    const vatNumber = cleanVatNumber(peppolId.split(":")[1]);
+    if (!vatNumber) {
+      throw new Error(`Invalid peppolId vat number (${peppolId})`);
+    }
+    return await db
+      .select()
+      .from(companies)
+      .where(eq(companies.vatNumber, vatNumber))
+      .then((rows) => rows[0]);
+  } else {
+    throw new Error(`Invalid peppolId (${peppolId})`);
+  }
+}
+
 export async function createCompany(company: InsertCompany): Promise<Company> {
   const createdCompany = await db
     .insert(companies)
@@ -31,9 +76,7 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
   try {
     await registerCompany(createdCompany);
   } catch (error) {
-    await db
-      .delete(companies)
-      .where(eq(companies.id, createdCompany.id));
+    await db.delete(companies).where(eq(companies.id, createdCompany.id));
     throw error;
   }
 

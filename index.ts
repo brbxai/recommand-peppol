@@ -5,6 +5,7 @@ import subscriptionServer from "./api/subscription";
 import billingProfileServer from "./api/billing-profile";
 import companiesServer from "./api/companies";
 import sendDocumentServer from "./api/send-document";
+import receiveDocumentServer from "./api/internal/receive-document";
 
 export let logger: Logger;
 
@@ -19,5 +20,6 @@ server.route("/", sendDocumentServer);
 server.route("/", subscriptionServer);
 server.route("/", billingProfileServer);
 server.route("/", companiesServer);
+server.route("/internal/", receiveDocumentServer);
 
 export default server;

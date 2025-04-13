@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_transmitted_documents" ALTER COLUMN "country_c1" SET DATA TYPE text;

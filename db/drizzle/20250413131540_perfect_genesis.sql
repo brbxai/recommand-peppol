@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_transfer_events" ADD COLUMN "transmitted_document_id" text;

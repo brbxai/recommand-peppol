@@ -131,17 +131,6 @@ export const subscriptionBillingEvents = pgTable(
   }
 );
 
-export const transferEvents = pgTable("peppol_transfer_events", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "te_" + ulid()),
-  teamId: text("team_id")
-    .references(() => teams.id)
-    .notNull(),
-  direction: transferEventDirectionEnum("direction").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export const companies = pgTable("peppol_companies", {
   id: text("id")
     .primaryKey()
@@ -156,6 +145,47 @@ export const companies = pgTable("peppol_companies", {
   country: validCountryCodes("country").notNull(),
   enterpriseNumber: text("enterprise_number").unique().notNull(),
   vatNumber: text("vat_number").unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => sql`now()`),
+});
+
+export const transferEvents = pgTable("peppol_transfer_events", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "te_" + ulid()),
+  teamId: text("team_id")
+    .references(() => teams.id)
+    .notNull(),
+  companyId: text("company_id")
+    .references(() => companies.id)
+    .notNull(),
+  transmittedDocumentId: text("transmitted_document_id"),
+  direction: transferEventDirectionEnum("direction").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "doc_" + ulid()),
+  teamId: text("team_id")
+    .references(() => teams.id)
+    .notNull(),
+  companyId: text("company_id")
+    .references(() => companies.id)
+    .notNull(),
+  direction: transferEventDirectionEnum("direction").notNull(),
+
+  senderId: text("sender_id").notNull(), // e.g. 0208:0659689080
+  receiverId: text("receiver_id").notNull(), // e.g. 0208:0659689080
+  docTypeId: text("doc_type_id").notNull(), // e.g. urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1
+  processId: text("process_id").notNull(), // e.g. urn:fdc:peppol.eu:2017:poacc:billing:01:1.0
+  countryC1: text("country_c1").notNull(), // e.g. BE
+  body: text("body"), // XML body of the document, can be null if the body was not kept
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" })
     .defaultNow()

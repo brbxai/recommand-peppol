@@ -52,7 +52,7 @@ export async function registerServiceMetadata(
               "smp:Endpoint": {
                 "@_transportProfile": "peppol-transport-as4-v2_0",
                 "wsa:EndpointReference": {
-                  "wsa:Address": "https://ap.net.recommand.com"
+                  "wsa:Address": "https://ap.net.recommand.com/as4"
                 },
                 "smp:RequireBusinessLevelSignature": false,
                 "smp:Certificate": process.env.AP_CERT,
