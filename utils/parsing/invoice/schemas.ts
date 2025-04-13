@@ -83,7 +83,7 @@ const vatTotalsSchema = z.object({
   subtotals: z.array(vatSubtotalSchema),
 }).openapi({ ref: "VatTotals", description: "If not provided, the VAT totals will be calculated from the invoice lines." });
 
-export const simpleInvoiceSchema = z.object({
+export const invoiceSchema = z.object({
   invoiceNumber: z.string().openapi({ example: "INV-2024-001" }),
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
   dueDate: z.string().date().openapi({ example: "2024-04-20" }),
@@ -98,12 +98,12 @@ export const simpleInvoiceSchema = z.object({
   lines: z.array(lineSchema),
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
-}).openapi({ ref: "SimpleInvoice" });
+}).openapi({ ref: "invoice" });
 
-export type SimpleInvoice = z.infer<typeof simpleInvoiceSchema>;
+export type Invoice = z.infer<typeof invoiceSchema>;
 export type Party = z.infer<typeof partySchema>;
 export type PaymentMeans = z.infer<typeof paymentMeansSchema>;
-export type PaymentTerms = z.infer<typeof simpleInvoiceSchema.shape.paymentTerms>;
+export type PaymentTerms = z.infer<typeof invoiceSchema.shape.paymentTerms>;
 export type Item = z.infer<typeof lineSchema>;
 export type Vat = z.infer<typeof vatSchema>;
 export type VatSubtotal = z.infer<typeof vatSubtotalSchema>;

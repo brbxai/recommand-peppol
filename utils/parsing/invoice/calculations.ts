@@ -1,7 +1,7 @@
 import { Decimal } from "decimal.js";
-import type { SimpleInvoice, VatCategory } from "./schemas";
+import type { Invoice, VatCategory } from "./schemas";
 
-export function calculateTotals(invoice: SimpleInvoice) {
+export function calculateTotals(invoice: Invoice) {
   const taxExclusiveAmount = invoice.lines.reduce(
     (sum, line) => sum.plus(line.netAmount),
     new Decimal(0)
@@ -24,7 +24,7 @@ export function calculateTotals(invoice: SimpleInvoice) {
   };
 }
 
-export function calculateVat(invoice: SimpleInvoice) {
+export function calculateVat(invoice: Invoice) {
   const subtotalsByCategory = invoice.lines.reduce((acc, line) => {
     const category = line.vat.category;
     const taxableAmount = new Decimal(line.netAmount);

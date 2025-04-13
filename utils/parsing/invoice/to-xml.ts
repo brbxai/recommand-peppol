@@ -1,5 +1,5 @@
 import { XMLBuilder } from "fast-xml-parser";
-import type { SimpleInvoice } from "./schemas";
+import type { Invoice } from "./schemas";
 import { calculateTotals, calculateVat } from "./calculations";
 
 const builder = new XMLBuilder({
@@ -8,7 +8,7 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export function simpleInvoiceToUBL(invoice: SimpleInvoice): string {
+export function invoiceToUBL(invoice: Invoice): string {
   const totals = invoice.totals || calculateTotals(invoice);
   const vat = invoice.vat || calculateVat(invoice);
 
