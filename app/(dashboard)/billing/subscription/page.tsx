@@ -103,7 +103,7 @@ export default function Page() {
       });
       const data = await response.json();
 
-      if (data.success && data.usage) {
+      if (data.success) {
         setCurrentUsage(data.usage);
       }
     } catch (error) {
@@ -139,9 +139,10 @@ export default function Page() {
   };
 
   useEffect(() => {
+    console.log("fetching subscription");
     fetchSubscription();
-    fetchBillingProfile();
     fetchCurrentUsage();
+    fetchBillingProfile();
   }, [activeTeam?.id]);
 
   const handleStartSubscription = async (planId: string) => {
