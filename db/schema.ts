@@ -134,7 +134,7 @@ export const subscriptionBillingEvents = pgTable(
 export const companies = pgTable("peppol_companies", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => "comp_" + ulid()),
+    .$defaultFn(() => "c_" + ulid()),
   teamId: text("team_id")
     .references(() => teams.id)
     .notNull(),

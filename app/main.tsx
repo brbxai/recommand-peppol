@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { CreditCard, Paperclip } from "lucide-react";
+import { CreditCard, Building, History } from "lucide-react";
 import { useMenuItemActions } from "@core/lib/menu-store";
 import { toast } from "@core/components/ui/sonner";
 
@@ -7,42 +7,30 @@ export default function Main({ children }: { children: React.ReactNode }) {
     const { registerMenuItem } = useMenuItemActions();
     
     useEffect(() => {
-        // Main menu items
         registerMenuItem({
-            id: 'main.peppol',
-            title: "Peppol",
-            icon: Paperclip,
-            href: "/peppol",
-        });
-
-        // Sub item
-        registerMenuItem({
-            id: 'main.peppol.peppols',
-            title: "Peppol sub",
-            icon: Paperclip,
+            id: 'main.history',
+            title: "Sent and received",
+            icon: History,
             onClick: () => {
-                toast.success("Clicked Peppol sub");
+                toast.success("Clicked History");
             }
         });
 
-        // Test sub item for todo module
         registerMenuItem({
-            id: 'main.todo.list',
-            title: "Todo list",
-            icon: Paperclip,
-            onClick: () => {
-                toast.success("Clicked Todo list registered from peppol module");
-            }
+            id: 'main.companies',
+            title: "Companies",
+            icon: Building,
+            href: "/companies",
         });
-        
-        registerMenuItem({
-            id: 'main.peppols',
-            title: "Peppols",
-            icon: Paperclip,
-            onClick: () => {
-                toast.success("Clicked Peppols");
-            }
-        });
+
+        // registerMenuItem({
+        //     id: 'main.peppol.peppols',
+        //     title: "Peppol sub",
+        //     icon: Paperclip,
+        //     onClick: () => {
+        //         toast.success("Clicked Peppol sub");
+        //     }
+        // });
 
         registerMenuItem({
             id: 'user.billing.subscription',

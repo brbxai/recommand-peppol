@@ -18,6 +18,7 @@ const server = new Server();
 const _companies = server.get(
   "/:teamId/companies",
   requireTeamAccess(),
+  zValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     const allCompanies = await getCompanies(c.var.team.id);
     return c.json(actionSuccess({ companies: allCompanies }));
@@ -27,7 +28,7 @@ const _companies = server.get(
 const _company = server.get(
   "/:teamId/companies/:companyId",
   requireTeamAccess(),
-  zValidator("param", z.object({ companyId: z.string() })),
+  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
   async (c) => {
     const company = await getCompany(
       c.var.team.id,
@@ -40,6 +41,7 @@ const _company = server.get(
 const _createCompany = server.post(
   "/:teamId/companies",
   requireTeamAccess(),
+  zValidator("param", z.object({ teamId: z.string() })),
   zValidator(
     "json",
     z.object({
@@ -48,8 +50,8 @@ const _createCompany = server.post(
       postalCode: z.string(),
       city: z.string(),
       country: zodValidCountryCodes,
-      enterpriseNumber: z.string().optional().transform(cleanEnterpriseNumber),
-      vatNumber: z.string().optional().transform(cleanVatNumber),
+      enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
+      vatNumber: z.string().nullish().transform(cleanVatNumber),
     })
   ),
   async (c) => {
@@ -76,7 +78,7 @@ const _createCompany = server.post(
 const _updateCompany = server.put(
   "/:teamId/companies/:companyId",
   requireTeamAccess(),
-  zValidator("param", z.object({ companyId: z.string() })),
+  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
   zValidator(
     "json",
     z.object({
@@ -85,8 +87,8 @@ const _updateCompany = server.put(
       postalCode: z.string(),
       city: z.string(),
       country: zodValidCountryCodes,
-      enterpriseNumber: z.string().optional().transform(cleanEnterpriseNumber),
-      vatNumber: z.string().optional().transform(cleanVatNumber),
+      enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
+      vatNumber: z.string().nullish().transform(cleanVatNumber),
     })
   ),
   async (c) => {
@@ -113,8 +115,8 @@ const _updateCompany = server.put(
 
 const _deleteCompany = server.delete(
   "/:teamId/companies/:companyId",
-  requireTeamAccess(),
-  zValidator("param", z.object({ companyId: z.string() })),
+  requireTeamAccess(),  
+  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
   async (c) => {
     try {
       await deleteCompany(c.var.team.id, c.req.valid("param").companyId);
