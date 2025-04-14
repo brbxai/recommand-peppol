@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
-import { CreditCard, Building, History } from "lucide-react";
+import { CreditCard, Building, History, Webhook } from "lucide-react";
 import { useMenuItemActions } from "@core/lib/menu-store";
-import { toast } from "@core/components/ui/sonner";
 
 export default function Main({ children }: { children: React.ReactNode }) {
     const { registerMenuItem } = useMenuItemActions();
@@ -35,6 +34,13 @@ export default function Main({ children }: { children: React.ReactNode }) {
             title: "Subscription",
             icon: CreditCard,
             href: "/billing/subscription",
+        });
+
+        registerMenuItem({
+            id: 'user.api.webhooks',
+            title: "Webhooks",
+            icon: Webhook,
+            href: "/webhooks",
         });
 
     }, [registerMenuItem]);

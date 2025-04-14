@@ -139,3 +139,21 @@ export async function markAsRead(teamId: string, documentId: string, read: boole
       )
     );
 }
+
+export async function getTransmittedDocument(
+  teamId: string,
+  documentId: string
+): Promise<TransmittedDocument | null> {
+  const document = await db
+    .select()
+    .from(transmittedDocuments)
+    .where(
+      and(
+        eq(transmittedDocuments.id, documentId),
+        eq(transmittedDocuments.teamId, teamId)
+      )
+    )
+    .limit(1);
+
+  return document[0] || null;
+}

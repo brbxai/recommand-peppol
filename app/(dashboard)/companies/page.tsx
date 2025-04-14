@@ -13,33 +13,10 @@ import { Trash2, Loader2, Pencil, Copy } from "lucide-react";
 import { SortableHeader } from "@core/components/data-table/sortable-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@core/components/ui/dialog";
 import { CompanyForm } from "../../../components/company-form";
-import { zodValidCountryCodes } from "../../../db/schema";
-import { z } from "zod";
+import type { Company, CompanyFormData } from "../../../types/company";
+import { defaultCompanyFormData } from "../../../types/company";
 
 const client = rc<Companies>('peppol');
-
-export type Company = {
-  id: string;
-  name: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  country: z.infer<typeof zodValidCountryCodes>;
-  enterpriseNumber: string | null;
-  vatNumber: string | null;
-};
-
-type CompanyFormData = Omit<Company, 'id'>;
-
-const defaultCompanyFormData: CompanyFormData = {
-  name: "",
-  address: "",
-  postalCode: "",
-  city: "",
-  country: "BE",
-  enterpriseNumber: null,
-  vatNumber: null,
-};
 
 // Utility function to handle API responses
 const handleApiResponse = async (response: Response, successMessage: string) => {

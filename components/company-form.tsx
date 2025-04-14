@@ -2,7 +2,7 @@ import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Button } from "@core/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
-import type { Company } from "../app/(dashboard)/companies/page";
+import type { Company } from "../types/company";
 import { zodValidCountryCodes } from "../db/schema";
 import { z } from "zod";
 

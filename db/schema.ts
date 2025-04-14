@@ -159,6 +159,23 @@ export const companies = pgTable("peppol_companies", {
     .$onUpdate(() => sql`now()`),
 });
 
+export const webhooks = pgTable("peppol_webhooks", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "wh_" + ulid()),
+  teamId: text("team_id")
+    .references(() => teams.id)
+    .notNull(),
+  companyId: text("company_id")
+    .references(() => companies.id),
+  url: text("url").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => sql`now()`),
+});
+
 export const transferEvents = pgTable("peppol_transfer_events", {
   id: text("id")
     .primaryKey()

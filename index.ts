@@ -8,7 +8,7 @@ import sendDocumentServer from "./api/send-document";
 import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/transmitted-documents";
 import { openAPISpecs } from "hono-openapi";
-import { apiReference } from "@scalar/hono-api-reference";
+import webhooksServer from "./api/webhooks";
 
 export let logger: Logger;
 
@@ -77,5 +77,6 @@ server.route("/", billingProfileServer);
 server.route("/", companiesServer);
 server.route("/internal/", receiveDocumentServer);
 server.route("/", transmittedDocumentsServer);
+server.route("/", webhooksServer);
 
 export default server;

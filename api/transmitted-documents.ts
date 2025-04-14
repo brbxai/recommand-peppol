@@ -10,6 +10,7 @@ import {
   deleteTransmittedDocument,
   getInbox,
   markAsRead,
+  getTransmittedDocument,
 } from "@peppol/data/transmitted-documents";
 
 const server = new Server();
@@ -20,7 +21,7 @@ const _transmittedDocuments = server.get(
   requireTeamAccess(),
   describeRoute({
     description: "Get a list of transmitted documents with pagination",
-    summary: "List Transmitted Documents",
+    summary: "List Documents",
     tags: ["Documents"],
     responses: {
       200: {
@@ -429,10 +430,131 @@ const _markAsRead = server.post(
   }
 );
 
+// Get a single transmitted document
+const _getTransmittedDocument = server.get(
+  "/:teamId/documents/:documentId",
+  requireTeamAccess(),
+  describeRoute({
+    description: "Get a single transmitted document by ID",
+    summary: "Get Document",
+    tags: ["Documents"],
+    responses: {
+      200: {
+        description: "Successfully retrieved the document",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                success: { type: "boolean", enum: [true] },
+                data: {
+                  type: "object",
+                  properties: {
+                    document: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        teamId: { type: "string" },
+                        companyId: { type: "string" },
+                        direction: { type: "string", enum: ["incoming", "outgoing"] },
+                        senderId: { type: "string" },
+                        receiverId: { type: "string" },
+                        docTypeId: { type: "string" },
+                        processId: { type: "string" },
+                        countryC1: { type: "string" },
+                        type: { type: "string" },
+                        readAt: { type: "string", format: "date-time" },
+                        createdAt: { type: "string", format: "date-time" },
+                        updatedAt: { type: "string", format: "date-time" },
+                        xml: { type: "string" },
+                        parsed: { type: "object" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      404: {
+        description: "Document not found",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                success: { type: "boolean", enum: [false] },
+                errors: {
+                  type: "object",
+                  additionalProperties: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                },
+              },
+              required: ["success", "errors"],
+            },
+          },
+        },
+      },
+      500: {
+        description: "Failed to fetch document",
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                success: { type: "boolean", enum: [false] },
+                errors: {
+                  type: "object",
+                  additionalProperties: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                },
+              },
+              required: ["success", "errors"],
+            },
+          },
+        },
+      },
+    },
+  }),
+  zValidator(
+    "param",
+    z.object({
+      teamId: z.string().openapi({
+        description: "The ID of the team",
+        example: "team_01JQNRVSGW308K2P115PK98W7E",
+      }),
+      documentId: z.string().openapi({
+        description: "The ID of the document to retrieve",
+        example: "doc_01JRQNNPRRV13732DFB3FNR1T9",
+      }),
+    })
+  ),
+  async (c) => {
+    try {
+      const { documentId } = c.req.valid("param");
+      const document = await getTransmittedDocument(c.var.team.id, documentId);
+      
+      if (!document) {
+        return c.json(actionFailure("Document not found"), 404);
+      }
+
+      return c.json(actionSuccess({ document }));
+    } catch (error) {
+      return c.json(actionFailure("Failed to fetch document"), 500);
+    }
+  }
+);
+
 export type TransmittedDocuments =
   | typeof _transmittedDocuments
   | typeof _deleteTransmittedDocument
   | typeof _getInbox
-  | typeof _markAsRead;
+  | typeof _markAsRead
+  | typeof _getTransmittedDocument;
 
 export default server; 

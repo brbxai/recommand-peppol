@@ -7,7 +7,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useUser } from "@core/hooks/use-user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, Search } from "lucide-react";
 import { SortableHeader } from "@core/components/data-table/sortable-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
 import { Input } from "@core/components/ui/input";
@@ -18,6 +18,7 @@ import type { TransmittedDocumentWithoutBody } from "@peppol/data/transmitted-do
 import type { TransmittedDocuments } from "@peppol/api/transmitted-documents";
 import type { Companies } from "@peppol/api/companies";
 import { DataTablePagination } from "@core/components/data-table/pagination";
+import { CompanyDropdown } from "../../../components/company-dropdown";
 
 const client = rc<TransmittedDocuments>('peppol');
 const companiesClient = rc<Companies>('peppol');
@@ -260,12 +261,16 @@ export default function Page() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="flex-1">
           <Label htmlFor="search">Search</Label>
-          <Input
-            id="search"
-            placeholder="Search documents..."
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-          />
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="search"
+              placeholder="Search documents..."
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="pl-8"
+            />
+          </div>
         </div>
         <div className="flex gap-4">
           <div>
@@ -284,25 +289,13 @@ export default function Page() {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label htmlFor="company">Company</Label>
-            <Select
-              value={companyId || "all"}
-              onValueChange={(value) => setCompanyId(value === "all" ? undefined : value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All companies" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All companies</SelectItem>
-                {companies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <CompanyDropdown
+            companies={companies}
+            value={companyId ?? null}
+            onChange={(value) => setCompanyId(value ?? undefined)}
+            label="Company"
+            placeholder="All companies"
+          />
         </div>
       </div>
 
