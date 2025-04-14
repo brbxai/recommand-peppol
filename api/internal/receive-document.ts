@@ -6,6 +6,7 @@ import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import { getCompanyByPeppolId } from "@peppol/data/companies";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { parseInvoiceFromXML } from "@peppol/utils/parsing/invoice/from-xml";
 
 export const receiveDocumentSchema = z.object({
   senderId: z.string(),
@@ -35,6 +36,18 @@ server.post(
       return c.json(actionFailure("Company not found"), 404);
     }
 
+    // Parse the XML document
+    let parsedDocument = null;
+    let type: "invoice" | "unknown" = "unknown";
+    if (jsonBody.docTypeId.includes("Invoice")) {
+      try {
+        parsedDocument = parseInvoiceFromXML(jsonBody.body);
+        type = "invoice";
+      } catch (error) {
+        console.error("Failed to parse invoice XML:", error);
+      }
+    }
+
     // Create a new transmittedDocument
     const transmittedDocument = await db.insert(transmittedDocuments).values({
       teamId: company.teamId,
@@ -46,8 +59,8 @@ server.post(
       processId: jsonBody.processId,
       countryC1: jsonBody.countryC1,
       xml: jsonBody.body,
-      type: "invoice", // TODO
-      parsed: null,// TODO
+      type,
+      parsed: parsedDocument,
     }).returning({ id: transmittedDocuments.id }).then((rows) => rows[0]);
 
     // Create a new transferEvent for billing
