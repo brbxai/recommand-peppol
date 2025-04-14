@@ -113,6 +113,13 @@
       "when": 1744550140137,
       "tag": "20250413131540_perfect_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1744609557364,
+      "tag": "20250414054557_friendly_vulture",
+      "breakpoints": true
     }
   ]
 }

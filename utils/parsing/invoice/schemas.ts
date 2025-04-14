@@ -98,7 +98,7 @@ export const invoiceSchema = z.object({
   lines: z.array(lineSchema),
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
-}).openapi({ ref: "invoice" });
+}).openapi({ ref: "Invoice" });
 
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type Party = z.infer<typeof partySchema>;

@@ -20,6 +20,8 @@ server.post(
   requireCompanyAccess(),
   describeRoute({
     description: "Send a document to a customer",
+    summary: "Send Document",
+    tags: ["Sending", "Documents"],
     responses: {
       200: {
         description: "Successfully sent document",
@@ -64,10 +66,14 @@ server.post(
       const document = jsonBody.document;
 
       let xmlDocument: string | null = null;
+      let type: "invoice" | "unknown" = "unknown";
+      let parsedDocument: Invoice | null = null;
       let doctypeId: string = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
       if (jsonBody.documentType === SendDocumentType.INVOICE) {
         const ublInvoice = invoiceToUBL(document as Invoice);
         xmlDocument = ublInvoice;
+        type = "invoice";
+        parsedDocument = document as Invoice;
       } else if (jsonBody.documentType === SendDocumentType.UBL) {
         xmlDocument = document as string;
         if (jsonBody.doctypeId) {
@@ -116,7 +122,9 @@ server.post(
         docTypeId: doctypeId,
         processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
         countryC1: countryC1,
-        body: xmlDocument,
+        xml: xmlDocument,
+        type,
+        parsed: parsedDocument,
       }).returning({ id: transmittedDocuments.id }).then((rows) => rows[0]);
 
       // Create a new transferEvent for billing

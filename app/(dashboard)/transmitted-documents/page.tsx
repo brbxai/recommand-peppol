@@ -70,7 +70,7 @@ export default function Page() {
     }
 
     try {
-      const response = await client[':teamId']['transmitted-documents'].$get({
+      const response = await client[':teamId']['documents'].$get({
         param: { teamId: activeTeam.id },
         query: { 
           page: page.toString(), 
@@ -88,6 +88,7 @@ export default function Page() {
       } else {
         setDocuments(json.documents.map(doc => ({
           ...doc,
+          readAt: doc.readAt ? new Date(doc.readAt) : null,
           createdAt: new Date(doc.createdAt)
         })));
         setTotal(json.pagination.total);
@@ -110,7 +111,7 @@ export default function Page() {
     if (!activeTeam?.id) return;
 
     try {
-      const response = await client[':teamId']['transmitted-documents'][':documentId'].$delete({
+      const response = await client[':teamId']['documents'][':documentId'].$delete({
         param: {
           teamId: activeTeam.id,
           documentId: id
@@ -185,6 +186,15 @@ export default function Page() {
       cell: ({ row }) => {
         const date = row.getValue("createdAt") as string;
         return format(new Date(date), 'PPpp');
+      },
+      enableGlobalFilter: true,
+    },
+    {
+      accessorKey: "readAt",
+      header: ({ column }) => <SortableHeader column={column} title="Read At" />,
+      cell: ({ row }) => {
+        const date = row.getValue("readAt") as string;
+        return date ? format(new Date(date), 'PPpp') : <p className="text-muted-foreground">Not read</p>;
       },
       enableGlobalFilter: true,
     },

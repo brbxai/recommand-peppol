@@ -45,7 +45,9 @@ server.post(
       docTypeId: jsonBody.docTypeId,
       processId: jsonBody.processId,
       countryC1: jsonBody.countryC1,
-      body: jsonBody.body,
+      xml: jsonBody.body,
+      type: "invoice", // TODO
+      parsed: null,// TODO
     }).returning({ id: transmittedDocuments.id }).then((rows) => rows[0]);
 
     // Create a new transferEvent for billing

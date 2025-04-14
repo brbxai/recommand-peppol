@@ -12,6 +12,7 @@ import {
 import { ulid } from "ulid";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
+import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -26,6 +27,12 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
 
 export const zodValidCountryCodes = z.enum(["BE"]);
 export const validCountryCodes = pgEnum("peppol_valid_country_codes", zodValidCountryCodes.options);
+
+export const supportedDocumentTypes = z.enum(["invoice", "unknown"]);
+export const supportedDocumentTypeEnum = pgEnum(
+  "peppol_supported_document_type",
+  supportedDocumentTypes.options
+);
 
 export const transferEventDirectionEnum = pgEnum(
   "peppol_transfer_event_direction",
@@ -184,8 +191,12 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   docTypeId: text("doc_type_id").notNull(), // e.g. urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1
   processId: text("process_id").notNull(), // e.g. urn:fdc:peppol.eu:2017:poacc:billing:01:1.0
   countryC1: text("country_c1").notNull(), // e.g. BE
-  body: text("body"), // XML body of the document, can be null if the body was not kept
+  xml: text("xml"), // XML body of the document, can be null if the body was not kept
 
+  type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
+  parsed: jsonb("parsed").$type<Invoice>(),
+
+  readAt: timestamp("read_at"), // defaults to null, set when the document is read
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" })
     .defaultNow()
