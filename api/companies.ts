@@ -21,6 +21,7 @@ const _companies = server.get(
   "/:teamId/companies",
   requireTeamAccess(),
   describeRoute({
+    operationId: "getCompanies",
     description: "Get a list of all companies for a team",
     summary: "List Companies",
     tags: ["Companies"],
@@ -32,28 +33,23 @@ const _companies = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
-                  type: "object",
-                  properties: {
-                    companies: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          teamId: { type: "string" },
-                          name: { type: "string" },
-                          address: { type: "string" },
-                          postalCode: { type: "string" },
-                          city: { type: "string" },
-                          country: { type: "string" },
-                          enterpriseNumber: { type: "string" },
-                          vatNumber: { type: "string" },
-                          createdAt: { type: "string", format: "date-time" },
-                          updatedAt: { type: "string", format: "date-time" },
-                        },
-                      },
+                success: { type: "boolean", example: true },
+                companies: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      teamId: { type: "string" },
+                      name: { type: "string" },
+                      address: { type: "string" },
+                      postalCode: { type: "string" },
+                      city: { type: "string" },
+                      country: { type: "string" },
+                      enterpriseNumber: { type: "string" },
+                      vatNumber: { type: "string" },
+                      createdAt: { type: "string", format: "date-time" },
+                      updatedAt: { type: "string", format: "date-time" },
                     },
                   },
                 },
@@ -69,7 +65,7 @@ const _companies = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -100,6 +96,7 @@ const _company = server.get(
   "/:teamId/companies/:companyId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "getCompany",
     description: "Get a specific company by ID",
     summary: "Get Company",
     tags: ["Companies"],
@@ -111,26 +108,21 @@ const _company = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                company: {
                   type: "object",
                   properties: {
-                    company: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        teamId: { type: "string" },
-                        name: { type: "string" },
-                        address: { type: "string" },
-                        postalCode: { type: "string" },
-                        city: { type: "string" },
-                        country: { type: "string" },
-                        enterpriseNumber: { type: "string" },
-                        vatNumber: { type: "string" },
-                        createdAt: { type: "string", format: "date-time" },
-                        updatedAt: { type: "string", format: "date-time" },
-                      },
-                    },
+                    id: { type: "string" },
+                    teamId: { type: "string" },
+                    name: { type: "string" },
+                    address: { type: "string" },
+                    postalCode: { type: "string" },
+                    city: { type: "string" },
+                    country: { type: "string" },
+                    enterpriseNumber: { type: "string" },
+                    vatNumber: { type: "string" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
                   },
                 },
               },
@@ -145,7 +137,7 @@ const _company = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -166,7 +158,7 @@ const _company = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -200,6 +192,7 @@ const _createCompany = server.post(
   "/:teamId/companies",
   requireTeamAccess(),
   describeRoute({
+    operationId: "createCompany",
     description: "Create a new company",
     summary: "Create Company",
     tags: ["Companies"],
@@ -230,26 +223,21 @@ const _createCompany = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                company: {
                   type: "object",
                   properties: {
-                    company: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        teamId: { type: "string" },
-                        name: { type: "string" },
-                        address: { type: "string" },
-                        postalCode: { type: "string" },
-                        city: { type: "string" },
-                        country: { type: "string" },
-                        enterpriseNumber: { type: "string" },
-                        vatNumber: { type: "string" },
-                        createdAt: { type: "string", format: "date-time" },
-                        updatedAt: { type: "string", format: "date-time" },
-                      },
-                    },
+                    id: { type: "string" },
+                    teamId: { type: "string" },
+                    name: { type: "string" },
+                    address: { type: "string" },
+                    postalCode: { type: "string" },
+                    city: { type: "string" },
+                    country: { type: "string" },
+                    enterpriseNumber: { type: "string" },
+                    vatNumber: { type: "string" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
                   },
                 },
               },
@@ -264,7 +252,7 @@ const _createCompany = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -285,7 +273,7 @@ const _createCompany = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -342,6 +330,7 @@ const _updateCompany = server.put(
   "/:teamId/companies/:companyId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "updateCompany",
     description: "Update an existing company",
     summary: "Update Company",
     tags: ["Companies"],
@@ -372,26 +361,21 @@ const _updateCompany = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                company: {
                   type: "object",
                   properties: {
-                    company: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        teamId: { type: "string" },
-                        name: { type: "string" },
-                        address: { type: "string" },
-                        postalCode: { type: "string" },
-                        city: { type: "string" },
-                        country: { type: "string" },
-                        enterpriseNumber: { type: "string" },
-                        vatNumber: { type: "string" },
-                        createdAt: { type: "string", format: "date-time" },
-                        updatedAt: { type: "string", format: "date-time" },
-                      },
-                    },
+                    id: { type: "string" },
+                    teamId: { type: "string" },
+                    name: { type: "string" },
+                    address: { type: "string" },
+                    postalCode: { type: "string" },
+                    city: { type: "string" },
+                    country: { type: "string" },
+                    enterpriseNumber: { type: "string" },
+                    vatNumber: { type: "string" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
                   },
                 },
               },
@@ -406,7 +390,7 @@ const _updateCompany = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -427,7 +411,7 @@ const _updateCompany = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -448,7 +432,7 @@ const _updateCompany = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -512,6 +496,7 @@ const _deleteCompany = server.delete(
   "/:teamId/companies/:companyId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "deleteCompany",
     description: "Delete a company",
     summary: "Delete Company",
     tags: ["Companies"],
@@ -523,7 +508,7 @@ const _deleteCompany = server.delete(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
+                success: { type: "boolean", example: true },
               },
             },
           },
@@ -536,7 +521,7 @@ const _deleteCompany = server.delete(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {

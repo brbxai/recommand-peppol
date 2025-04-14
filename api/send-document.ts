@@ -19,6 +19,7 @@ server.post(
   "/:companyId/sendDocument",
   requireCompanyAccess(),
   describeRoute({
+    operationId: "sendDocument",
     description: "Send a document to a customer",
     summary: "Send Document",
     tags: ["Sending", "Documents"],
@@ -30,7 +31,7 @@ server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean" },
+                success: { type: "boolean", example: true },
               },
             },
           },
@@ -43,7 +44,7 @@ server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {

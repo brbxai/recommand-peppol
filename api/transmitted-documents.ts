@@ -20,6 +20,7 @@ const _transmittedDocuments = server.get(
   "/:teamId/documents",
   requireTeamAccess(),
   describeRoute({
+    operationId: "getDocuments",
     description: "Get a list of transmitted documents with pagination",
     summary: "List Documents",
     tags: ["Documents"],
@@ -31,40 +32,38 @@ const _transmittedDocuments = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                documents: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      teamId: { type: "string" },
+                      companyId: { type: "string" },
+                      direction: {
+                        type: "string",
+                        enum: ["incoming", "outgoing"],
+                      },
+                      senderId: { type: "string" },
+                      receiverId: { type: "string" },
+                      docTypeId: { type: "string" },
+                      processId: { type: "string" },
+                      countryC1: { type: "string" },
+                      type: { type: "string" },
+                      readAt: { type: "string", format: "date-time" },
+                      createdAt: { type: "string", format: "date-time" },
+                      updatedAt: { type: "string", format: "date-time" },
+                    },
+                  },
+                },
+                pagination: {
                   type: "object",
                   properties: {
-                    documents: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          teamId: { type: "string" },
-                          companyId: { type: "string" },
-                          direction: { type: "string", enum: ["incoming", "outgoing"] },
-                          senderId: { type: "string" },
-                          receiverId: { type: "string" },
-                          docTypeId: { type: "string" },
-                          processId: { type: "string" },
-                          countryC1: { type: "string" },
-                          type: { type: "string" },
-                          readAt: { type: "string", format: "date-time" },
-                          createdAt: { type: "string", format: "date-time" },
-                          updatedAt: { type: "string", format: "date-time" },
-                        },
-                      },
-                    },
-                    pagination: {
-                      type: "object",
-                      properties: {
-                        total: { type: "number" },
-                        page: { type: "number" },
-                        limit: { type: "number" },
-                        totalPages: { type: "number" },
-                      },
-                    },
+                    total: { type: "number" },
+                    page: { type: "number" },
+                    limit: { type: "number" },
+                    totalPages: { type: "number" },
                   },
                 },
               },
@@ -79,7 +78,7 @@ const _transmittedDocuments = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -119,12 +118,15 @@ const _transmittedDocuments = server.get(
   async (c) => {
     try {
       const { page, limit, companyId, direction } = c.req.valid("query");
-      const { documents, total } = await getTransmittedDocuments(c.var.team.id, {
-        page,
-        limit,
-        companyId,
-        direction,
-      });
+      const { documents, total } = await getTransmittedDocuments(
+        c.var.team.id,
+        {
+          page,
+          limit,
+          companyId,
+          direction,
+        }
+      );
 
       return c.json(
         actionSuccess({
@@ -138,7 +140,10 @@ const _transmittedDocuments = server.get(
         })
       );
     } catch (error) {
-      return c.json(actionFailure("Failed to fetch transmitted documents"), 500);
+      return c.json(
+        actionFailure("Failed to fetch transmitted documents"),
+        500
+      );
     }
   }
 );
@@ -148,6 +153,7 @@ const _deleteTransmittedDocument = server.delete(
   "/:teamId/documents/:documentId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "deleteDocument",
     description: "Delete a transmitted document",
     summary: "Delete Document",
     tags: ["Documents"],
@@ -159,7 +165,7 @@ const _deleteTransmittedDocument = server.delete(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
+                success: { type: "boolean", example: true },
               },
             },
           },
@@ -172,7 +178,7 @@ const _deleteTransmittedDocument = server.delete(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -193,7 +199,7 @@ const _deleteTransmittedDocument = server.delete(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -241,6 +247,7 @@ const _getInbox = server.get(
   "/:teamId/inbox",
   requireTeamAccess(),
   describeRoute({
+    operationId: "getInbox",
     description: "List all unread incoming documents.",
     summary: "Inbox",
     tags: ["Documents"],
@@ -252,30 +259,25 @@ const _getInbox = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
-                  type: "object",
-                  properties: {
-                    documents: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          teamId: { type: "string" },
-                          companyId: { type: "string" },
-                          direction: { type: "string", enum: ["incoming"] },
-                          senderId: { type: "string" },
-                          receiverId: { type: "string" },
-                          docTypeId: { type: "string" },
-                          processId: { type: "string" },
-                          countryC1: { type: "string" },
-                          type: { type: "string" },
-                          readAt: { type: "string", format: "date-time" },
-                          createdAt: { type: "string", format: "date-time" },
-                          updatedAt: { type: "string", format: "date-time" },
-                        },
-                      },
+                success: { type: "boolean", example: true },
+                documents: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      teamId: { type: "string" },
+                      companyId: { type: "string" },
+                      direction: { type: "string", enum: ["incoming"] },
+                      senderId: { type: "string" },
+                      receiverId: { type: "string" },
+                      docTypeId: { type: "string" },
+                      processId: { type: "string" },
+                      countryC1: { type: "string" },
+                      type: { type: "string" },
+                      readAt: { type: "string", format: "date-time" },
+                      createdAt: { type: "string", format: "date-time" },
+                      updatedAt: { type: "string", format: "date-time" },
                     },
                   },
                 },
@@ -291,7 +293,7 @@ const _getInbox = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -332,6 +334,7 @@ const _markAsRead = server.post(
   "/:teamId/documents/:documentId/markAsRead",
   requireTeamAccess(),
   describeRoute({
+    operationId: "markAsRead",
     description: "Mark a document as read or unread",
     summary: "Mark Document as Read",
     tags: ["Documents"],
@@ -343,7 +346,7 @@ const _markAsRead = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
+                success: { type: "boolean", example: true },
               },
             },
           },
@@ -356,7 +359,7 @@ const _markAsRead = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -377,7 +380,7 @@ const _markAsRead = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -408,12 +411,15 @@ const _markAsRead = server.post(
   ),
   zValidator(
     "json",
-    z.object({
-      read: z.boolean().optional().default(true).openapi({
-        description: "Whether to mark the document as read (true) or unread (false). If not provided, defaults to true.",
-        example: true,
-      }),
-    }).optional(),
+    z
+      .object({
+        read: z.boolean().optional().default(true).openapi({
+          description:
+            "Whether to mark the document as read (true) or unread (false). If not provided, defaults to true.",
+          example: true,
+        }),
+      })
+      .optional()
   ),
   async (c) => {
     try {
@@ -425,7 +431,10 @@ const _markAsRead = server.post(
       if (error instanceof Error && error.message === "Document not found") {
         return c.json(actionFailure("Document not found"), 404);
       }
-      return c.json(actionFailure("Failed to update document read status"), 500);
+      return c.json(
+        actionFailure("Failed to update document read status"),
+        500
+      );
     }
   }
 );
@@ -435,6 +444,7 @@ const _getTransmittedDocument = server.get(
   "/:teamId/documents/:documentId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "getDocument",
     description: "Get a single transmitted document by ID",
     summary: "Get Document",
     tags: ["Documents"],
@@ -446,30 +456,28 @@ const _getTransmittedDocument = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                document: {
                   type: "object",
                   properties: {
-                    document: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        teamId: { type: "string" },
-                        companyId: { type: "string" },
-                        direction: { type: "string", enum: ["incoming", "outgoing"] },
-                        senderId: { type: "string" },
-                        receiverId: { type: "string" },
-                        docTypeId: { type: "string" },
-                        processId: { type: "string" },
-                        countryC1: { type: "string" },
-                        type: { type: "string" },
-                        readAt: { type: "string", format: "date-time" },
-                        createdAt: { type: "string", format: "date-time" },
-                        updatedAt: { type: "string", format: "date-time" },
-                        xml: { type: "string" },
-                        parsed: { type: "object" },
-                      },
+                    id: { type: "string" },
+                    teamId: { type: "string" },
+                    companyId: { type: "string" },
+                    direction: {
+                      type: "string",
+                      enum: ["incoming", "outgoing"],
                     },
+                    senderId: { type: "string" },
+                    receiverId: { type: "string" },
+                    docTypeId: { type: "string" },
+                    processId: { type: "string" },
+                    countryC1: { type: "string" },
+                    type: { type: "string" },
+                    readAt: { type: "string", format: "date-time" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
+                    xml: { type: "string" },
+                    parsed: { type: "object" },
                   },
                 },
               },
@@ -484,7 +492,7 @@ const _getTransmittedDocument = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -505,7 +513,7 @@ const _getTransmittedDocument = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -538,7 +546,7 @@ const _getTransmittedDocument = server.get(
     try {
       const { documentId } = c.req.valid("param");
       const document = await getTransmittedDocument(c.var.team.id, documentId);
-      
+
       if (!document) {
         return c.json(actionFailure("Document not found"), 404);
       }
@@ -557,4 +565,4 @@ export type TransmittedDocuments =
   | typeof _markAsRead
   | typeof _getTransmittedDocument;
 
-export default server; 
+export default server;

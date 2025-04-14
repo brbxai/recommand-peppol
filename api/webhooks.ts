@@ -20,6 +20,7 @@ const _webhooks = server.get(
   "/:teamId/webhooks",
   requireTeamAccess(),
   describeRoute({
+    operationId: "getWebhooks",
     description: "Get a list of all webhooks for a team",
     summary: "List Webhooks",
     tags: ["Webhooks"],
@@ -30,9 +31,9 @@ const _webhooks = server.get(
         required: false,
         schema: {
           type: "string",
-          nullable: true
-        }
-      }
+          nullable: true,
+        },
+      },
     ],
     responses: {
       200: {
@@ -42,23 +43,18 @@ const _webhooks = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
-                  type: "object",
-                  properties: {
-                    webhooks: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          id: { type: "string" },
-                          teamId: { type: "string" },
-                          companyId: { type: "string", nullable: true },
-                          url: { type: "string" },
-                          createdAt: { type: "string", format: "date-time" },
-                          updatedAt: { type: "string", format: "date-time" },
-                        },
-                      },
+                success: { type: "boolean", example: true },
+                webhooks: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      teamId: { type: "string" },
+                      companyId: { type: "string", nullable: true },
+                      url: { type: "string" },
+                      createdAt: { type: "string", format: "date-time" },
+                      updatedAt: { type: "string", format: "date-time" },
                     },
                   },
                 },
@@ -74,7 +70,7 @@ const _webhooks = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -95,7 +91,7 @@ const _webhooks = server.get(
   async (c) => {
     try {
       const { companyId } = c.req.valid("query");
-      const allWebhooks = companyId 
+      const allWebhooks = companyId
         ? await getWebhooksByCompany(c.var.team.id, companyId)
         : await getWebhooks(c.var.team.id);
       return c.json(actionSuccess({ webhooks: allWebhooks }));
@@ -109,6 +105,7 @@ const _webhook = server.get(
   "/:teamId/webhooks/:webhookId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "getWebhook",
     description: "Get a specific webhook by ID",
     summary: "Get Webhook",
     tags: ["Webhooks"],
@@ -120,21 +117,16 @@ const _webhook = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                webhook: {
                   type: "object",
                   properties: {
-                    webhook: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        teamId: { type: "string" },
-                        companyId: { type: "string", nullable: true },
-                        url: { type: "string" },
-                        createdAt: { type: "string", format: "date-time" },
-                        updatedAt: { type: "string", format: "date-time" },
-                      },
-                    },
+                    id: { type: "string" },
+                    teamId: { type: "string" },
+                    companyId: { type: "string", nullable: true },
+                    url: { type: "string" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
                   },
                 },
               },
@@ -149,7 +141,7 @@ const _webhook = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -170,7 +162,7 @@ const _webhook = server.get(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -207,6 +199,7 @@ const _createWebhook = server.post(
   "/:teamId/webhooks",
   requireTeamAccess(),
   describeRoute({
+    operationId: "createWebhook",
     description: "Create a new webhook",
     summary: "Create Webhook",
     tags: ["Webhooks"],
@@ -232,21 +225,16 @@ const _createWebhook = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                webhook: {
                   type: "object",
                   properties: {
-                    webhook: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        teamId: { type: "string" },
-                        companyId: { type: "string", nullable: true },
-                        url: { type: "string" },
-                        createdAt: { type: "string", format: "date-time" },
-                        updatedAt: { type: "string", format: "date-time" },
-                      },
-                    },
+                    id: { type: "string" },
+                    teamId: { type: "string" },
+                    companyId: { type: "string", nullable: true },
+                    url: { type: "string" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
                   },
                 },
               },
@@ -261,7 +249,7 @@ const _createWebhook = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -282,7 +270,7 @@ const _createWebhook = server.post(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -323,6 +311,7 @@ const _updateWebhook = server.put(
   "/:teamId/webhooks/:webhookId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "updateWebhook",
     description: "Update an existing webhook",
     summary: "Update Webhook",
     tags: ["Webhooks"],
@@ -348,21 +337,16 @@ const _updateWebhook = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
-                data: {
+                success: { type: "boolean", example: true },
+                webhook: {
                   type: "object",
                   properties: {
-                    webhook: {
-                      type: "object",
-                      properties: {
-                        id: { type: "string" },
-                        teamId: { type: "string" },
-                        companyId: { type: "string", nullable: true },
-                        url: { type: "string" },
-                        createdAt: { type: "string", format: "date-time" },
-                        updatedAt: { type: "string", format: "date-time" },
-                      },
-                    },
+                    id: { type: "string" },
+                    teamId: { type: "string" },
+                    companyId: { type: "string", nullable: true },
+                    url: { type: "string" },
+                    createdAt: { type: "string", format: "date-time" },
+                    updatedAt: { type: "string", format: "date-time" },
                   },
                 },
               },
@@ -377,7 +361,7 @@ const _updateWebhook = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -398,7 +382,7 @@ const _updateWebhook = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -419,7 +403,7 @@ const _updateWebhook = server.put(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -464,6 +448,7 @@ const _deleteWebhook = server.delete(
   "/:teamId/webhooks/:webhookId",
   requireTeamAccess(),
   describeRoute({
+    operationId: "deleteWebhook",
     description: "Delete a webhook",
     summary: "Delete Webhook",
     tags: ["Webhooks"],
@@ -475,7 +460,7 @@ const _deleteWebhook = server.delete(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [true] },
+                success: { type: "boolean", example: true },
               },
             },
           },
@@ -488,7 +473,7 @@ const _deleteWebhook = server.delete(
             schema: {
               type: "object",
               properties: {
-                success: { type: "boolean", enum: [false] },
+                success: { type: "boolean", example: false },
                 errors: {
                   type: "object",
                   additionalProperties: {
@@ -522,4 +507,4 @@ export type Webhooks =
   | typeof _updateWebhook
   | typeof _deleteWebhook;
 
-export default server; 
+export default server;
