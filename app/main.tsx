@@ -3,51 +3,37 @@ import { CreditCard, Building, History, Webhook } from "lucide-react";
 import { useMenuItemActions } from "@core/lib/menu-store";
 
 export default function Main({ children }: { children: React.ReactNode }) {
-    const { registerMenuItem } = useMenuItemActions();
-    
-    useEffect(() => {
-        registerMenuItem({
-            id: 'main.history',
-            title: "Sent and received",
-            icon: History,
-            href: "/transmitted-documents",
-        });
+  const { registerMenuItem } = useMenuItemActions();
 
-        registerMenuItem({
-            id: 'main.companies',
-            title: "Companies",
-            icon: Building,
-            href: "/companies",
-        });
+  useEffect(() => {
+    registerMenuItem({
+      id: "main.history",
+      title: "Sent and received",
+      icon: History,
+      href: "/transmitted-documents",
+    });
 
-        // registerMenuItem({
-        //     id: 'main.peppol.peppols',
-        //     title: "Peppol sub",
-        //     icon: Paperclip,
-        //     onClick: () => {
-        //         toast.success("Clicked Peppol sub");
-        //     }
-        // });
+    registerMenuItem({
+      id: "main.companies",
+      title: "Companies",
+      icon: Building,
+      href: "/companies",
+    });
 
-        registerMenuItem({
-            id: 'user.billing.subscription',
-            title: "Subscription",
-            icon: CreditCard,
-            href: "/billing/subscription",
-        });
+    registerMenuItem({
+      id: "user.billing.subscription",
+      title: "Subscription",
+      icon: CreditCard,
+      href: "/billing/subscription",
+    });
 
-        registerMenuItem({
-            id: 'user.api.webhooks',
-            title: "Webhooks",
-            icon: Webhook,
-            href: "/webhooks",
-        });
+    registerMenuItem({
+      id: "user.api.webhooks",
+      title: "Webhooks",
+      icon: Webhook,
+      href: "/webhooks",
+    });
+  }, [registerMenuItem]);
 
-    }, [registerMenuItem]);
-
-    return children;
+  return children;
 }
-
-
-
-
