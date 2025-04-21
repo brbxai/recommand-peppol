@@ -3,7 +3,14 @@ import { rc } from "@recommand/lib/client";
 import type { Subscription } from "api/subscription";
 import { useEffect, useState } from "react";
 import { Button } from "@core/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@core/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@core/components/ui/card";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
 import { Loader2, XCircle, CheckCircle, Pencil, Check, CreditCard } from "lucide-react";
@@ -19,7 +26,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@core/components/ui/alert-dialog";
-import type { BillingProfile, BillingProfileData } from "@peppol/api/billing-profile";
+import type {
+  BillingProfile,
+  BillingProfileData,
+} from "@peppol/api/billing-profile";
 import {
   Dialog,
   DialogContent,
@@ -32,14 +42,16 @@ import { BillingProfileForm, DEFAULT_BILLING_PROFILE_FORM_DATA, type BillingProf
 import { PlansGrid } from "@peppol/components/plans-grid";
 import { updateBillingProfile, fetchBillingProfile as fetchBillingProfileFromApi } from "@peppol/lib/billing";
 
-const subscriptionClient = rc<Subscription>('peppol');
-const billingProfileClient = rc<BillingProfile>('peppol');
+const subscriptionClient = rc<Subscription>("peppol");
+const billingProfileClient = rc<BillingProfile>("peppol");
 
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
-  const [currentSubscription, setCurrentSubscription] = useState<SubscriptionType | null>(null);
+  const [currentSubscription, setCurrentSubscription] =
+    useState<SubscriptionType | null>(null);
   const [currentUsage, setCurrentUsage] = useState(-1);
-  const [billingProfile, setBillingProfile] = useState<BillingProfileData | null>(null);
+  const [billingProfile, setBillingProfile] =
+    useState<BillingProfileData | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
   const activeTeam = useActiveTeam();
@@ -51,9 +63,11 @@ export default function Page() {
     }
 
     try {
-      const response = await subscriptionClient[':teamId']['subscription'].$get({
-        param: { teamId: activeTeam.id }
-      });
+      const response = await subscriptionClient[":teamId"]["subscription"].$get(
+        {
+          param: { teamId: activeTeam.id },
+        }
+      );
       const data = await response.json();
 
       if (!data.success || !data.subscription) {
@@ -64,12 +78,16 @@ export default function Page() {
         ...data.subscription,
         createdAt: new Date(data.subscription.createdAt),
         startDate: new Date(data.subscription.startDate),
-        endDate: data.subscription.endDate ? new Date(data.subscription.endDate) : null,
-        lastBilledAt: data.subscription.lastBilledAt ? new Date(data.subscription.lastBilledAt) : null,
+        endDate: data.subscription.endDate
+          ? new Date(data.subscription.endDate)
+          : null,
+        lastBilledAt: data.subscription.lastBilledAt
+          ? new Date(data.subscription.lastBilledAt)
+          : null,
       });
     } catch (error) {
-      console.error('Error fetching subscription:', error);
-      toast.error('Failed to load subscription');
+      console.error("Error fetching subscription:", error);
+      toast.error("Failed to load subscription");
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +97,10 @@ export default function Page() {
     if (!activeTeam?.id) return;
 
     try {
-      const response = await billingProfileClient[':teamId']['billing-profile']['current-usage'].$get({
-        param: { teamId: activeTeam.id }
+      const response = await billingProfileClient[":teamId"]["billing-profile"][
+        "current-usage"
+      ].$get({
+        param: { teamId: activeTeam.id },
       });
       const data = await response.json();
 
@@ -88,8 +108,8 @@ export default function Page() {
         setCurrentUsage(data.usage);
       }
     } catch (error) {
-      console.error('Error fetching current usage:', error);
-      toast.error('Failed to load current usage');
+      console.error("Error fetching current usage:", error);
+      toast.error("Failed to load current usage");
     }
   };
 
@@ -120,15 +140,17 @@ export default function Page() {
     if (!activeTeam?.id) return;
 
     try {
-      const response = await subscriptionClient[':teamId'].subscription.cancel.$post({
-        param: { teamId: activeTeam.id }
+      const response = await subscriptionClient[
+        ":teamId"
+      ].subscription.cancel.$post({
+        param: { teamId: activeTeam.id },
       });
 
       const data = await response.json();
       setCurrentSubscription(null);
-      toast.success('Subscription cancelled successfully');
+      toast.success("Subscription cancelled successfully");
     } catch (error) {
-      toast.error('Failed to cancel subscription');
+      toast.error("Failed to cancel subscription");
     }
   };
 
@@ -273,9 +295,9 @@ export default function Page() {
                 <div className="pt-4">
                   <div className="flex items-center space-x-2 mt-2">
                     {billingProfile.isMandateValidated ? (
-                      <Check className="h-4 w-4 text-green-600" />
+                      <Check className="h-4 w-4 text-accent" />
                     ) : (
-                      <XCircle className="h-4 w-4 text-red-600" />
+                      <XCircle className="h-4 w-4 text-destructive" />
                     )}
                     <p className="text-muted-foreground text-sm">
                       Payment Mandate: {billingProfile.isMandateValidated ? 'Validated' : 'Not validated'}

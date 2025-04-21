@@ -8,40 +8,31 @@ import SubscriptionOnboarding from "@peppol/components/onboarding/subscription";
 export default function Main({ children }: { children: React.ReactNode }) {
     const { registerMenuItem } = useMenuItemActions();
     const { registerOnboardingStep } = useOnboardingActions();
-    
+
     useEffect(() => {
         registerMenuItem({
-            id: 'main.history',
+            id: "main.history",
             title: "Sent and received",
             icon: History,
             href: "/transmitted-documents",
         });
 
         registerMenuItem({
-            id: 'main.companies',
+            id: "main.companies",
             title: "Companies",
             icon: Building,
             href: "/companies",
         });
 
-        // registerMenuItem({
-        //     id: 'main.peppol.peppols',
-        //     title: "Peppol sub",
-        //     icon: Paperclip,
-        //     onClick: () => {
-        //         toast.success("Clicked Peppol sub");
-        //     }
-        // });
-
         registerMenuItem({
-            id: 'user.billing.subscription',
+            id: "user.billing.subscription",
             title: "Subscription",
             icon: CreditCard,
             href: "/billing/subscription",
         });
 
         registerMenuItem({
-            id: 'user.api.webhooks',
+            id: "user.api.webhooks",
             title: "Webhooks",
             icon: Webhook,
             href: "/webhooks",
@@ -71,7 +62,3 @@ export default function Main({ children }: { children: React.ReactNode }) {
 
     return children;
 }
-
-
-
-

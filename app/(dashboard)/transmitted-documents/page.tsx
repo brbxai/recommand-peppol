@@ -2,32 +2,42 @@ import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
 import { useEffect, useState, useCallback } from "react";
 import { DataTable } from "@core/components/data-table";
-import { type ColumnDef, getCoreRowModel, getSortedRowModel, getFilteredRowModel, useReactTable } from "@tanstack/react-table";
+import {
+  type ColumnDef,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  useReactTable,
+  type ColumnFiltersState,
+} from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, Search } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
-import { Input } from "@core/components/ui/input";
-import { Label } from "@core/components/ui/label";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import type { TransmittedDocumentWithoutBody } from "@peppol/data/transmitted-documents";
 import type { TransmittedDocuments } from "@peppol/api/transmitted-documents";
 import type { Companies } from "@peppol/api/companies";
 import { DataTablePagination } from "@core/components/data-table/pagination";
-import { CompanyDropdown } from "../../../components/company-dropdown";
+import {
+  DataTableToolbar,
+  type FilterConfig,
+} from "@core/components/data-table/toolbar";
 
-const client = rc<TransmittedDocuments>('peppol');
-const companiesClient = rc<Companies>('peppol');
+const client = rc<TransmittedDocuments>("peppol");
+const companiesClient = rc<Companies>("peppol");
 
 export default function Page() {
-  const [documents, setDocuments] = useState<TransmittedDocumentWithoutBody[]>([]);
+  const [documents, setDocuments] = useState<TransmittedDocumentWithoutBody[]>(
+    []
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -43,22 +53,26 @@ export default function Page() {
     }
 
     try {
-      const response = await companiesClient[':teamId']['companies'].$get({
-        param: { teamId: activeTeam.id }
+      const response = await companiesClient[":teamId"]["companies"].$get({
+        param: { teamId: activeTeam.id },
       });
+      console.log("response", response);
       const json = await response.json();
+      console.log("json", json);
 
       if (!json.success || !Array.isArray(json.companies)) {
-        toast.error('Failed to load companies');
+        toast.error("Failed to load companies");
         setCompanies([]);
       } else {
-        setCompanies(json.companies.map((company: { id: string; name: string }) => ({
-          id: company.id,
-          name: company.name
-        })));
+        setCompanies(
+          json.companies.map((company: { id: string; name: string }) => ({
+            id: company.id,
+            name: company.name,
+          }))
+        );
       }
     } catch (error) {
-      toast.error('Failed to load companies');
+      toast.error("Failed to load companies");
       setCompanies([]);
     }
   }, [activeTeam?.id]);
@@ -70,62 +84,86 @@ export default function Page() {
       return;
     }
 
+    const directionFilter = columnFilters.find((f) => f.id === "direction");
+    const directionValue = directionFilter?.value as
+      | "incoming"
+      | "outgoing"
+      | "all"
+      | undefined;
+
+    const companyFilter = columnFilters.find((f) => f.id === "companyId");
+    const companyIdValue = companyFilter?.value as string | undefined;
+
     try {
-      const response = await client[':teamId']['documents'].$get({
+      const response = await client[":teamId"]["documents"].$get({
         param: { teamId: activeTeam.id },
-        query: { 
-          page: page.toString(), 
-          limit: limit.toString(), 
-          companyId, 
-          direction: direction === "all" ? undefined : direction 
-        }
+        query: {
+          page: page.toString(),
+          limit: limit.toString(),
+          companyId: companyIdValue,
+          direction:
+            directionValue === "all" || directionValue === undefined
+              ? undefined
+              : directionValue,
+        },
       });
       const json = await response.json();
 
       if (!json.success) {
-        console.error('Invalid API response format:', json);
-        toast.error('Failed to load documents');
+        console.error("Invalid API response format:", json);
+        toast.error("Failed to load documents");
         setDocuments([]);
       } else {
-        setDocuments(json.documents.map(doc => ({
-          ...doc,
-          readAt: doc.readAt ? new Date(doc.readAt) : null,
-          createdAt: new Date(doc.createdAt)
-        })));
+        setDocuments(
+          json.documents.map((doc) => ({
+            ...doc,
+            readAt: doc.readAt ? new Date(doc.readAt) : null,
+            createdAt: new Date(doc.createdAt),
+          }))
+        );
         setTotal(json.pagination.total);
       }
     } catch (error) {
-      console.error('Error fetching documents:', error);
-      toast.error('Failed to load documents');
+      console.error("Error fetching documents:", error);
+      toast.error("Failed to load documents");
       setDocuments([]);
     } finally {
       setIsLoading(false);
     }
-  }, [activeTeam?.id, page, limit, companyId, direction]);
+  }, [activeTeam?.id, page, limit, columnFilters]);
 
   useEffect(() => {
     fetchCompanies();
+  }, [fetchCompanies]);
+
+  useEffect(() => {
     fetchDocuments();
-  }, [fetchCompanies, fetchDocuments]);
+  }, [fetchDocuments]);
+
+  useEffect(() => {
+    console.log(companies);
+  }, [companies]);
 
   const handleDeleteDocument = async (id: string) => {
     if (!activeTeam?.id) return;
 
     try {
-      const response = await client[':teamId']['documents'][':documentId'].$delete({
+      const response = await client[":teamId"]["documents"][
+        ":documentId"
+      ].$delete({
         param: {
           teamId: activeTeam.id,
-          documentId: id
-        }
+          documentId: id,
+        },
       });
       const json = await response.json();
       if (!json.success) {
         throw new Error(stringifyActionFailure(json.errors));
       }
-      toast.success('Document deleted successfully');
+      toast.success("Document deleted successfully");
       fetchDocuments();
     } catch (error) {
-      toast.error('Failed to delete document');
+      toast.error("Failed to delete document");
     }
   };
 
@@ -135,24 +173,35 @@ export default function Page() {
       header: ({ column }) => <ColumnHeader column={column} title="ID" />,
       cell: ({ row }) => {
         const id = row.getValue("id") as string;
-        return <div className="flex items-center gap-2">
-          <pre className="font-mono text-xs">{id.slice(0, 6)}...{id.slice(-6)}</pre>
-          <Button variant="ghost" size="icon" onClick={() => {
-            navigator.clipboard.writeText(id);
-            toast.success('Document ID copied to clipboard');
-          }}><Copy className="h-4 w-4" /></Button>
-        </div>;
+        return (
+          <div className="flex items-center gap-2">
+            <pre className="font-mono text-xs">
+              {id.slice(0, 6)}...{id.slice(-6)}
+            </pre>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                navigator.clipboard.writeText(id);
+                toast.success("Document ID copied to clipboard");
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        );
       },
       enableGlobalFilter: true,
     },
     {
-      id: "company",
+      accessorKey: "companyId",
       header: ({ column }) => <ColumnHeader column={column} title="Company" />,
       cell: ({ row }) => {
         const companyId = row.original.companyId;
-        const company = companies.find(c => c.id === companyId);
-        return company?.name;
+        const company = companies.find((c) => c.id === companyId);
+        return company?.name ?? companyId;
       },
+      enableColumnFilter: false,
       enableGlobalFilter: true,
     },
     {
@@ -167,26 +216,33 @@ export default function Page() {
     },
     {
       accessorKey: "direction",
-      header: ({ column }) => <ColumnHeader column={column} title="Direction" />,
+      header: ({ column }) => (
+        <ColumnHeader column={column} title="Direction" />
+      ),
       cell: ({ row }) => {
         const direction = row.getValue("direction") as string;
-        return <div className="flex items-center gap-1">
-          {direction === 'incoming' ? (
-            <ArrowDown className="h-4 w-4" style={{ color: '#5189DD' }} />
-          ) : (
-            <ArrowUp className="h-4 w-4 text-secondary" />
-          )}
-          <span className="capitalize">{direction}</span>
-        </div>;
+        return (
+          <div className="flex items-center gap-1">
+            {direction === "incoming" ? (
+              <ArrowDown className="h-4 w-4" />
+            ) : (
+              <ArrowUp className="h-4 w-4" />
+            )}
+            <span className="capitalize">{direction}</span>
+          </div>
+        );
       },
+      filterFn: "equals",
       enableGlobalFilter: true,
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => <ColumnHeader column={column} title="Created At" />,
+      header: ({ column }) => (
+        <ColumnHeader column={column} title="Created At" />
+      ),
       cell: ({ row }) => {
         const date = row.getValue("createdAt") as string;
-        return format(new Date(date), 'PPpp');
+        return format(new Date(date), "PPpp");
       },
       enableGlobalFilter: true,
     },
@@ -195,7 +251,11 @@ export default function Page() {
       header: ({ column }) => <ColumnHeader column={column} title="Read At" />,
       cell: ({ row }) => {
         const date = row.getValue("readAt") as string;
-        return date ? format(new Date(date), 'PPpp') : <p className="text-muted-foreground">Not read</p>;
+        return date ? (
+          format(new Date(date), "PPpp")
+        ) : (
+          <p className="text-muted-foreground">Not read</p>
+        );
       },
       enableGlobalFilter: true,
     },
@@ -207,15 +267,17 @@ export default function Page() {
         const id = row.original.id;
         if (!id) return null;
 
-        return <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDeleteDocument(id)}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>;
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDeleteDocument(id)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        );
       },
     },
   ];
@@ -227,9 +289,11 @@ export default function Page() {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     state: {
       sorting,
       globalFilter,
+      columnFilters,
       pagination: {
         pageIndex: page - 1,
         pageSize: limit,
@@ -237,7 +301,7 @@ export default function Page() {
     },
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange: (updater) => {
-      if (typeof updater === 'function') {
+      if (typeof updater === "function") {
         const newState = updater({
           pageIndex: page - 1,
           pageSize: limit,
@@ -248,67 +312,52 @@ export default function Page() {
     },
     pageCount: Math.ceil(total / limit),
     manualPagination: true,
+    manualFiltering: true,
   });
 
-  return <PageTemplate
-    breadcrumbs={[
-      { label: "Peppol" },
-      { label: "Transmitted Documents" },
-    ]}
-    description="View and manage your transmitted Peppol documents."
-  >
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center">
-        <div className="flex-1">
-          <Label htmlFor="search">Search</Label>
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="search"
-              placeholder="Search documents..."
-              value={globalFilter}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-8"
-            />
-          </div>
-        </div>
-        <div className="flex gap-4">
-          <div>
-            <Label htmlFor="direction">Direction</Label>
-            <Select
-              value={direction}
-              onValueChange={(value) => setDirection(value as "incoming" | "outgoing" | "all" | undefined)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="All directions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="incoming">Incoming</SelectItem>
-                <SelectItem value="outgoing">Outgoing</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <CompanyDropdown
-            companies={companies}
-            value={companyId ?? null}
-            onChange={(value) => setCompanyId(value ?? undefined)}
-            label="Company"
-            placeholder="All companies"
-          />
-        </div>
-      </div>
+  const filterConfigs: FilterConfig<TransmittedDocumentWithoutBody>[] = [
+    {
+      id: "companyId",
+      title: "Company",
+      options: companies.map((company) => ({
+        label: company.name,
+        value: company.id,
+      })),
+    },
+    {
+      id: "direction",
+      title: "Direction",
+      options: [
+        { label: "All", value: "all" },
+        { label: "Incoming", value: "incoming", icon: ArrowDown },
+        { label: "Outgoing", value: "outgoing", icon: ArrowUp },
+      ],
+    },
+  ];
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <>
-          <DataTable columns={columns} table={table} showSearch={false} />
-          <DataTablePagination table={table} />
-        </>
-      )}
-    </div>
-  </PageTemplate>
-} 
+  return (
+    <PageTemplate
+      breadcrumbs={[{ label: "Peppol" }, { label: "Transmitted Documents" }]}
+      description="View and manage your transmitted Peppol documents."
+    >
+      <div className="space-y-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <DataTableToolbar
+              table={table}
+              searchPlaceholder="Search documents..."
+              enableGlobalSearch
+              filterColumns={filterConfigs}
+            />
+            <DataTable columns={columns} table={table} />
+            <DataTablePagination table={table} />
+          </>
+        )}
+      </div>
+    </PageTemplate>
+  );
+}
