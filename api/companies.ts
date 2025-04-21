@@ -189,7 +189,7 @@ const _createCompany = server.post(
       });
       return c.json(actionSuccess({ company }));
     } catch (error) {
-      return c.json(actionFailure("Could not create company"), 500);
+      return c.json(actionFailure(`Could not create company: ${error}`), 500);
     }
   }
 );

@@ -1,8 +1,8 @@
 import { getTeam, isMember } from "@core/data/teams";
 import type { AuthenticatedTeamContext, AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { verifySession } from "@core/lib/session";
+import { getBillingProfile } from "@peppol/data/billing-profile";
 import { getCompanyById, type Company } from "@peppol/data/companies";
-import { fetchBillingProfile } from "@peppol/lib/billing";
 import { actionFailure } from "@recommand/lib/utils";
 import { createMiddleware } from "hono/factory";
 
@@ -75,9 +75,9 @@ export function requireValidSubscription() {
     }
 
     // Ensure the team has a valid billing profile
-    const billingProfile = await fetchBillingProfile(team.id);
+    const billingProfile = await getBillingProfile(team.id);
     if (!billingProfile || !billingProfile.isMandateValidated) {
-      return c.json(actionFailure("Team does not have a valid billing profile"), 401);
+      return c.json(actionFailure(`Team ${team.name} does not have a valid billing profile`), 401);
     }
 
     await next();

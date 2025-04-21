@@ -155,7 +155,7 @@ export default function Page() {
       setIsDialogOpen(false);
     } catch (error) {
       toast.error(
-        `Failed to ${dialogMode === "create" ? "create" : "update"} company`
+        `Failed to ${dialogMode === "create" ? "create" : "update"} company. It might already be registered.`
       );
     }
   };

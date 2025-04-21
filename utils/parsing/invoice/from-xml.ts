@@ -59,7 +59,6 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   }
 
   const seller = {
-    enterpriseNumber: getTextContent(sellerParty.PartyIdentification?.[0]?.ID),
     name: getTextContent(sellerParty.PartyName?.Name),
     street: getTextContent(sellerParty.PostalAddress?.StreetName),
     street2: getTextContent(sellerParty.PostalAddress?.AdditionalStreetName),
@@ -76,7 +75,6 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   }
 
   const buyer = {
-    enterpriseNumber: getTextContent(buyerParty.PartyIdentification?.[0]?.ID),
     name: getTextContent(buyerParty.PartyName?.Name),
     street: getTextContent(buyerParty.PostalAddress?.StreetName),
     street2: getTextContent(buyerParty.PostalAddress?.AdditionalStreetName),

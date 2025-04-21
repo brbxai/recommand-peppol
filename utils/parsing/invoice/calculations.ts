@@ -1,17 +1,28 @@
 import { Decimal } from "decimal.js";
-import type { Invoice, VatCategory } from "./schemas";
+import type { Invoice, InvoiceLine, VatCategory } from "./schemas";
+
+export function calculateLineAmount(line: InvoiceLine) {
+  return new Decimal(line.quantity).mul(line.netPriceAmount).toFixed(2);
+}
+
+function getNetAmount(line: InvoiceLine) {
+  if (line.netAmount) {
+    return line.netAmount;
+  }
+  return new Decimal(line.quantity).mul(line.netPriceAmount).toFixed(2);
+}
 
 export function calculateTotals(invoice: Invoice) {
   const taxExclusiveAmount = invoice.lines.reduce(
-    (sum, line) => sum.plus(line.netAmount),
+    (sum, line) => sum.plus(getNetAmount(line)),
     new Decimal(0)
   ).toFixed(2);
 
   const taxInclusiveAmount = invoice.lines.reduce(
     (sum, line) =>
       sum.plus(
-        new Decimal(line.netAmount).plus(
-          new Decimal(line.netAmount).mul(line.vat.percentage).div(100)
+        new Decimal(getNetAmount(line)).plus(
+          new Decimal(getNetAmount(line)).mul(line.vat.percentage).div(100)
         )
       ),
     new Decimal(0)
@@ -27,7 +38,7 @@ export function calculateTotals(invoice: Invoice) {
 export function calculateVat(invoice: Invoice) {
   const subtotalsByCategory = invoice.lines.reduce((acc, line) => {
     const category = line.vat.category;
-    const taxableAmount = new Decimal(line.netAmount);
+    const taxableAmount = new Decimal(getNetAmount(line));
     const vatAmount = taxableAmount.mul(line.vat.percentage).div(100);
 
     if (!acc[category]) {

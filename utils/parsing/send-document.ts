@@ -1,6 +1,6 @@
 import { z } from "zod";
 import "zod-openapi/extend";
-import { invoiceSchema } from "./invoice/schemas";
+import { sendInvoiceSchema } from "./invoice/schemas";
 
 export const SendDocumentType = {
   INVOICE: "invoice",
@@ -22,7 +22,7 @@ export const sendDocumentSchema = z.object({
       description: "The type of document to send.",
       example: SendDocumentType.INVOICE,
     }),
-  document: z.union([invoiceSchema, z.string().openapi({ ref: "UBL" })]),
+  document: z.union([sendInvoiceSchema, z.string().openapi({ ref: "UBL" })]),
   doctypeId: z.string().optional().openapi({
     description:
       "The document type identifier. Not required, only used when documentType is \"ubl\".",

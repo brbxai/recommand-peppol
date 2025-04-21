@@ -11,8 +11,15 @@ import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import { sendAs4 } from "@peppol/data/phase4-ap/client";
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
-import { requireCompanyAccess, requireValidSubscription } from "@peppol/utils/auth-middleware";
-import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
+import {
+  requireCompanyAccess,
+  requireValidSubscription,
+} from "@peppol/utils/auth-middleware";
+import {
+  describeErrorResponse,
+  describeSuccessResponse,
+} from "@peppol/utils/api-docs";
+import { addMonths } from "date-fns";
 
 const server = new Server();
 
@@ -39,12 +46,46 @@ server.post(
       let xmlDocument: string | null = null;
       let type: "invoice" | "unknown" = "unknown";
       let parsedDocument: Invoice | null = null;
-      let doctypeId: string = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
+      let doctypeId: string =
+        "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
+
+      // Get senderId, countryC1 from company
+      const company = c.var.company;
+      const senderAddress = "0208:" + company.enterpriseNumber;
+      const countryC1 = company.country;
+
+      // Parse recipient
+      let recipientAddress = jsonBody.recipient;
+      if (!recipientAddress.includes(":")) {
+        const numberOnlyRecipient = recipientAddress.replace(/[^0-9]/g, "");
+        recipientAddress = "0208:" + numberOnlyRecipient;
+      }
+
       if (jsonBody.documentType === SendDocumentType.INVOICE) {
-        const ublInvoice = invoiceToUBL(document as Invoice);
+        const invoice = document as Invoice;
+        if (!invoice.seller) {
+          invoice.seller = {
+            vatNumber: c.var.company.vatNumber ?? "",
+            name: c.var.company.name,
+            street: c.var.company.address,
+            city: c.var.company.city,
+            postalZone: c.var.company.postalCode,
+            country: c.var.company.country,
+          };
+        }
+        if (!invoice.issueDate) {
+          invoice.issueDate = new Date().toISOString();
+        }
+        if (!invoice.dueDate) {
+          invoice.dueDate = addMonths(
+            new Date(invoice.issueDate),
+            1
+          ).toISOString();
+        }
+        const ublInvoice = invoiceToUBL(invoice, senderAddress, recipientAddress);
         xmlDocument = ublInvoice;
         type = "invoice";
-        parsedDocument = document as Invoice;
+        parsedDocument = invoice;
       } else if (jsonBody.documentType === SendDocumentType.UBL) {
         xmlDocument = document as string;
         if (jsonBody.doctypeId) {
@@ -58,45 +99,40 @@ server.post(
         return c.json(actionFailure("Document could not be parsed."));
       }
 
-      // Parse recipient
-      let recipient = jsonBody.recipient;
-      if (!recipient.includes(":")) {
-        const numberOnlyRecipient = recipient.replace(/[^0-9]/g, "");
-        recipient = "0208:" + numberOnlyRecipient;
-      }
-
-      // Get senderId, countryC1 from company
-      const company = c.var.company;
-      const senderId = "0208:" + company.enterpriseNumber;
-      const countryC1 = company.country;
-
       const response = await sendAs4({
-        senderId: senderId,
-        receiverId: recipient,
+        senderId: senderAddress,
+        receiverId: recipientAddress,
         docTypeId: doctypeId,
         processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
         countryC1: countryC1,
         body: xmlDocument,
       });
 
-      if (!response.ok) {
-        return c.json(actionFailure("Failed to send document over Peppol network."));
+      const jsonResponse = await response.json();
+      if (!response.ok || !jsonResponse.overallSuccess) {
+        return c.json(
+          actionFailure("Failed to send document over Peppol network.")
+        );
       }
 
       // Create a new transmittedDocument
-      const transmittedDocument = await db.insert(transmittedDocuments).values({
-        teamId: c.var.team.id,
-        companyId: company.id,
-        direction: "outgoing",
-        senderId: senderId,
-        receiverId: recipient,
-        docTypeId: doctypeId,
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-        countryC1: countryC1,
-        xml: xmlDocument,
-        type,
-        parsed: parsedDocument,
-      }).returning({ id: transmittedDocuments.id }).then((rows) => rows[0]);
+      const transmittedDocument = await db
+        .insert(transmittedDocuments)
+        .values({
+          teamId: c.var.team.id,
+          companyId: company.id,
+          direction: "outgoing",
+          senderId: senderAddress,
+          receiverId: recipientAddress,
+          docTypeId: doctypeId,
+          processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+          countryC1: countryC1,
+          xml: xmlDocument,
+          type,
+          parsed: parsedDocument,
+        })
+        .returning({ id: transmittedDocuments.id })
+        .then((rows) => rows[0]);
 
       // Create a new transferEvent for billing
       await db.insert(transferEvents).values({
@@ -108,7 +144,11 @@ server.post(
 
       return c.json(actionSuccess());
     } catch (error) {
-      return c.json(actionFailure(error instanceof Error ? error.message : "Failed to send document"));
+      return c.json(
+        actionFailure(
+          error instanceof Error ? error.message : "Failed to send document"
+        )
+      );
     }
   }
 );

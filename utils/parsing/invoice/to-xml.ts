@@ -1,6 +1,7 @@
 import { XMLBuilder } from "fast-xml-parser";
 import type { Invoice } from "./schemas";
-import { calculateTotals, calculateVat } from "./calculations";
+import { calculateLineAmount, calculateTotals, calculateVat } from "./calculations";
+import { parsePeppolAddress } from "../peppol-address";
 
 const builder = new XMLBuilder({
   ignoreAttributes: false,
@@ -8,9 +9,16 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export function invoiceToUBL(invoice: Invoice): string {
+export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientAddress: string): string {
   const totals = invoice.totals || calculateTotals(invoice);
   const vat = invoice.vat || calculateVat(invoice);
+  const lines = invoice.lines.map((line) => ({
+    ...line,
+    netAmount: line.netAmount || calculateLineAmount(line),
+  }));
+
+  const sender = parsePeppolAddress(senderAddress);
+  const recipient = parsePeppolAddress(recipientAddress);
 
   const ublInvoice = {
     Invoice: {
@@ -40,8 +48,8 @@ export function invoiceToUBL(invoice: Invoice): string {
           "cac:PartyIdentification": [
             {
               "cbc:ID": {
-                "@_schemeID": "0208",
-                "#text": invoice.seller.enterpriseNumber,
+                "@_schemeID": sender.schemeId,
+                "#text": sender.identifier,
               },
             },
           ],
@@ -72,8 +80,8 @@ export function invoiceToUBL(invoice: Invoice): string {
           "cac:PartyIdentification": [
             {
               "cbc:ID": {
-                "@_schemeID": "0208",
-                "#text": invoice.buyer.enterpriseNumber,
+                "@_schemeID": recipient.schemeId,
+                "#text": recipient.identifier,
               },
             },
           ],

@@ -22,11 +22,10 @@ const toDecimalString = (val: number | string) => new Decimal(val).toFixed(2);
 // Create a reusable decimal transform schema
 const decimalSchema = z.union([z.number(), z.string()])
   .transform(toDecimalString)
-  .openapi({ type: 'string', example: "100.00" });
+  .openapi({ type: 'string', example: "21.00" });
 
 const partySchema = z.object({
   vatNumber: z.string().openapi({ example: "BE0123456789" }),
-  enterpriseNumber: z.string().openapi({ example: "0123456789" }),
   name: z.string().openapi({ example: "Example Company" }),
   street: z.string().openapi({ example: "Example Street 1" }),
   street2: z.string().nullish().openapi({ example: "Suite 100" }),
@@ -37,7 +36,7 @@ const partySchema = z.object({
 
 const paymentMeansSchema = z.object({
   paymentMethod: z.enum(['credit_transfer']).default('credit_transfer').openapi({ example: "credit_transfer" }),
-  reference: z.string().openapi({ example: "INV-2026-001" }),
+  reference: z.string().default("").openapi({ example: "INV-2026-001" }),
   iban: z.string().openapi({ example: "BE1234567890" }),
 }).openapi({ ref: "PaymentMeans" });
 
@@ -49,7 +48,7 @@ const vatCategoryEnum = z.enum(Object.keys(VAT_CATEGORIES) as [VatCategory, ...V
   });
 
 const vatSchema = z.object({
-  category: vatCategoryEnum,
+  category: vatCategoryEnum.default("S"),
   percentage: decimalSchema,
 }).openapi({ ref: "VAT" });
 
@@ -68,13 +67,13 @@ const totalsSchema = z.object({
 }).openapi({ ref: "Totals", description: "If not provided, the totals will be calculated from the invoice lines." });
 
 const lineSchema = z.object({
-  name: z.string().openapi({ example: "Consulting Services" }),
+  name: z.string().default("").openapi({ example: "Consulting Services" }),
   description: z.string().nullish().openapi({ example: "Professional consulting services" }),
   sellersId: z.string().nullish().openapi({ example: "CS-001" }),
-  quantity: decimalSchema,
-  unitCode: z.string().openapi({ example: "HUR" }),
+  quantity: decimalSchema.default("1.00"),
+  unitCode: z.string().default("C62").openapi({ example: "HUR", description: "Recommended unit codes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNECERec20/)." }),
   netPriceAmount: decimalSchema,
-  netAmount: decimalSchema,
+  netAmount: decimalSchema.nullish(),
   vat: vatSchema,
 }).openapi({ ref: "Line" });
 
@@ -100,7 +99,14 @@ export const invoiceSchema = z.object({
   vat: vatTotalsSchema.nullish(),
 }).openapi({ ref: "Invoice" });
 
+export const sendInvoiceSchema = invoiceSchema.extend({
+  issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "If not provided, the issue date will be the current date." }),
+  dueDate: z.string().date().nullish().openapi({ example: "2024-04-20", description: "If not provided, the due date will be 1 month from the issue date." }),
+  seller: partySchema.nullish().openapi({ description: "If not provided, the seller will be the company that is sending the invoice." }),
+});
+
 export type Invoice = z.infer<typeof invoiceSchema>;
+export type InvoiceLine = z.infer<typeof lineSchema>;
 export type Party = z.infer<typeof partySchema>;
 export type PaymentMeans = z.infer<typeof paymentMeansSchema>;
 export type PaymentTerms = z.infer<typeof invoiceSchema.shape.paymentTerms>;
