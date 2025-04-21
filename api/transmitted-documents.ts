@@ -113,11 +113,15 @@ const _transmittedDocuments = server.get(
         description: "Filter documents by direction (incoming or outgoing)",
         example: "incoming",
       }),
+      search: z.string().optional().openapi({
+        description: "Search term to filter documents",
+        example: "invoice",
+      }),
     })
   ),
   async (c) => {
     try {
-      const { page, limit, companyId, direction } = c.req.valid("query");
+      const { page, limit, companyId, direction, search } = c.req.valid("query");
       const { documents, total } = await getTransmittedDocuments(
         c.var.team.id,
         {
@@ -125,6 +129,7 @@ const _transmittedDocuments = server.get(
           limit,
           companyId: Array.isArray(companyId) ? companyId : companyId ? [companyId] : undefined,
           direction,
+          search,
         }
       );
 

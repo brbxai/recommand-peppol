@@ -6,7 +6,6 @@ import {
   type ColumnDef,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   useReactTable,
   type ColumnFiltersState,
 } from "@tanstack/react-table";
@@ -93,7 +92,8 @@ export default function Page() {
           page: page.toString(),
           limit: limit.toString(),
           companyId: filteredCompanyIds,
-          direction: (filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0] // When no or all options are selected, don't filter on direction
+          direction: (filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0], // When no or all options are selected, don't filter on direction
+          search: globalFilter || undefined, // Add the global search term to the query
         },
       });
       const json = await response.json();
@@ -119,7 +119,7 @@ export default function Page() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTeam?.id, page, limit, columnFilters]);
+  }, [activeTeam?.id, page, limit, columnFilters, globalFilter]);
 
   useEffect(() => {
     fetchCompanies();
@@ -272,7 +272,6 @@ export default function Page() {
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     state: {

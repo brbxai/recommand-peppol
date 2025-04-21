@@ -357,7 +357,7 @@ export default function Page() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <DataTable columns={columns} table={table} showSearch={false} />
+          <DataTable columns={columns} table={table} />
         )}
       </div>
     </PageTemplate>

@@ -1,6 +1,6 @@
 import { transmittedDocuments } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, sql, desc, isNull, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, inArray, or, ilike, SQL } from "drizzle-orm";
 
 export type TransmittedDocument = typeof transmittedDocuments.$inferSelect;
 export type InsertTransmittedDocument = typeof transmittedDocuments.$inferInsert;
@@ -15,9 +15,10 @@ export async function getTransmittedDocuments(
     limit?: number;
     companyId?: string[];
     direction?: "incoming" | "outgoing";
+    search?: string;
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
-  const { page = 1, limit = 10, companyId, direction } = options;
+  const { page = 1, limit = 10, companyId, direction, search } = options;
   const offset = (page - 1) * limit;
 
   // Build the where clause
@@ -27,6 +28,18 @@ export async function getTransmittedDocuments(
   }
   if (direction) {
     whereClause.push(eq(transmittedDocuments.direction, direction));
+  }
+  if (search) {
+    whereClause.push(
+      or(
+        ilike(transmittedDocuments.id, `%${search}%`),
+        ilike(transmittedDocuments.senderId, `%${search}%`),
+        ilike(transmittedDocuments.receiverId, `%${search}%`),
+        ilike(transmittedDocuments.docTypeId, `%${search}%`),
+        ilike(transmittedDocuments.processId, `%${search}%`),
+        ilike(transmittedDocuments.countryC1, `%${search}%`)
+      ) as SQL
+    );
   }
 
   // Get total count
