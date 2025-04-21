@@ -13,8 +13,26 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { validator as zValidator } from "hono-openapi/zod";
 import { describeRoute } from "hono-openapi";
+import {
+  describeErrorResponse,
+  describeSuccessResponse,
+} from "@peppol/utils/api-docs";
 
 const server = new Server();
+
+const describeWebhookResponse = {
+  webhook: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      teamId: { type: "string" },
+      companyId: { type: "string", nullable: true },
+      url: { type: "string" },
+      createdAt: { type: "string", format: "date-time" },
+      updatedAt: { type: "string", format: "date-time" },
+    },
+  },
+};
 
 const _webhooks = server.get(
   "/:teamId/webhooks",
@@ -36,54 +54,13 @@ const _webhooks = server.get(
       },
     ],
     responses: {
-      200: {
-        description: "Successfully retrieved webhooks",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                webhooks: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string" },
-                      teamId: { type: "string" },
-                      companyId: { type: "string", nullable: true },
-                      url: { type: "string" },
-                      createdAt: { type: "string", format: "date-time" },
-                      updatedAt: { type: "string", format: "date-time" },
-                    },
-                  },
-                },
-              },
-            },
-          },
+      ...describeSuccessResponse("Successfully retrieved webhooks", {
+        webhooks: {
+          type: "array",
+          items: describeWebhookResponse.webhook,
         },
-      },
-      500: {
-        description: "Failed to fetch webhooks",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      }),
+      ...describeErrorResponse(500, "Failed to fetch webhooks"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string() })),
@@ -110,72 +87,12 @@ const _webhook = server.get(
     summary: "Get Webhook",
     tags: ["Webhooks"],
     responses: {
-      200: {
-        description: "Successfully retrieved webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                webhook: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    teamId: { type: "string" },
-                    companyId: { type: "string", nullable: true },
-                    url: { type: "string" },
-                    createdAt: { type: "string", format: "date-time" },
-                    updatedAt: { type: "string", format: "date-time" },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      404: {
-        description: "Webhook not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to fetch webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse(
+        "Successfully retrieved webhook",
+        describeWebhookResponse
+      ),
+      ...describeErrorResponse(404, "Webhook not found"),
+      ...describeErrorResponse(500, "Failed to fetch webhook"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
@@ -218,72 +135,12 @@ const _createWebhook = server.post(
       },
     },
     responses: {
-      200: {
-        description: "Successfully created webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                webhook: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    teamId: { type: "string" },
-                    companyId: { type: "string", nullable: true },
-                    url: { type: "string" },
-                    createdAt: { type: "string", format: "date-time" },
-                    updatedAt: { type: "string", format: "date-time" },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      400: {
-        description: "Invalid request data",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to create webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse(
+        "Successfully created webhook",
+        describeWebhookResponse
+      ),
+      ...describeErrorResponse(400, "Invalid request data"),
+      ...describeErrorResponse(500, "Failed to create webhook"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string() })),
@@ -330,93 +187,13 @@ const _updateWebhook = server.put(
       },
     },
     responses: {
-      200: {
-        description: "Successfully updated webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                webhook: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    teamId: { type: "string" },
-                    companyId: { type: "string", nullable: true },
-                    url: { type: "string" },
-                    createdAt: { type: "string", format: "date-time" },
-                    updatedAt: { type: "string", format: "date-time" },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      400: {
-        description: "Invalid request data",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      404: {
-        description: "Webhook not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to update webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse(
+        "Successfully updated webhook",
+        describeWebhookResponse
+      ),
+      ...describeErrorResponse(400, "Invalid request data"),
+      ...describeErrorResponse(404, "Webhook not found"),
+      ...describeErrorResponse(500, "Failed to update webhook"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
@@ -453,40 +230,8 @@ const _deleteWebhook = server.delete(
     summary: "Delete Webhook",
     tags: ["Webhooks"],
     responses: {
-      200: {
-        description: "Successfully deleted webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-              },
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to delete webhook",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse("Successfully deleted webhook"),
+      ...describeErrorResponse(500, "Failed to delete webhook"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),

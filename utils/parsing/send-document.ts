@@ -13,7 +13,7 @@ export type DocumentType =
 export const sendDocumentSchema = z.object({
   recipient: z.string().openapi({
     description:
-      "The Peppol identifier of the recipient of the document. If no identifier is provided, 0208 (Belgian Enterprise Number) is assumed.",
+      "The Peppol address of the recipient of the document. If no identifier is provided, 0208 (Belgian Enterprise Number) is assumed.",
     example: "0208:987654321",
   }),
   documentType: z

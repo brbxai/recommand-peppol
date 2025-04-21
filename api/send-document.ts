@@ -12,6 +12,7 @@ import { sendAs4 } from "@peppol/data/phase4-ap/client";
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import { requireCompanyAccess, requireValidSubscription } from "@peppol/utils/auth-middleware";
+import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
 
 const server = new Server();
 
@@ -25,40 +26,8 @@ server.post(
     summary: "Send Document",
     tags: ["Sending"],
     responses: {
-      200: {
-        description: "Successfully sent document",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-              },
-            },
-          },
-        },
-      },
-      400: {
-        description: "Invalid document data provided",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse("Successfully sent document"),
+      ...describeErrorResponse(400, "Invalid document data provided"),
     },
   }),
   zValidator("json", sendDocumentSchema),

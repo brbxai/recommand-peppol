@@ -14,6 +14,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { validator as zValidator } from "hono-openapi/zod";
 import { describeRoute } from "hono-openapi";
+import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
 
 const server = new Server();
 
@@ -26,59 +27,28 @@ const _companies = server.get(
     summary: "List Companies",
     tags: ["Companies"],
     responses: {
-      200: {
-        description: "Successfully retrieved companies",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                companies: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string" },
-                      teamId: { type: "string" },
-                      name: { type: "string" },
-                      address: { type: "string" },
-                      postalCode: { type: "string" },
-                      city: { type: "string" },
-                      country: { type: "string" },
-                      enterpriseNumber: { type: "string" },
-                      vatNumber: { type: "string" },
-                      createdAt: { type: "string", format: "date-time" },
-                      updatedAt: { type: "string", format: "date-time" },
-                    },
-                  },
-                },
-              },
+      ...describeSuccessResponse("Successfully retrieved companies", {
+        companies: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              teamId: { type: "string" },
+              name: { type: "string" },
+              address: { type: "string" },
+              postalCode: { type: "string" },
+              city: { type: "string" },
+              country: { type: "string" },
+              enterpriseNumber: { type: "string" },
+              vatNumber: { type: "string" },
+              createdAt: { type: "string", format: "date-time" },
+              updatedAt: { type: "string", format: "date-time" },
             },
           },
         },
-      },
-      500: {
-        description: "Failed to fetch companies",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      }),
+      ...describeErrorResponse(500, "Failed to fetch companies"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string() })),
@@ -101,77 +71,26 @@ const _company = server.get(
     summary: "Get Company",
     tags: ["Companies"],
     responses: {
-      200: {
-        description: "Successfully retrieved company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                company: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    teamId: { type: "string" },
-                    name: { type: "string" },
-                    address: { type: "string" },
-                    postalCode: { type: "string" },
-                    city: { type: "string" },
-                    country: { type: "string" },
-                    enterpriseNumber: { type: "string" },
-                    vatNumber: { type: "string" },
-                    createdAt: { type: "string", format: "date-time" },
-                    updatedAt: { type: "string", format: "date-time" },
-                  },
-                },
-              },
-            },
+      ...describeSuccessResponse("Successfully retrieved company", {
+        company: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            teamId: { type: "string" },
+            name: { type: "string" },
+            address: { type: "string" },
+            postalCode: { type: "string" },
+            city: { type: "string" },
+            country: { type: "string" },
+            enterpriseNumber: { type: "string" },
+            vatNumber: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
-      },
-      404: {
-        description: "Company not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to fetch company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      }),
+      ...describeErrorResponse(404, "Company not found"),
+      ...describeErrorResponse(500, "Failed to fetch company"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
@@ -216,77 +135,26 @@ const _createCompany = server.post(
       },
     },
     responses: {
-      200: {
-        description: "Successfully created company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                company: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    teamId: { type: "string" },
-                    name: { type: "string" },
-                    address: { type: "string" },
-                    postalCode: { type: "string" },
-                    city: { type: "string" },
-                    country: { type: "string" },
-                    enterpriseNumber: { type: "string" },
-                    vatNumber: { type: "string" },
-                    createdAt: { type: "string", format: "date-time" },
-                    updatedAt: { type: "string", format: "date-time" },
-                  },
-                },
-              },
-            },
+      ...describeSuccessResponse("Successfully created company", {
+        company: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            teamId: { type: "string" },
+            name: { type: "string" },
+            address: { type: "string" },
+            postalCode: { type: "string" },
+            city: { type: "string" },
+            country: { type: "string" },
+            enterpriseNumber: { type: "string" },
+            vatNumber: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
-      },
-      400: {
-        description: "Invalid request data",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to create company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      }),
+      ...describeErrorResponse(400, "Invalid request data"),
+      ...describeErrorResponse(500, "Failed to create company"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string() })),
@@ -354,98 +222,27 @@ const _updateCompany = server.put(
       },
     },
     responses: {
-      200: {
-        description: "Successfully updated company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                company: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    teamId: { type: "string" },
-                    name: { type: "string" },
-                    address: { type: "string" },
-                    postalCode: { type: "string" },
-                    city: { type: "string" },
-                    country: { type: "string" },
-                    enterpriseNumber: { type: "string" },
-                    vatNumber: { type: "string" },
-                    createdAt: { type: "string", format: "date-time" },
-                    updatedAt: { type: "string", format: "date-time" },
-                  },
-                },
-              },
-            },
+      ...describeSuccessResponse("", {
+        company: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            teamId: { type: "string" },
+            name: { type: "string" },
+            address: { type: "string" },
+            postalCode: { type: "string" },
+            city: { type: "string" },
+            country: { type: "string" },
+            enterpriseNumber: { type: "string" },
+            vatNumber: { type: "string" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
-      },
-      400: {
-        description: "Invalid request data",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      404: {
-        description: "Company not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to update company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      }),
+      ...describeErrorResponse(400, "Invalid request data"),
+      ...describeErrorResponse(404, "Company not found"),
+      ...describeErrorResponse(500, "Failed to update company"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
@@ -501,40 +298,8 @@ const _deleteCompany = server.delete(
     summary: "Delete Company",
     tags: ["Companies"],
     responses: {
-      200: {
-        description: "Successfully deleted company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-              },
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to delete company",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse("Successfully deleted company", {}),
+      ...describeErrorResponse(500, "Failed to delete company"),
     },
   }),
   zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),

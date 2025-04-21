@@ -12,6 +12,36 @@ import {
   markAsRead,
   getTransmittedDocument,
 } from "@peppol/data/transmitted-documents";
+import {
+  describeErrorResponse,
+  describeSuccessResponse,
+} from "@peppol/utils/api-docs";
+
+const describeTransmittedDocumentResponse = {
+  document: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      teamId: { type: "string" },
+      companyId: { type: "string" },
+      direction: {
+        type: "string",
+        enum: ["incoming", "outgoing"],
+      },
+      senderId: { type: "string" },
+      receiverId: { type: "string" },
+      docTypeId: { type: "string" },
+      processId: { type: "string" },
+      countryC1: { type: "string" },
+      type: { type: "string" },
+      readAt: { type: "string", format: "date-time" },
+      createdAt: { type: "string", format: "date-time" },
+      updatedAt: { type: "string", format: "date-time" },
+      xml: { type: "string" },
+      parsed: { type: "object" },
+    },
+  },
+};
 
 const server = new Server();
 
@@ -25,73 +55,25 @@ const _transmittedDocuments = server.get(
     summary: "List Documents",
     tags: ["Documents"],
     responses: {
-      200: {
-        description: "Successfully retrieved transmitted documents",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                documents: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string" },
-                      teamId: { type: "string" },
-                      companyId: { type: "string" },
-                      direction: {
-                        type: "string",
-                        enum: ["incoming", "outgoing"],
-                      },
-                      senderId: { type: "string" },
-                      receiverId: { type: "string" },
-                      docTypeId: { type: "string" },
-                      processId: { type: "string" },
-                      countryC1: { type: "string" },
-                      type: { type: "string" },
-                      readAt: { type: "string", format: "date-time" },
-                      createdAt: { type: "string", format: "date-time" },
-                      updatedAt: { type: "string", format: "date-time" },
-                    },
-                  },
-                },
-                pagination: {
-                  type: "object",
-                  properties: {
-                    total: { type: "number" },
-                    page: { type: "number" },
-                    limit: { type: "number" },
-                    totalPages: { type: "number" },
-                  },
-                },
-              },
+      ...describeSuccessResponse(
+        "Successfully retrieved transmitted documents",
+        {
+          documents: {
+            type: "array",
+            items: describeTransmittedDocumentResponse.document,
+          },
+          pagination: {
+            type: "object",
+            properties: {
+              total: { type: "number" },
+              page: { type: "number" },
+              limit: { type: "number" },
+              totalPages: { type: "number" },
             },
           },
-        },
-      },
-      500: {
-        description: "Failed to fetch transmitted documents",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+        }
+      ),
+      ...describeErrorResponse(500, "Failed to fetch transmitted documents"),
     },
   }),
   zValidator(
@@ -105,10 +87,16 @@ const _transmittedDocuments = server.get(
         description: "The number of items per page",
         example: 10,
       }),
-      companyId: z.union([z.string(), z.array(z.string())]).optional().openapi({
-        description: "Filter documents by company ID",
-        example: ["c_01JRQVH6J3FJMVS220E9ZRECWC", "c_01JRQVH6J3FJMVS220E9ZRECWD"],
-      }),
+      companyId: z
+        .union([z.string(), z.array(z.string())])
+        .optional()
+        .openapi({
+          description: "Filter documents by company ID",
+          example: [
+            "c_01JRQVH6J3FJMVS220E9ZRECWC",
+            "c_01JRQVH6J3FJMVS220E9ZRECWD",
+          ],
+        }),
       direction: z.enum(["incoming", "outgoing"]).optional().openapi({
         description: "Filter documents by direction (incoming or outgoing)",
         example: "incoming",
@@ -121,13 +109,18 @@ const _transmittedDocuments = server.get(
   ),
   async (c) => {
     try {
-      const { page, limit, companyId, direction, search } = c.req.valid("query");
+      const { page, limit, companyId, direction, search } =
+        c.req.valid("query");
       const { documents, total } = await getTransmittedDocuments(
         c.var.team.id,
         {
           page,
           limit,
-          companyId: Array.isArray(companyId) ? companyId : companyId ? [companyId] : undefined,
+          companyId: Array.isArray(companyId)
+            ? companyId
+            : companyId
+            ? [companyId]
+            : undefined,
           direction,
           search,
         }
@@ -163,61 +156,9 @@ const _deleteTransmittedDocument = server.delete(
     summary: "Delete Document",
     tags: ["Documents"],
     responses: {
-      200: {
-        description: "Successfully deleted the document",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-              },
-            },
-          },
-        },
-      },
-      404: {
-        description: "Document not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to delete document",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse("Successfully deleted the document"),
+      ...describeErrorResponse(404, "Document not found"),
+      ...describeErrorResponse(500, "Failed to delete document"),
     },
   }),
   zValidator(
@@ -257,61 +198,30 @@ const _getInbox = server.get(
     summary: "Inbox",
     tags: ["Documents"],
     responses: {
-      200: {
-        description: "Successfully retrieved inbox documents",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                documents: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string" },
-                      teamId: { type: "string" },
-                      companyId: { type: "string" },
-                      direction: { type: "string", enum: ["incoming"] },
-                      senderId: { type: "string" },
-                      receiverId: { type: "string" },
-                      docTypeId: { type: "string" },
-                      processId: { type: "string" },
-                      countryC1: { type: "string" },
-                      type: { type: "string" },
-                      readAt: { type: "string", format: "date-time" },
-                      createdAt: { type: "string", format: "date-time" },
-                      updatedAt: { type: "string", format: "date-time" },
-                    },
-                  },
-                },
-              },
+      ...describeSuccessResponse("Successfully retrieved inbox documents", {
+        documents: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              teamId: { type: "string" },
+              companyId: { type: "string" },
+              direction: { type: "string", enum: ["incoming"] },
+              senderId: { type: "string" },
+              receiverId: { type: "string" },
+              docTypeId: { type: "string" },
+              processId: { type: "string" },
+              countryC1: { type: "string" },
+              type: { type: "string" },
+              readAt: { type: "string", format: "date-time" },
+              createdAt: { type: "string", format: "date-time" },
+              updatedAt: { type: "string", format: "date-time" },
             },
           },
         },
-      },
-      500: {
-        description: "Failed to fetch inbox documents",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      }),
+      ...describeErrorResponse(500, "Failed to fetch inbox documents"),
     },
   }),
   zValidator(
@@ -344,61 +254,9 @@ const _markAsRead = server.post(
     summary: "Mark Document as Read",
     tags: ["Documents"],
     responses: {
-      200: {
-        description: "Successfully updated document read status",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-              },
-            },
-          },
-        },
-      },
-      404: {
-        description: "Document not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to update document read status",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse("Successfully updated document read status"),
+      ...describeErrorResponse(404, "Document not found"),
+      ...describeErrorResponse(500, "Failed to update document read status"),
     },
   }),
   zValidator(
@@ -454,84 +312,9 @@ const _getTransmittedDocument = server.get(
     summary: "Get Document",
     tags: ["Documents"],
     responses: {
-      200: {
-        description: "Successfully retrieved the document",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: true },
-                document: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    teamId: { type: "string" },
-                    companyId: { type: "string" },
-                    direction: {
-                      type: "string",
-                      enum: ["incoming", "outgoing"],
-                    },
-                    senderId: { type: "string" },
-                    receiverId: { type: "string" },
-                    docTypeId: { type: "string" },
-                    processId: { type: "string" },
-                    countryC1: { type: "string" },
-                    type: { type: "string" },
-                    readAt: { type: "string", format: "date-time" },
-                    createdAt: { type: "string", format: "date-time" },
-                    updatedAt: { type: "string", format: "date-time" },
-                    xml: { type: "string" },
-                    parsed: { type: "object" },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      404: {
-        description: "Document not found",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
-      500: {
-        description: "Failed to fetch document",
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                success: { type: "boolean", example: false },
-                errors: {
-                  type: "object",
-                  additionalProperties: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-              },
-              required: ["success", "errors"],
-            },
-          },
-        },
-      },
+      ...describeSuccessResponse("Successfully retrieved the document", describeTransmittedDocumentResponse),
+      ...describeErrorResponse(404, "Document not found"),
+      ...describeErrorResponse(500, "Failed to fetch document"),
     },
   }),
   zValidator(
