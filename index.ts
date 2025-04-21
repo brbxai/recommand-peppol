@@ -56,7 +56,7 @@ For some endpoints, you will need to provide a team or company ID.
 
 For additional support or questions, don't hesitate to contact our support team.`,
       },
-      servers: [{ url: "http://localhost:3000", description: "Local Server" }],
+      servers: [{ url: process.env.BASE_URL, description: "Recommand API" }],
       components: {
         securitySchemes: {
           httpBasic: {
