@@ -1,7 +1,7 @@
 import { fetchSmp } from "./client";
 import { XMLBuilder } from "fast-xml-parser";
+import { PARTICIPANT_SCHEME } from "./service-metadata";
 
-const PARTICIPANT_SCHEME = "iso6523-actorid-upis";
 const builder = new XMLBuilder({
   ignoreAttributes: false,
   format: true,

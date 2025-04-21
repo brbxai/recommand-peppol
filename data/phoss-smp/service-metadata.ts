@@ -1,9 +1,9 @@
 import { fetchSmp } from "./client";
 import { XMLBuilder } from "fast-xml-parser";
 
-const PARTICIPANT_SCHEME = "iso6523-actorid-upis";
-const DOCUMENT_SCHEME = "busdox-docid-qns";
-const PROCESS_SCHEME = "cenbii-procid-ubl";
+export const PARTICIPANT_SCHEME = "iso6523-actorid-upis";
+export const DOCUMENT_SCHEME = "busdox-docid-qns";
+export const PROCESS_SCHEME = "cenbii-procid-ubl";
 
 const builder = new XMLBuilder({
   ignoreAttributes: false,
