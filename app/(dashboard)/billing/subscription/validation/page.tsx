@@ -1,7 +1,7 @@
 import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
 import { useEffect, useState } from "react";
-import { useUser } from "@core/hooks/use-user";
+import { useActiveTeam } from "@core/hooks/user";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
 import { Button } from "@core/components/ui/button";
@@ -13,7 +13,7 @@ const billingProfileClient = rc<BillingProfile>('peppol');
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
   const [billingProfile, setBillingProfile] = useState<any>(null);
-  const { activeTeam } = useUser();
+  const activeTeam = useActiveTeam();
   const navigate = useNavigate();
 
   const fetchBillingProfile = async () => {

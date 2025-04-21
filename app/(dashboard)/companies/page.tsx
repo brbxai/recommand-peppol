@@ -8,9 +8,9 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
-import { useUser } from "@core/hooks/use-user";
+import { useActiveTeam } from "@core/hooks/user";
 import { Trash2, Loader2, Pencil, Copy } from "lucide-react";
-import { SortableHeader } from "@core/components/data-table/sortable-header";
+import { ColumnHeader } from "@core/components/data-table/column-header";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@core/components/ui/dialog";
 import { CompanyForm } from "../../../components/company-form";
 import type { Company, CompanyFormData } from "../../../types/company";
@@ -31,7 +31,7 @@ const handleApiResponse = async (response: Response, successMessage: string) => 
 // Utility function to create column definition
 const createColumn = (key: keyof Company, title: string): ColumnDef<Company> => ({
   accessorKey: key,
-  header: ({ column }) => <SortableHeader column={column} title={title} />,
+  header: ({ column }) => <ColumnHeader column={column} title={title} />,
   cell: ({ row }) => row.getValue(key) as string ?? 'N/A',
   enableGlobalFilter: true,
 });
@@ -45,7 +45,7 @@ export default function Page() {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [formData, setFormData] = useState<CompanyFormData>(defaultCompanyFormData);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
-  const { activeTeam } = useUser();
+  const activeTeam = useActiveTeam();
 
   const fetchCompanies = useCallback(async () => {
     if (!activeTeam?.id) {
@@ -142,7 +142,7 @@ export default function Page() {
   const columns: ColumnDef<Company>[] = [
     {
       accessorKey: "id",
-      header: ({ column }) => <SortableHeader column={column} title="ID" />,
+      header: ({ column }) => <ColumnHeader column={column} title="ID" />,
       cell: ({ row }) => {
         const id = row.getValue("id") as string;
         return <div className="flex items-center gap-2">

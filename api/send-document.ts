@@ -11,18 +11,19 @@ import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import { sendAs4 } from "@peppol/data/phase4-ap/client";
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
-import { requireCompanyAccess } from "@peppol/utils/auth-middleware";
+import { requireCompanyAccess, requireValidSubscription } from "@peppol/utils/auth-middleware";
 
 const server = new Server();
 
 server.post(
   "/:companyId/sendDocument",
   requireCompanyAccess(),
+  requireValidSubscription(),
   describeRoute({
     operationId: "sendDocument",
     description: "Send a document to a customer",
     summary: "Send Document",
-    tags: ["Sending", "Documents"],
+    tags: ["Sending"],
     responses: {
       200: {
         description: "Successfully sent document",

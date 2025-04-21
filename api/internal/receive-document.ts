@@ -8,6 +8,7 @@ import { getCompanyByPeppolId } from "@peppol/data/companies";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { parseInvoiceFromXML } from "@peppol/utils/parsing/invoice/from-xml";
 import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
+import { fetchBillingProfile } from "@peppol/lib/billing";
 
 export const receiveDocumentSchema = z.object({
   senderId: z.string(),

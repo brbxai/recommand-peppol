@@ -2,6 +2,7 @@ import { getTeam, isMember } from "@core/data/teams";
 import type { AuthenticatedTeamContext, AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { verifySession } from "@core/lib/session";
 import { getCompanyById, type Company } from "@peppol/data/companies";
+import { fetchBillingProfile } from "@peppol/lib/billing";
 import { actionFailure } from "@recommand/lib/utils";
 import { createMiddleware } from "hono/factory";
 
@@ -61,6 +62,23 @@ export function requireCompanyAccess() {
 
     c.set("team", team);
     c.set("company", company);
+
+    await next();
+  });
+}
+
+export function requireValidSubscription() {
+  return createMiddleware<AuthenticatedUserContext & AuthenticatedTeamContext>(async (c, next) => {
+    const team = c.var.team;
+    if (!team) {
+      return c.json(actionFailure("Team not found"), 404);
+    }
+
+    // Ensure the team has a valid billing profile
+    const billingProfile = await fetchBillingProfile(team.id);
+    if (!billingProfile || !billingProfile.isMandateValidated) {
+      return c.json(actionFailure("Team does not have a valid billing profile"), 401);
+    }
 
     await next();
   });

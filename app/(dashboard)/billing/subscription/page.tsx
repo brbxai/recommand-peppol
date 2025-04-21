@@ -5,10 +5,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@core/components/ui/card";
 import { toast } from "@core/components/ui/sonner";
-import { useUser } from "@core/hooks/use-user";
+import { useActiveTeam } from "@core/hooks/user";
 import { Loader2, XCircle, CheckCircle, Pencil, Check, CreditCard } from "lucide-react";
-import { allPlans } from "@peppol/data/plans";
-import { stringifyActionFailure } from "@recommand/lib/utils";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import {
   AlertDialog,
@@ -26,26 +24,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@core/components/ui/dialog";
-import { Input } from "@core/components/ui/input";
-import { Label } from "@core/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
+import { BillingProfileForm, DEFAULT_BILLING_PROFILE_FORM_DATA, type BillingProfileFormData } from "@peppol/components/billing-profile-form";
+import { PlansGrid } from "@peppol/components/plans-grid";
+import { updateBillingProfile, fetchBillingProfile as fetchBillingProfileFromApi } from "@peppol/lib/billing";
 
 const subscriptionClient = rc<Subscription>('peppol');
 const billingProfileClient = rc<BillingProfile>('peppol');
-
-type BillingProfileFormData = {
-  companyName: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  country: "BE";
-  vatNumber: string | null;
-};
 
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
@@ -53,15 +41,8 @@ export default function Page() {
   const [currentUsage, setCurrentUsage] = useState(-1);
   const [billingProfile, setBillingProfile] = useState<BillingProfileData | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState<BillingProfileFormData>({
-    companyName: '',
-    address: '',
-    postalCode: '',
-    city: '',
-    country: 'BE',
-    vatNumber: '',
-  });
-  const { activeTeam } = useUser();
+  const [profileForm, setProfileForm] = useState<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
+  const activeTeam = useActiveTeam();
 
   const fetchSubscription = async () => {
     if (!activeTeam?.id) {
@@ -115,62 +96,25 @@ export default function Page() {
   const fetchBillingProfile = async () => {
     if (!activeTeam?.id) return;
 
-    try {
-      const response = await billingProfileClient[':teamId']['billing-profile'].$get({
-        param: { teamId: activeTeam.id }
+    const billingProfile = await fetchBillingProfileFromApi(activeTeam.id);
+    if (billingProfile) {
+      setBillingProfile(billingProfile);
+      setProfileForm({
+        companyName: billingProfile.companyName,
+        address: billingProfile.address,
+        postalCode: billingProfile.postalCode,
+        city: billingProfile.city,
+        country: billingProfile.country,
+        vatNumber: billingProfile.vatNumber || '',
       });
-      const data = await response.json();
-
-      if (data.success && data.billingProfile) {
-        setBillingProfile(data.billingProfile);
-        setProfileForm({
-          companyName: data.billingProfile.companyName,
-          address: data.billingProfile.address,
-          postalCode: data.billingProfile.postalCode,
-          city: data.billingProfile.city,
-          country: data.billingProfile.country,
-          vatNumber: data.billingProfile.vatNumber || '',
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching billing profile:', error);
-      toast.error('Failed to load billing profile');
     }
   };
 
   useEffect(() => {
-    console.log("fetching subscription");
     fetchSubscription();
     fetchCurrentUsage();
     fetchBillingProfile();
   }, [activeTeam?.id]);
-
-  const handleStartSubscription = async (planId: string) => {
-    if (!activeTeam?.id) return;
-
-    try {
-      const response = await subscriptionClient[':teamId'].subscription.$post({
-        param: { teamId: activeTeam.id },
-        json: { planId }
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setCurrentSubscription({
-          ...data.subscription,
-          createdAt: new Date(data.subscription.createdAt),
-          startDate: new Date(data.subscription.startDate),
-          endDate: data.subscription.endDate ? new Date(data.subscription.endDate) : null,
-          lastBilledAt: data.subscription.lastBilledAt ? new Date(data.subscription.lastBilledAt) : null,
-        });
-        toast.success('Subscription updated successfully');
-      } else {
-        toast.error(stringifyActionFailure(data.errors));
-      }
-    } catch (error) {
-      toast.error('Failed to update subscription');
-    }
-  };
 
   const handleCancelSubscription = async () => {
     if (!activeTeam?.id) return;
@@ -191,32 +135,10 @@ export default function Page() {
   const handleUpdateProfile = async () => {
     if (!activeTeam?.id) return;
 
-    try {
-      const response = await billingProfileClient[':teamId']['billing-profile'].$put({
-        param: { teamId: activeTeam.id },
-        json: {
-          ...profileForm,
-          vatNumber: profileForm.vatNumber || null,
-        }
-      });
-      const data = await response.json();
-      if (!data.success) {
-        toast.error(stringifyActionFailure(data.errors));
-        return;
-      }
-
-      setBillingProfile(data.billingProfile);
+    await updateBillingProfile(activeTeam.id, profileForm, (billingProfile) => {
+      setBillingProfile(billingProfile);
       setIsEditingProfile(false);
-      toast.success('Billing profile updated successfully');
-
-      if (data.checkoutUrl) {
-        // Redirect to Mollie checkout URL
-        window.location.href = data.checkoutUrl;
-      }
-
-    } catch (error) {
-      toast.error('Failed to update billing profile');
-    }
+    });
   };
 
   if (isLoading) {
@@ -241,7 +163,7 @@ export default function Page() {
     ]}
   >
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 items-start">
         {currentSubscription ? (
           <Card>
             <CardHeader>
@@ -336,17 +258,7 @@ export default function Page() {
                 </div>
                 <div>
                   <h3 className="text-sm">Address</h3>
-                  <p className="text-muted-foreground">{billingProfile.address}</p>
-                </div>
-                <div className="flex flex-col md:flex-row items-center gap-2">
-                  <div>
-                    <h3 className="text-sm">Postal Code</h3>
-                    <p className="text-muted-foreground">{billingProfile.postalCode}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm">City</h3>
-                    <p className="text-muted-foreground">{billingProfile.city}</p>
-                  </div>
+                  <p className="text-muted-foreground">{billingProfile.address} {billingProfile.postalCode} {billingProfile.city}</p>
                 </div>
                 <div>
                   <h3 className="text-sm">Country</h3>
@@ -396,117 +308,25 @@ export default function Page() {
                     Update your billing information for invoices
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName">Company Name</Label>
-                    <Input
-                      id="companyName"
-                      value={profileForm.companyName}
-                      onChange={(e) => setProfileForm({ ...profileForm, companyName: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={profileForm.address}
-                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="postalCode">Postal Code</Label>
-                      <Input
-                        id="postalCode"
-                        value={profileForm.postalCode}
-                        onChange={(e) => setProfileForm({ ...profileForm, postalCode: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        value={profileForm.city}
-                        onChange={(e) => setProfileForm({ ...profileForm, city: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Select
-                      value={profileForm.country}
-                      onValueChange={(value) => setProfileForm({ ...profileForm, country: value as 'BE' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BE">Belgium</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vatNumber">VAT Number (Optional)</Label>
-                    <Input
-                      id="vatNumber"
-                      value={profileForm.vatNumber || ''}
-                      onChange={(e) => {
-                        const value = e.target.value.trim();
-                        if (value === '') {
-                          setProfileForm({ ...profileForm, vatNumber: null });
-                        } else {
-                          setProfileForm({ ...profileForm, vatNumber: value });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsEditingProfile(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleUpdateProfile}>
-                    Save Changes
-                  </Button>
-                </DialogFooter>
+                <BillingProfileForm
+                  profileForm={profileForm}
+                  onChange={setProfileForm}
+                  onCancel={() => setIsEditingProfile(false)}
+                  onSubmit={handleUpdateProfile}
+                />
               </DialogContent>
             </Dialog>
           </CardFooter>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {allPlans.map((plan) => (
-          <Card key={plan.id} className={currentSubscription?.planId === plan.id ? "border-primary" : ""}>
-            <CardHeader>
-              <CardTitle>{plan.name}</CardTitle>
-              <CardDescription>
-                {plan.basePrice === 0 ? "Free" : `€${plan.basePrice.toFixed(2)}/month excl. VAT`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {plan.includedMonthlyDocuments} documents included
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  €{plan.documentOveragePrice.toFixed(2)} per extra document
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button
-                className="w-full"
-                variant={currentSubscription?.planId === plan.id ? "secondary" : "default"}
-                onClick={() => handleStartSubscription(plan.id)}
-                disabled={currentSubscription?.planId === plan.id}
-              >
-                {currentSubscription?.planId === plan.id ? "Current Plan" : "Select Plan"}
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
+      {activeTeam?.id && (
+        <PlansGrid
+          currentSubscription={currentSubscription}
+          teamId={activeTeam.id}
+          onSubscriptionUpdate={setCurrentSubscription}
+        />
+      )}
     </div>
   </PageTemplate>;
 }

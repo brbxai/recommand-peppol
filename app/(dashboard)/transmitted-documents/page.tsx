@@ -6,9 +6,9 @@ import { type ColumnDef, getCoreRowModel, getSortedRowModel, getFilteredRowModel
 import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
-import { useUser } from "@core/hooks/use-user";
+import { useActiveTeam } from "@core/hooks/user";
 import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, Search } from "lucide-react";
-import { SortableHeader } from "@core/components/data-table/sortable-header";
+import { ColumnHeader } from "@core/components/data-table/column-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
@@ -34,7 +34,7 @@ export default function Page() {
   const [companyId, setCompanyId] = useState<string | undefined>();
   const [direction, setDirection] = useState<"incoming" | "outgoing" | "all" | undefined>("all");
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
-  const { activeTeam } = useUser();
+  const activeTeam = useActiveTeam();
 
   const fetchCompanies = useCallback(async () => {
     if (!activeTeam?.id) {
@@ -132,7 +132,7 @@ export default function Page() {
   const columns: ColumnDef<TransmittedDocumentWithoutBody>[] = [
     {
       accessorKey: "id",
-      header: ({ column }) => <SortableHeader column={column} title="ID" />,
+      header: ({ column }) => <ColumnHeader column={column} title="ID" />,
       cell: ({ row }) => {
         const id = row.getValue("id") as string;
         return <div className="flex items-center gap-2">
@@ -147,7 +147,7 @@ export default function Page() {
     },
     {
       id: "company",
-      header: ({ column }) => <SortableHeader column={column} title="Company" />,
+      header: ({ column }) => <ColumnHeader column={column} title="Company" />,
       cell: ({ row }) => {
         const companyId = row.original.companyId;
         const company = companies.find(c => c.id === companyId);
@@ -157,17 +157,17 @@ export default function Page() {
     },
     {
       accessorKey: "senderId",
-      header: ({ column }) => <SortableHeader column={column} title="Sender" />,
+      header: ({ column }) => <ColumnHeader column={column} title="Sender" />,
       enableGlobalFilter: true,
     },
     {
       accessorKey: "receiverId",
-      header: ({ column }) => <SortableHeader column={column} title="Receiver" />,
+      header: ({ column }) => <ColumnHeader column={column} title="Receiver" />,
       enableGlobalFilter: true,
     },
     {
       accessorKey: "direction",
-      header: ({ column }) => <SortableHeader column={column} title="Direction" />,
+      header: ({ column }) => <ColumnHeader column={column} title="Direction" />,
       cell: ({ row }) => {
         const direction = row.getValue("direction") as string;
         return <div className="flex items-center gap-1">
@@ -183,7 +183,7 @@ export default function Page() {
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => <SortableHeader column={column} title="Created At" />,
+      header: ({ column }) => <ColumnHeader column={column} title="Created At" />,
       cell: ({ row }) => {
         const date = row.getValue("createdAt") as string;
         return format(new Date(date), 'PPpp');
@@ -192,7 +192,7 @@ export default function Page() {
     },
     {
       accessorKey: "readAt",
-      header: ({ column }) => <SortableHeader column={column} title="Read At" />,
+      header: ({ column }) => <ColumnHeader column={column} title="Read At" />,
       cell: ({ row }) => {
         const date = row.getValue("readAt") as string;
         return date ? format(new Date(date), 'PPpp') : <p className="text-muted-foreground">Not read</p>;
