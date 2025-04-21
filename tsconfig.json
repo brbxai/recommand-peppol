@@ -26,9 +26,9 @@
 
     "baseUrl": ".",
     "paths": {
-      "@recommand": ["../recommand-framework/index.ts"],
-      "@recommand/*": ["../recommand-framework/*"],
-      "@core/*": ["../recommand-core/*"],
+      "@recommand": ["../framework/index.ts"],
+      "@recommand/*": ["../framework/*"],
+      "@core/*": ["../core/*"],
       "@peppol/*": ["*"],
     }
   }
