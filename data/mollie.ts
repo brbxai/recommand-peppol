@@ -44,7 +44,7 @@ export async function createFirstPayment(
     sequenceType: SequenceType.first,
     description: "First payment",
     redirectUrl: `${process.env.BASE_URL}/`,
-    webhookUrl: `https://mbp-2.tail407c63.ts.net/api/peppol/mollie/mandate-webhook`, // TODO: make this dynamic with the BASE_URL
+    webhookUrl: `${process.env.BASE_URL}/api/peppol/mollie/mandate-webhook`,
     metadata: {
       billingProfileId: billingProfileId,
     },
