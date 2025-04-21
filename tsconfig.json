@@ -28,7 +28,7 @@
     "paths": {
       "@recommand": ["../recommand-framework/index.ts"],
       "@recommand/*": ["../recommand-framework/*"],
-      "@core/*": ["../core/*"],
+      "@core/*": ["../recommand-core/*"],
       "@peppol/*": ["*"],
     }
   }
