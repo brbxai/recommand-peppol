@@ -1,6 +1,6 @@
 import { transmittedDocuments } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, sql, desc, isNull } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, inArray } from "drizzle-orm";
 
 export type TransmittedDocument = typeof transmittedDocuments.$inferSelect;
 export type InsertTransmittedDocument = typeof transmittedDocuments.$inferInsert;
@@ -13,7 +13,7 @@ export async function getTransmittedDocuments(
   options: {
     page?: number;
     limit?: number;
-    companyId?: string;
+    companyId?: string[];
     direction?: "incoming" | "outgoing";
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
@@ -23,7 +23,7 @@ export async function getTransmittedDocuments(
   // Build the where clause
   const whereClause = [eq(transmittedDocuments.teamId, teamId)];
   if (companyId) {
-    whereClause.push(eq(transmittedDocuments.companyId, companyId));
+    whereClause.push(inArray(transmittedDocuments.companyId, companyId));
   }
   if (direction) {
     whereClause.push(eq(transmittedDocuments.direction, direction));

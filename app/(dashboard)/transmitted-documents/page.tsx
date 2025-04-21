@@ -41,8 +41,6 @@ export default function Page() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
-  const [companyId, setCompanyId] = useState<string | undefined>();
-  const [direction, setDirection] = useState<"incoming" | "outgoing" | "all" | undefined>("all");
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const activeTeam = useActiveTeam();
 
@@ -56,9 +54,7 @@ export default function Page() {
       const response = await companiesClient[":teamId"]["companies"].$get({
         param: { teamId: activeTeam.id },
       });
-      console.log("response", response);
       const json = await response.json();
-      console.log("json", json);
 
       if (!json.success || !Array.isArray(json.companies)) {
         toast.error("Failed to load companies");
@@ -85,14 +81,10 @@ export default function Page() {
     }
 
     const directionFilter = columnFilters.find((f) => f.id === "direction");
-    const directionValue = directionFilter?.value as
-      | "incoming"
-      | "outgoing"
-      | "all"
-      | undefined;
+    const filteredDirectionValues = directionFilter?.value as string[] ?? [];
 
     const companyFilter = columnFilters.find((f) => f.id === "companyId");
-    const companyIdValue = companyFilter?.value as string | undefined;
+    const filteredCompanyIds = companyFilter?.value as string[] ?? [];
 
     try {
       const response = await client[":teamId"]["documents"].$get({
@@ -100,11 +92,8 @@ export default function Page() {
         query: {
           page: page.toString(),
           limit: limit.toString(),
-          companyId: companyIdValue,
-          direction:
-            directionValue === "all" || directionValue === undefined
-              ? undefined
-              : directionValue,
+          companyId: filteredCompanyIds,
+          direction: (filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0] // When no or all options are selected, don't filter on direction
         },
       });
       const json = await response.json();
@@ -139,10 +128,6 @@ export default function Page() {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
-
-  useEffect(() => {
-    console.log(companies);
-  }, [companies]);
 
   const handleDeleteDocument = async (id: string) => {
     if (!activeTeam?.id) return;
@@ -328,7 +313,6 @@ export default function Page() {
       id: "direction",
       title: "Direction",
       options: [
-        { label: "All", value: "all" },
         { label: "Incoming", value: "incoming", icon: ArrowDown },
         { label: "Outgoing", value: "outgoing", icon: ArrowUp },
       ],
@@ -337,7 +321,7 @@ export default function Page() {
 
   return (
     <PageTemplate
-      breadcrumbs={[{ label: "Peppol" }, { label: "Transmitted Documents" }]}
+      breadcrumbs={[{ label: "Peppol" }, { label: "Sent and received documents" }]}
       description="View and manage your transmitted Peppol documents."
     >
       <div className="space-y-6">

@@ -105,9 +105,9 @@ const _transmittedDocuments = server.get(
         description: "The number of items per page",
         example: 10,
       }),
-      companyId: z.string().optional().openapi({
+      companyId: z.union([z.string(), z.array(z.string())]).optional().openapi({
         description: "Filter documents by company ID",
-        example: "c_01JRQVH6J3FJMVS220E9ZRECWC",
+        example: ["c_01JRQVH6J3FJMVS220E9ZRECWC", "c_01JRQVH6J3FJMVS220E9ZRECWD"],
       }),
       direction: z.enum(["incoming", "outgoing"]).optional().openapi({
         description: "Filter documents by direction (incoming or outgoing)",
@@ -123,7 +123,7 @@ const _transmittedDocuments = server.get(
         {
           page,
           limit,
-          companyId,
+          companyId: Array.isArray(companyId) ? companyId : companyId ? [companyId] : undefined,
           direction,
         }
       );
