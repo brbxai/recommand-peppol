@@ -85,6 +85,9 @@ export default function Page() {
     const companyFilter = columnFilters.find((f) => f.id === "companyId");
     const filteredCompanyIds = companyFilter?.value as string[] ?? [];
 
+    const typeFilter = columnFilters.find((f) => f.id === "type");
+    const filteredTypeValues = typeFilter?.value as string[] ?? [];
+
     try {
       const response = await client[":teamId"]["documents"].$get({
         param: { teamId: activeTeam.id },
@@ -94,6 +97,7 @@ export default function Page() {
           companyId: filteredCompanyIds,
           direction: (filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0], // When no or all options are selected, don't filter on direction
           search: globalFilter || undefined, // Add the global search term to the query
+          type: (filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0], // When no or all options are selected, don't filter on type
         },
       });
       const json = await response.json();
@@ -223,6 +227,11 @@ export default function Page() {
         return company?.name ?? companyId;
       },
       enableColumnFilter: false,
+      enableGlobalFilter: true,
+    },
+    {
+      accessorKey: "type",
+      header: ({ column }) => <ColumnHeader column={column} title="Type" />,
       enableGlobalFilter: true,
     },
     {
@@ -359,6 +368,14 @@ export default function Page() {
       options: [
         { label: "Incoming", value: "incoming", icon: ArrowDown },
         { label: "Outgoing", value: "outgoing", icon: ArrowUp },
+      ],
+    },
+    {
+      id: "type",
+      title: "Type",
+      options: [
+        { label: "Invoice", value: "invoice" },
+        { label: "Unknown", value: "unknown" },
       ],
     },
   ];

@@ -1,4 +1,4 @@
-import { transmittedDocuments } from "@peppol/db/schema";
+import { supportedDocumentTypeEnum, transmittedDocuments } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq, and, sql, desc, isNull, inArray, or, ilike, SQL } from "drizzle-orm";
 
@@ -16,9 +16,10 @@ export async function getTransmittedDocuments(
     companyId?: string[];
     direction?: "incoming" | "outgoing";
     search?: string;
+    type?: (typeof supportedDocumentTypeEnum.enumValues)[number];
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
-  const { page = 1, limit = 10, companyId, direction, search } = options;
+  const { page = 1, limit = 10, companyId, direction, search, type } = options;
   const offset = (page - 1) * limit;
 
   // Build the where clause
@@ -28,6 +29,9 @@ export async function getTransmittedDocuments(
   }
   if (direction) {
     whereClause.push(eq(transmittedDocuments.direction, direction));
+  }
+  if (type) {
+    whereClause.push(eq(transmittedDocuments.type, type));
   }
   if (search) {
     whereClause.push(

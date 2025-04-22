@@ -17,6 +17,7 @@ import {
   describeSuccessResponse,
 } from "@peppol/utils/api-docs";
 import JSZip from "jszip";
+import { supportedDocumentTypeEnum } from "@peppol/db/schema";
 
 const describeTransmittedDocumentResponse = {
   document: {
@@ -102,11 +103,15 @@ const _transmittedDocuments = server.get(
         description: "Search term to filter documents",
         example: "invoice",
       }),
+      type: z.enum(supportedDocumentTypeEnum.enumValues).optional().openapi({
+        description: "Filter documents by type",
+        example: "invoice",
+      }),
     })
   ),
   async (c) => {
     try {
-      const { page, limit, companyId, direction, search } =
+      const { page, limit, companyId, direction, search, type } =
         c.req.valid("query");
       const { documents, total } = await getTransmittedDocuments(
         c.var.team.id,
@@ -120,6 +125,7 @@ const _transmittedDocuments = server.get(
             : undefined,
           direction,
           search,
+          type,
         }
       );
 
