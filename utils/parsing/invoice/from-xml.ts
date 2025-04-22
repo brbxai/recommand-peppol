@@ -52,6 +52,17 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   const note = getTextContent(invoice.Note);
   const buyerReference = getTextContent(invoice.BuyerReference);
 
+  // Extract attachments
+  const attachments = (invoice.AdditionalDocumentReference || []).map((ref: any) => ({
+    id: getTextContent(ref.ID),
+    documentType: getTextContent(ref.DocumentType),
+    description: getTextContent(ref.DocumentDescription),
+    mimeCode: getTextContent(ref.Attachment?.EmbeddedDocumentBinaryObject?.["@_mimeCode"]),
+    filename: getTextContent(ref.Attachment?.EmbeddedDocumentBinaryObject?.["@_filename"]),
+    embeddedDocument: getTextContent(ref.Attachment?.EmbeddedDocumentBinaryObject?.["#text"]),
+    url: getTextContent(ref.Attachment?.ExternalReference?.URI),
+  }));
+
   // Extract seller information
   const sellerParty = invoice.AccountingSupplierParty?.Party;
   if (!sellerParty) {
@@ -146,6 +157,7 @@ export function parseInvoiceFromXML(xml: string): Invoice {
     dueDate,
     note,
     buyerReference,
+    attachments: attachments.length > 0 ? attachments : [],
     seller,
     buyer,
     paymentMeans,

@@ -19,7 +19,6 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
 
   const sender = parsePeppolAddress(senderAddress);
   const recipient = parsePeppolAddress(recipientAddress);
-
   const ublInvoice = {
     Invoice: {
       "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
@@ -39,6 +38,29 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
       ...(invoice.note && { "cbc:Note": invoice.note }),
       ...(invoice.buyerReference && {
         "cbc:BuyerReference": invoice.buyerReference,
+      }),
+      ...(invoice.attachments && {
+        "cac:AdditionalDocumentReference": invoice.attachments.map((attachment) => ({
+          "cbc:ID": attachment.id,
+          "cbc:DocumentType": attachment.documentType,
+          "cbc:DocumentDescription": attachment.description,
+          ...((attachment.embeddedDocument || attachment.url) && {
+            "cac:Attachment": {
+              ...(attachment.embeddedDocument && {
+                "cbc:EmbeddedDocumentBinaryObject": {
+                  "@_mimeCode": attachment.mimeCode,
+                  "@_filename": attachment.filename,
+                  "#text": attachment.embeddedDocument,
+                }
+              }),
+              ...(attachment.url && {
+                "cac:ExternalReference": {
+                  "cbc:URI": attachment.url,
+                }
+              })
+            }
+          })
+        })),
       }),
       "cac:AccountingSupplierParty": {
         "cac:Party": {

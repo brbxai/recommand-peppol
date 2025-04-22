@@ -16,6 +16,7 @@ import {
   describeErrorResponse,
   describeSuccessResponse,
 } from "@peppol/utils/api-docs";
+import JSZip from "jszip";
 
 const describeTransmittedDocumentResponse = {
   document: {
@@ -335,11 +336,96 @@ const _getTransmittedDocument = server.get(
   }
 );
 
+// Download document as zip
+const _downloadDocument = server.get(
+  "/:teamId/documents/:documentId/downloadPackage",
+  requireTeamAccess(),
+  describeRoute({
+    operationId: "downloadPackage",
+    description: "Download a document as a zip file containing the document JSON, XML, and any binary attachments",
+    summary: "Download Document Package",
+    tags: ["Documents"],
+    responses: {
+      "200": {
+        description: "Successfully downloaded the document",
+        content: {
+          "application/zip": {
+            schema: {
+              type: "string",
+              format: "binary",
+            },
+          },
+        },
+      },
+      ...describeErrorResponse(404, "Document not found"),
+      ...describeErrorResponse(500, "Failed to download document"),
+    },
+  }),
+  zValidator(
+    "param",
+    z.object({
+      teamId: z.string().openapi({
+        description: "The ID of the team",
+      }),
+      documentId: z.string().openapi({
+        description: "The ID of the document to download",
+      }),
+    })
+  ),
+  async (c) => {
+    try {
+      const { documentId } = c.req.valid("param");
+      const document = await getTransmittedDocument(c.var.team.id, documentId);
+
+      if (!document) {
+        return c.json(actionFailure("Document not found"), 404);
+      }
+
+      // Create a new zip file
+      const zip = new JSZip();
+
+      // Add document metadata as JSON
+      const { xml, ...documentMetadata } = document;
+      zip.file("document.json", JSON.stringify(documentMetadata, null, 2));
+
+      // Add XML if available
+      if (xml) {
+        zip.file("document.xml", xml);
+      }
+
+      // If there are attachments, add them to the zip
+      if (document.parsed?.attachments) {
+        for (const attachment of document.parsed.attachments) {
+          const base64 = attachment.embeddedDocument;
+          const mimeCode = attachment.mimeCode;
+          const filename = attachment.filename;
+
+          if (base64 && mimeCode && filename) {
+            zip.file(filename, Buffer.from(base64, 'base64'));
+          }
+        }
+      }
+
+      // Generate the zip file
+      const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
+
+      // Set headers for file download
+      c.header("Content-Type", "application/zip");
+      c.header("Content-Disposition", `attachment; filename="${documentId}.zip"`);
+
+      return c.body(zipBuffer);
+    } catch (error) {
+      return c.json(actionFailure("Failed to download document"), 500);
+    }
+  }
+);
+
 export type TransmittedDocuments =
   | typeof _transmittedDocuments
   | typeof _deleteTransmittedDocument
   | typeof _getInbox
   | typeof _markAsRead
-  | typeof _getTransmittedDocument;
+  | typeof _getTransmittedDocument
+  | typeof _downloadDocument;
 
 export default server;

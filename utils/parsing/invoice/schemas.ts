@@ -82,6 +82,19 @@ const vatTotalsSchema = z.object({
   subtotals: z.array(vatSubtotalSchema),
 }).openapi({ ref: "VatTotals", description: "If not provided, the VAT totals will be calculated from the invoice lines." });
 
+const attachmentSchema = z.object({
+  id: z.string().openapi({ example: "ATT-001" }),
+  documentType: z.string().default("130").openapi({ example: "130" }),
+  mimeCode: z.string().default("application/pdf").openapi({ 
+    example: "application/pdf",
+    description: "MIME type of the document (e.g. application/pdf, text/csv, image/png)"
+  }),
+  filename: z.string().openapi({ example: "contract.pdf" }),
+  description: z.string().nullish().openapi({ example: "Signed contract" }),
+  embeddedDocument: z.string().nullish().openapi({ description: "base64 encoded document" }),
+  url: z.string().nullish().openapi({ example: "https://example.com/contract.pdf" }),
+}).openapi({ ref: "Attachment" });
+
 export const invoiceSchema = z.object({
   invoiceNumber: z.string().openapi({ example: "INV-2024-001" }),
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
@@ -97,6 +110,7 @@ export const invoiceSchema = z.object({
   lines: z.array(lineSchema),
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
+  attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the invoice" }),
 }).openapi({ ref: "Invoice" });
 
 export const sendInvoiceSchema = invoiceSchema.extend({

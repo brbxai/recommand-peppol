@@ -13,7 +13,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -152,6 +152,42 @@ export default function Page() {
     }
   };
 
+  const handleDownloadDocument = async (id: string) => {
+    if (!activeTeam?.id) return;
+
+    try {
+      const response = await client[":teamId"]["documents"][":documentId"]["downloadPackage"].$get({
+        param: {
+          teamId: activeTeam.id,
+          documentId: id,
+        },
+      });
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${id}.zip`;
+      
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the URL
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Document downloaded successfully");
+    } catch (error) {
+      toast.error("Failed to download document");
+    }
+  };
+
   const columns: ColumnDef<TransmittedDocumentWithoutBody>[] = [
     {
       accessorKey: "id",
@@ -257,7 +293,16 @@ export default function Page() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => handleDownloadDocument(id)}
+              title="Download document package"
+            >
+              <FolderArchive className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => handleDeleteDocument(id)}
+              title="Delete document"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
