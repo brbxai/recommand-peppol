@@ -30,9 +30,6 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
       "@_xmlns:ext":
         "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2",
       "@_xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
-      "@_targetNamespace":
-        "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
-      "@_version": "1.0",
       "cbc:CustomizationID":
         "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
       "cbc:ProfileID": "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
@@ -127,28 +124,31 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
         },
       }),
       "cac:TaxTotal": {
-            "cbc:TaxAmount": {
-              "@_currencyID": "EUR",
-              "#text": vat.totalVatAmount,
-            },
-            "cac:TaxSubtotal": vat.subtotals.map((subtotal) => ({
-              "cbc:TaxableAmount": {
-                "@_currencyID": "EUR",
-                "#text": subtotal.taxableAmount,
-              },
-              "cbc:TaxAmount": {
-                "@_currencyID": "EUR",
-                "#text": subtotal.vatAmount,
-              },
-              "cac:TaxCategory": {
-                "cbc:ID": subtotal.category,
-                "cbc:Percent": subtotal.percentage,
-                ...(subtotal.exemptionReasonCode && {
-                  "cbc:TaxExemptionReasonCode": subtotal.exemptionReasonCode,
-                }),
-              },
-            })),
+        "cbc:TaxAmount": {
+          "@_currencyID": "EUR",
+          "#text": vat.totalVatAmount,
+        },
+        "cac:TaxSubtotal": vat.subtotals.map((subtotal) => ({
+          "cbc:TaxableAmount": {
+            "@_currencyID": "EUR",
+            "#text": subtotal.taxableAmount,
           },
+          "cbc:TaxAmount": {
+            "@_currencyID": "EUR",
+            "#text": subtotal.vatAmount,
+          },
+          "cac:TaxCategory": {
+            "cbc:ID": subtotal.category,
+            "cbc:Percent": subtotal.percentage,
+            "cac:TaxScheme": {
+              "cbc:ID": "VAT",
+            },
+            ...(subtotal.exemptionReasonCode && {
+              "cbc:TaxExemptionReasonCode": subtotal.exemptionReasonCode,
+            }),
+          },
+        })),
+      },
       "cac:LegalMonetaryTotal": {
         "cbc:LineExtensionAmount": {
           "@_currencyID": "EUR",
@@ -178,23 +178,23 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
           "#text": item.netAmount,
         },
         "cac:Item": {
-          "cbc:Name": item.name,
           ...(item.description && { "cbc:Description": item.description }),
+          "cbc:Name": item.name,
           ...(item.sellersId && {
             "cac:SellersItemIdentification": { "cbc:ID": item.sellersId },
           }),
+          "cac:ClassifiedTaxCategory": {
+            "cbc:ID": item.vat.category,
+            "cbc:Percent": item.vat.percentage,
+            "cac:TaxScheme": {
+              "cbc:ID": "VAT",
+            },
+          },
         },
         "cac:Price": {
           "cbc:PriceAmount": {
             "@_currencyID": "EUR",
             "#text": item.netPriceAmount,
-          },
-        },
-        "cac:ClassifiedTaxCategory": {
-          "cbc:ID": item.vat.category,
-          "cbc:Percent": item.vat.percentage,
-          "cac:TaxScheme": {
-            "cbc:ID": "VAT",
           },
         },
       })),
