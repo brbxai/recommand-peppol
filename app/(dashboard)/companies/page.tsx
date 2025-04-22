@@ -29,6 +29,7 @@ import type { Company, CompanyFormData } from "../../../types/company";
 import { defaultCompanyFormData } from "../../../types/company";
 import { DataTableToolbar } from "@core/components/data-table/toolbar";
 import { DataTablePagination } from "@core/components/data-table/pagination";
+import { AsyncButton } from "@core/components/async-button";
 
 const client = rc<Companies>("peppol");
 
@@ -104,8 +105,7 @@ export default function Page() {
     fetchCompanies();
   }, [fetchCompanies]);
 
-  const handleCompanySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCompanySubmit = async () => {
     if (!activeTeam?.id) {
       toast.error("No active team selected");
       return;
@@ -231,13 +231,13 @@ export default function Page() {
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button
+            <AsyncButton
               variant="ghost"
               size="icon"
-              onClick={() => handleDeleteCompany(id)}
+              onClick={async () => await handleDeleteCompany(id)}
             >
               <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+            </AsyncButton>
           </div>
         );
       },
@@ -290,7 +290,7 @@ export default function Page() {
             <CompanyForm
               company={formData}
               onChange={(data) => setFormData(data as CompanyFormData)}
-              onSubmit={handleCompanySubmit}
+              onSubmit={async () => await handleCompanySubmit()}
               onCancel={() => setIsDialogOpen(false)}
               isEditing={dialogMode === "edit"}
             />

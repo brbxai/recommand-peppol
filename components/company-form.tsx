@@ -5,18 +5,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Company } from "../types/company";
 import { zodValidCountryCodes } from "../db/schema";
 import { z } from "zod";
+import { AsyncButton } from "@core/components/async-button";
 
 type CompanyFormProps = {
     company: Partial<Company>;
     onChange: (company: Partial<Company>) => void;
-    onSubmit: (e: React.FormEvent) => void;
+    onSubmit: () => Promise<void>;
     onCancel: () => void;
     isEditing?: boolean;
 };
 
 export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing = false }: CompanyFormProps) {
     return (
-        <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="name">Company Name</Label>
                 <Input
@@ -94,10 +95,10 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                 >
                     Cancel
                 </Button>
-                <Button type="submit">
+                <AsyncButton type="submit" onClick={onSubmit}>
                     {isEditing ? "Save Changes" : "Create Company"}
-                </Button>
+                </AsyncButton>
             </div>
-        </form>
+        </div>
     );
 } 
