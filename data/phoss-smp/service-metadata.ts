@@ -11,6 +11,19 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
+// fixNewlines replaces spaces that are actually newlines in the certificate format
+function fixNewlines(content: string): string {
+  // Split by "-----" to handle certificate boundaries
+  const parts = content.split("-----");
+  for (let i = 0; i < parts.length; i++) {
+    // Only process the parts that are between the BEGIN and END markers
+    if (i > 0 && i < parts.length - 1 && !parts[i].includes("BEGIN") && !parts[i].includes("END")) {
+      parts[i] = parts[i].replace(/ /g, "\n");
+    }
+  }
+  return parts.join("-----");
+}
+
 export async function registerServiceMetadata(
   peppolIdentifierEas: string,
   peppolIdentifierAddress: string,
@@ -26,6 +39,9 @@ export async function registerServiceMetadata(
   if (!process.env.AP_CERT) {
     throw new Error("AP_CERT environment variable is not set");
   }
+
+  // Fix newlines in certificate content
+  const fixedCert = fixNewlines(process.env.AP_CERT);
 
   // Create the XML body according to the Peppol style
   const serviceMetadataXml = {
@@ -55,7 +71,7 @@ export async function registerServiceMetadata(
                   "wsa:Address": "https://ap.net.recommand.com/as4"
                 },
                 "smp:RequireBusinessLevelSignature": false,
-                "smp:Certificate": process.env.AP_CERT,
+                "smp:Certificate": fixedCert,
                 "smp:ServiceDescription": "Recommand AS4 Service",
                 "smp:TechnicalContactUrl": "https://recommand.com"
               }
