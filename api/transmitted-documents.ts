@@ -92,10 +92,6 @@ const _transmittedDocuments = server.get(
         .optional()
         .openapi({
           description: "Filter documents by company ID",
-          example: [
-            "c_01JRQVH6J3FJMVS220E9ZRECWC",
-            "c_01JRQVH6J3FJMVS220E9ZRECWD",
-          ],
         }),
       direction: z.enum(["incoming", "outgoing"]).optional().openapi({
         description: "Filter documents by direction (incoming or outgoing)",
@@ -166,11 +162,9 @@ const _deleteTransmittedDocument = server.delete(
     z.object({
       teamId: z.string().openapi({
         description: "The ID of the team",
-        example: "team_01JQNRVSGW308K2P115PK98W7E",
       }),
       documentId: z.string().openapi({
         description: "The ID of the document to delete",
-        example: "doc_01JRQNNPRRV13732DFB3FNR1T9",
       }),
     })
   ),
@@ -229,7 +223,6 @@ const _getInbox = server.get(
     z.object({
       companyId: z.string().optional().openapi({
         description: "Optionally filter documents by company ID",
-        example: "c_01JRQVH6J3FJMVS220E9ZRECWC",
       }),
     })
   ),
@@ -264,11 +257,9 @@ const _markAsRead = server.post(
     z.object({
       teamId: z.string().openapi({
         description: "The ID of the team",
-        example: "team_01JQNRVSGW308K2P115PK98W7E",
       }),
       documentId: z.string().openapi({
         description: "The ID of the document to update read status",
-        example: "doc_01JRQNNPRRV13732DFB3FNR1T9",
       }),
     })
   ),
@@ -322,11 +313,9 @@ const _getTransmittedDocument = server.get(
     z.object({
       teamId: z.string().openapi({
         description: "The ID of the team",
-        example: "team_01JQNRVSGW308K2P115PK98W7E",
       }),
       documentId: z.string().openapi({
         description: "The ID of the document to retrieve",
-        example: "doc_01JRQNNPRRV13732DFB3FNR1T9",
       }),
     })
   ),
