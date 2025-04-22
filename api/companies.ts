@@ -308,6 +308,7 @@ const _deleteCompany = server.delete(
       await deleteCompany(c.var.team.id, c.req.valid("param").companyId);
       return c.json(actionSuccess());
     } catch (error) {
+      console.error(error);
       return c.json(actionFailure("Could not delete company"), 500);
     }
   }

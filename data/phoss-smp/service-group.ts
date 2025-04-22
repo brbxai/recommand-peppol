@@ -62,8 +62,32 @@ export async function deleteServiceGroup(
   );
 
   if (!response.ok) {
+    throw new Error("Failed to delete service group: " + await response.text());
+  }
+
+  return true;
+}
+
+export async function migrateParticipantToOurSMP(
+  peppolIdentifierEas: string,
+  peppolIdentifierAddress: string,
+  migrationKey: string
+) {
+  const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
+  
+  const response = await fetchSmp(
+    `migration/inbound/${SCHEME}::${serviceGroupId}/${migrationKey}`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  if (!response.ok) {
     console.error(await response.text());
-    throw new Error("Failed to delete service group");
+    throw new Error("Failed to migrate participant");
   }
 
   return true;

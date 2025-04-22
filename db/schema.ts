@@ -167,7 +167,7 @@ export const webhooks = pgTable("peppol_webhooks", {
     .references(() => teams.id)
     .notNull(),
   companyId: text("company_id")
-    .references(() => companies.id),
+    .references(() => companies.id, { onDelete: "cascade" }),
   url: text("url").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" })
@@ -184,7 +184,6 @@ export const transferEvents = pgTable("peppol_transfer_events", {
     .references(() => teams.id)
     .notNull(),
   companyId: text("company_id")
-    .references(() => companies.id)
     .notNull(),
   transmittedDocumentId: text("transmitted_document_id"),
   direction: transferEventDirectionEnum("direction").notNull(),
@@ -199,7 +198,7 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
     .references(() => teams.id)
     .notNull(),
   companyId: text("company_id")
-    .references(() => companies.id)
+    .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   direction: transferEventDirectionEnum("direction").notNull(),
 
