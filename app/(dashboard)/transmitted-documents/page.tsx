@@ -275,7 +275,7 @@ export default function Page() {
         return date ? (
           format(new Date(date), "PPpp")
         ) : (
-          <p className="text-muted-foreground">Not read</p>
+          <p className="text-muted-foreground">-</p>
         );
       },
       enableGlobalFilter: true,
