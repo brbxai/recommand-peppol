@@ -1,18 +1,19 @@
 import { Decimal } from "decimal.js";
-import type { Invoice, InvoiceLine, VatCategory } from "./schemas";
+import type { Invoice, DocumentLine, VatCategory } from "./schemas";
+import type { CreditNote } from "../creditnote/schemas";
 
-export function calculateLineAmount(line: InvoiceLine) {
+export function calculateLineAmount(line: DocumentLine | DocumentLine) {
   return new Decimal(line.quantity).mul(line.netPriceAmount).toFixed(2);
 }
 
-function getNetAmount(line: InvoiceLine) {
+function getNetAmount(line: DocumentLine | DocumentLine) {
   if (line.netAmount) {
     return line.netAmount;
   }
   return new Decimal(line.quantity).mul(line.netPriceAmount).toFixed(2);
 }
 
-export function calculateTotals(invoice: Invoice) {
+export function calculateTotals(invoice: Invoice | CreditNote) {
   const taxExclusiveAmount = invoice.lines.reduce(
     (sum, line) => sum.plus(getNetAmount(line)),
     new Decimal(0)
@@ -35,7 +36,7 @@ export function calculateTotals(invoice: Invoice) {
   };
 }
 
-export function calculateVat(invoice: Invoice) {
+export function calculateVat(invoice: Invoice | CreditNote) {
   const subtotalsByCategory = invoice.lines.reduce((acc, line) => {
     const category = line.vat.category;
     const taxableAmount = new Decimal(getNetAmount(line));

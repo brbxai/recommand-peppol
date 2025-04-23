@@ -20,6 +20,8 @@ import {
   describeSuccessResponse,
 } from "@peppol/utils/api-docs";
 import { addMonths } from "date-fns";
+import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 
 const server = new Server();
 
@@ -44,8 +46,8 @@ server.post(
       const document = jsonBody.document;
 
       let xmlDocument: string | null = null;
-      let type: "invoice" | "unknown" = "unknown";
-      let parsedDocument: Invoice | null = null;
+      let type: "invoice" | "creditNote" | "unknown" = "unknown";
+      let parsedDocument: Invoice | CreditNote | null = null;
       let doctypeId: string =
         "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
 
@@ -86,7 +88,26 @@ server.post(
         xmlDocument = ublInvoice;
         type = "invoice";
         parsedDocument = invoice;
-      } else if (jsonBody.documentType === SendDocumentType.UBL) {
+      } else if (jsonBody.documentType === SendDocumentType.CREDIT_NOTE) {
+        const creditNote = document as CreditNote;
+        if (!creditNote.seller) {
+          creditNote.seller = {
+            vatNumber: c.var.company.vatNumber ?? "",
+            name: c.var.company.name,
+            street: c.var.company.address,
+            city: c.var.company.city,
+            postalZone: c.var.company.postalCode,
+            country: c.var.company.country,
+          };
+        }
+        if (!creditNote.issueDate) {
+          creditNote.issueDate = new Date().toISOString();
+        }
+        const ublCreditNote = creditNoteToUBL(creditNote, senderAddress, recipientAddress);
+        xmlDocument = ublCreditNote;
+        type = "creditNote";
+        parsedDocument = creditNote;
+      } else if (jsonBody.documentType === SendDocumentType.XML) {
         xmlDocument = document as string;
         if (jsonBody.doctypeId) {
           doctypeId = jsonBody.doctypeId;
@@ -99,21 +120,21 @@ server.post(
         return c.json(actionFailure("Document could not be parsed."));
       }
 
-      const response = await sendAs4({
-        senderId: senderAddress,
-        receiverId: recipientAddress,
-        docTypeId: doctypeId,
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-        countryC1: countryC1,
-        body: xmlDocument,
-      });
+      // const response = await sendAs4({
+      //   senderId: senderAddress,
+      //   receiverId: recipientAddress,
+      //   docTypeId: doctypeId,
+      //   processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+      //   countryC1: countryC1,
+      //   body: xmlDocument,
+      // });
 
-      const jsonResponse = await response.json();
-      if (!response.ok || !jsonResponse.overallSuccess) {
-        return c.json(
-          actionFailure("Failed to send document over Peppol network.")
-        );
-      }
+      // const jsonResponse = await response.json();
+      // if (!response.ok || !jsonResponse.overallSuccess) {
+      //   return c.json(
+      //     actionFailure("Failed to send document over Peppol network.")
+      //   );
+      // }
 
       // Create a new transmittedDocument
       const transmittedDocument = await db

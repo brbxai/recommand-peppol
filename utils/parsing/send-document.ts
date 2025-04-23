@@ -1,10 +1,12 @@
 import { z } from "zod";
 import "zod-openapi/extend";
 import { sendInvoiceSchema } from "./invoice/schemas";
+import { sendCreditNoteSchema } from "./creditnote/schemas";
 
 export const SendDocumentType = {
   INVOICE: "invoice",
-  UBL: "ubl",
+  CREDIT_NOTE: "creditNote",
+  XML: "xml",
 } as const;
 
 export type DocumentType =
@@ -17,15 +19,15 @@ export const sendDocumentSchema = z.object({
     example: "0208:987654321",
   }),
   documentType: z
-    .enum([SendDocumentType.INVOICE, SendDocumentType.UBL])
+    .enum([SendDocumentType.INVOICE, SendDocumentType.CREDIT_NOTE, SendDocumentType.XML])
     .openapi({
       description: "The type of document to send.",
       example: SendDocumentType.INVOICE,
     }),
-  document: z.union([sendInvoiceSchema, z.string().openapi({ ref: "UBL" })]),
+  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, z.string().openapi({ ref: "XML" })]),
   doctypeId: z.string().optional().openapi({
     description:
-      "The document type identifier. Not required, only used when documentType is \"ubl\".",
+      "The document type identifier. Not required, only used when documentType is \"xml\".",
     example:
       "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
   }),

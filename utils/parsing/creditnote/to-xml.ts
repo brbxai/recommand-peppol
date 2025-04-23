@@ -1,6 +1,6 @@
 import { XMLBuilder } from "fast-xml-parser";
-import type { Invoice } from "./schemas";
-import { calculateLineAmount, calculateTotals, calculateVat } from "./calculations";
+import type { CreditNote } from "./schemas";
+import { calculateLineAmount, calculateTotals, calculateVat } from "../invoice/calculations";
 import { parsePeppolAddress } from "../peppol-address";
 
 const builder = new XMLBuilder({
@@ -9,19 +9,19 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientAddress: string): string {
-  const totals = invoice.totals || calculateTotals(invoice);
-  const vat = invoice.vat || calculateVat(invoice);
-  const lines = invoice.lines.map((line) => ({
+export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, recipientAddress: string): string {
+  const totals = creditNote.totals || calculateTotals(creditNote);
+  const vat = creditNote.vat || calculateVat(creditNote);
+  const lines = creditNote.lines.map((line) => ({
     ...line,
     netAmount: line.netAmount || calculateLineAmount(line),
   }));
 
   const sender = parsePeppolAddress(senderAddress);
   const recipient = parsePeppolAddress(recipientAddress);
-  const ublInvoice = {
-    Invoice: {
-      "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
+  const ublCreditNote = {
+    CreditNote: {
+      "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
       "@_xmlns:cac":
         "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2",
       "@_xmlns:cbc":
@@ -32,15 +32,14 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
       "cbc:CustomizationID":
         "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0",
       "cbc:ProfileID": "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-      "cbc:ID": invoice.invoiceNumber,
-      "cbc:IssueDate": invoice.issueDate,
-      "cbc:DueDate": invoice.dueDate,
-      ...(invoice.note && { "cbc:Note": invoice.note }),
-      ...(invoice.buyerReference && {
-        "cbc:BuyerReference": invoice.buyerReference,
+      "cbc:ID": creditNote.creditNoteNumber,
+      "cbc:IssueDate": creditNote.issueDate,
+      ...(creditNote.note && { "cbc:Note": creditNote.note }),
+      ...(creditNote.buyerReference && {
+        "cbc:BuyerReference": creditNote.buyerReference,
       }),
-      ...(invoice.attachments && {
-        "cac:AdditionalDocumentReference": invoice.attachments.map((attachment) => ({
+      ...(creditNote.attachments && {
+        "cac:AdditionalDocumentReference": creditNote.attachments.map((attachment) => ({
           "cbc:ID": attachment.id,
           "cbc:DocumentType": attachment.documentType,
           "cbc:DocumentDescription": attachment.description,
@@ -73,21 +72,21 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
             },
           ],
           "cac:PartyName": {
-            "cbc:Name": invoice.seller.name,
+            "cbc:Name": creditNote.seller.name,
           },
           "cac:PostalAddress": {
-            "cbc:StreetName": invoice.seller.street,
-            ...(invoice.seller.street2 && {
-              "cbc:AdditionalStreetName": invoice.seller.street2,
+            "cbc:StreetName": creditNote.seller.street,
+            ...(creditNote.seller.street2 && {
+              "cbc:AdditionalStreetName": creditNote.seller.street2,
             }),
-            "cbc:CityName": invoice.seller.city,
-            "cbc:PostalZone": invoice.seller.postalZone,
+            "cbc:CityName": creditNote.seller.city,
+            "cbc:PostalZone": creditNote.seller.postalZone,
             "cac:Country": {
-              "cbc:IdentificationCode": invoice.seller.country,
+              "cbc:IdentificationCode": creditNote.seller.country,
             },
           },
           "cac:PartyTaxScheme": {
-            "cbc:CompanyID": invoice.seller.vatNumber,
+            "cbc:CompanyID": creditNote.seller.vatNumber,
             "cac:TaxScheme": {
               "cbc:ID": "VAT",
             },
@@ -105,28 +104,28 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
             },
           ],
           "cac:PartyName": {
-            "cbc:Name": invoice.buyer.name,
+            "cbc:Name": creditNote.buyer.name,
           },
           "cac:PostalAddress": {
-            "cbc:StreetName": invoice.buyer.street,
-            ...(invoice.buyer.street2 && {
-              "cbc:AdditionalStreetName": invoice.buyer.street2,
+            "cbc:StreetName": creditNote.buyer.street,
+            ...(creditNote.buyer.street2 && {
+              "cbc:AdditionalStreetName": creditNote.buyer.street2,
             }),
-            "cbc:CityName": invoice.buyer.city,
-            "cbc:PostalZone": invoice.buyer.postalZone,
+            "cbc:CityName": creditNote.buyer.city,
+            "cbc:PostalZone": creditNote.buyer.postalZone,
             "cac:Country": {
-              "cbc:IdentificationCode": invoice.buyer.country,
+              "cbc:IdentificationCode": creditNote.buyer.country,
             },
           },
           "cac:PartyTaxScheme": {
-            "cbc:CompanyID": invoice.buyer.vatNumber,
+            "cbc:CompanyID": creditNote.buyer.vatNumber,
             "cac:TaxScheme": {
               "cbc:ID": "VAT",
             },
           },
         },
       },
-      "cac:PaymentMeans": invoice.paymentMeans.map((payment) => ({
+      "cac:PaymentMeans": creditNote.paymentMeans.map((payment) => ({
         "cbc:PaymentMeansCode": {
           "@_name": "Credit Transfer",
           "#text": "30",
@@ -140,9 +139,9 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
           },
         },
       })),
-      ...(invoice.paymentTerms && {
+      ...(creditNote.paymentTerms && {
         "cac:PaymentTerms": {
-          "cbc:Note": invoice.paymentTerms.note,
+          "cbc:Note": creditNote.paymentTerms.note,
         },
       }),
       "cac:TaxTotal": {
@@ -189,9 +188,9 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
           "#text": totals.payableAmount || totals.taxInclusiveAmount,
         },
       },
-      "cac:InvoiceLine": lines.map((item, index) => ({
+      "cac:CreditNoteLine": lines.map((item, index) => ({
         "cbc:ID": (index + 1).toString(),
-        "cbc:InvoicedQuantity": {
+        "cbc:CreditedQuantity": {
           "@_unitCode": item.unitCode,
           "#text": item.quantity,
         },
@@ -223,5 +222,5 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
     },
   };
 
-  return builder.build(ublInvoice);
+  return builder.build(ublCreditNote);
 }

@@ -20,11 +20,11 @@ export type VatCategory = keyof typeof VAT_CATEGORIES;
 const toDecimalString = (val: number | string) => new Decimal(val).toFixed(2);
 
 // Create a reusable decimal transform schema
-const decimalSchema = z.union([z.number(), z.string()])
+export const decimalSchema = z.union([z.number(), z.string()])
   .transform(toDecimalString)
   .openapi({ type: 'string', example: "21.00" });
 
-const partySchema = z.object({
+export const partySchema = z.object({
   vatNumber: z.string().openapi({ example: "BE0123456789" }),
   name: z.string().openapi({ example: "Example Company" }),
   street: z.string().openapi({ example: "Example Street 1" }),
@@ -34,25 +34,25 @@ const partySchema = z.object({
   country: z.string().length(2, 'Country code must be in ISO 3166-1:Alpha2 format').openapi({ example: "BE" }),
 }).openapi({ ref: "Party" });
 
-const paymentMeansSchema = z.object({
+export const paymentMeansSchema = z.object({
   paymentMethod: z.enum(['credit_transfer']).default('credit_transfer').openapi({ example: "credit_transfer" }),
   reference: z.string().default("").openapi({ example: "INV-2026-001" }),
   iban: z.string().openapi({ example: "BE1234567890" }),
 }).openapi({ ref: "PaymentMeans" });
 
-const vatCategoryEnum = z.enum(Object.keys(VAT_CATEGORIES) as [VatCategory, ...VatCategory[]])
+export const vatCategoryEnum = z.enum(Object.keys(VAT_CATEGORIES) as [VatCategory, ...VatCategory[]])
   .openapi({
     example: "S",
     description: "VAT category code",
     enum: Object.entries(VAT_CATEGORIES).map(([key, value]) => (`${key}: ${value}`))
   });
 
-const vatSchema = z.object({
+export const vatSchema = z.object({
   category: vatCategoryEnum.default("S"),
   percentage: decimalSchema,
 }).openapi({ ref: "VAT" });
 
-const vatSubtotalSchema = z.object({
+export const vatSubtotalSchema = z.object({
   taxableAmount: decimalSchema,
   vatAmount: decimalSchema,
   category: vatCategoryEnum,
@@ -60,13 +60,13 @@ const vatSubtotalSchema = z.object({
   exemptionReasonCode: z.string().nullish().openapi({description: "If the invoice is exempt from VAT, this is required. The exemption reason code identifier must belong to the CEF VATEX code list	found [here](https://docs.peppol.eu/poacc/billing/3.0/2024-Q4/codelist/vatex/)."}),
 }).openapi({ ref: "VATSubtotal" });
 
-const totalsSchema = z.object({
+export const totalsSchema = z.object({
   taxExclusiveAmount: decimalSchema,
   taxInclusiveAmount: decimalSchema,
   payableAmount: decimalSchema.nullish(),
-}).openapi({ ref: "Totals", description: "If not provided, the totals will be calculated from the invoice lines." });
+}).openapi({ ref: "Totals", description: "If not provided, the totals will be calculated from the document lines." });
 
-const lineSchema = z.object({
+export const lineSchema = z.object({
   name: z.string().default("").openapi({ example: "Consulting Services" }),
   description: z.string().nullish().openapi({ example: "Professional consulting services" }),
   sellersId: z.string().nullish().openapi({ example: "CS-001" }),
@@ -77,12 +77,12 @@ const lineSchema = z.object({
   vat: vatSchema,
 }).openapi({ ref: "Line" });
 
-const vatTotalsSchema = z.object({
+export const vatTotalsSchema = z.object({
   totalVatAmount: decimalSchema,
   subtotals: z.array(vatSubtotalSchema),
-}).openapi({ ref: "VatTotals", description: "If not provided, the VAT totals will be calculated from the invoice lines." });
+}).openapi({ ref: "VatTotals", description: "If not provided, the VAT totals will be calculated from the document lines." });
 
-const attachmentSchema = z.object({
+export const attachmentSchema = z.object({
   id: z.string().openapi({ example: "ATT-001" }),
   documentType: z.string().default("130").openapi({ example: "130" }),
   mimeCode: z.string().default("application/pdf").openapi({ 
@@ -117,10 +117,10 @@ export const sendInvoiceSchema = invoiceSchema.extend({
   issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "If not provided, the issue date will be the current date." }),
   dueDate: z.string().date().nullish().openapi({ example: "2024-04-20", description: "If not provided, the due date will be 1 month from the issue date." }),
   seller: partySchema.nullish().openapi({ description: "If not provided, the seller will be the company that is sending the invoice." }),
-});
+}).openapi({ ref: "SendInvoice" });
 
 export type Invoice = z.infer<typeof invoiceSchema>;
-export type InvoiceLine = z.infer<typeof lineSchema>;
+export type DocumentLine = z.infer<typeof lineSchema>;
 export type Party = z.infer<typeof partySchema>;
 export type PaymentMeans = z.infer<typeof paymentMeansSchema>;
 export type PaymentTerms = z.infer<typeof invoiceSchema.shape.paymentTerms>;

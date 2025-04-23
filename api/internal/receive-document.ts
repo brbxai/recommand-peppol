@@ -8,7 +8,7 @@ import { getCompanyByPeppolId } from "@peppol/data/companies";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { parseInvoiceFromXML } from "@peppol/utils/parsing/invoice/from-xml";
 import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
-import { fetchBillingProfile } from "@peppol/lib/billing";
+import { parseCreditNoteFromXML } from "@peppol/utils/parsing/creditnote/from-xml";
 
 export const receiveDocumentSchema = z.object({
   senderId: z.string(),
@@ -44,13 +44,20 @@ server.post(
 
     // Parse the XML document
     let parsedDocument = null;
-    let type: "invoice" | "unknown" = "unknown";
+    let type: "invoice" | "creditNote" | "unknown" = "unknown";
     if (jsonBody.docTypeId.includes("Invoice")) {
       try {
         parsedDocument = parseInvoiceFromXML(jsonBody.body);
         type = "invoice";
       } catch (error) {
         console.error("Failed to parse invoice XML:", error);
+      }
+    } else if (jsonBody.docTypeId.includes("CreditNote")) {
+      try {
+        parsedDocument = parseCreditNoteFromXML(jsonBody.body);
+        type = "creditNote";
+      } catch (error) {
+        console.error("Failed to parse credit note XML:", error);
       }
     }
 

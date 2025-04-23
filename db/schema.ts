@@ -13,6 +13,7 @@ import { ulid } from "ulid";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -28,7 +29,7 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
 export const zodValidCountryCodes = z.enum(["BE"]);
 export const validCountryCodes = pgEnum("peppol_valid_country_codes", zodValidCountryCodes.options);
 
-export const supportedDocumentTypes = z.enum(["invoice", "unknown"]);
+export const supportedDocumentTypes = z.enum(["invoice", "creditNote", "unknown"]);
 export const supportedDocumentTypeEnum = pgEnum(
   "peppol_supported_document_type",
   supportedDocumentTypes.options
@@ -210,7 +211,7 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   xml: text("xml"), // XML body of the document, can be null if the body was not kept
 
   type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
-  parsed: jsonb("parsed").$type<Invoice>(),
+  parsed: jsonb("parsed").$type<Invoice | CreditNote>(),
 
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
   createdAt: timestamp("created_at").defaultNow().notNull(),

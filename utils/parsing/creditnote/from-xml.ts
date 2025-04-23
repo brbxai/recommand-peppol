@@ -1,12 +1,12 @@
 import { XMLParser } from "fast-xml-parser";
-import { invoiceSchema, type Invoice } from "./schemas";
+import { creditNoteSchema, type CreditNote } from "./schemas";
 import { getTextContent, getNumberContent, getPercentage } from "../xml-helpers";
 
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
   isArray: (name, jpath) => {
-    return name === "InvoiceLine" || 
+    return name === "CreditNoteLine" || 
            name === "PaymentMeans" || 
            name === "TaxSubtotal" ||
            name === "PartyIdentification";
@@ -14,23 +14,22 @@ const parser = new XMLParser({
   removeNSPrefix: true,
 });
 
-export function parseInvoiceFromXML(xml: string): Invoice {
+export function parseCreditNoteFromXML(xml: string): CreditNote {
   const parsed = parser.parse(xml);
-  const invoice = parsed.Invoice;
+  const creditNote = parsed.CreditNote;
 
-  if (!invoice) {
-    throw new Error("Invalid XML: No Invoice element found");
+  if (!creditNote) {
+    throw new Error("Invalid XML: No CreditNote element found");
   }
 
-  // Extract basic invoice information
-  const invoiceNumber = getTextContent(invoice.ID);
-  const issueDate = getTextContent(invoice.IssueDate);
-  const dueDate = getTextContent(invoice.DueDate);
-  const note = getTextContent(invoice.Note);
-  const buyerReference = getTextContent(invoice.BuyerReference);
+  // Extract basic credit note information
+  const creditNoteNumber = getTextContent(creditNote.ID);
+  const issueDate = getTextContent(creditNote.IssueDate);
+  const note = getTextContent(creditNote.Note);
+  const buyerReference = getTextContent(creditNote.BuyerReference);
 
   // Extract attachments
-  const attachments = (invoice.AdditionalDocumentReference || []).map((ref: any) => ({
+  const attachments = (creditNote.AdditionalDocumentReference || []).map((ref: any) => ({
     id: getTextContent(ref.ID),
     documentType: getTextContent(ref.DocumentType),
     description: getTextContent(ref.DocumentDescription),
@@ -41,7 +40,7 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   }));
 
   // Extract seller information
-  const sellerParty = invoice.AccountingSupplierParty?.Party;
+  const sellerParty = creditNote.AccountingSupplierParty?.Party;
   if (!sellerParty) {
     throw new Error("Invalid XML: No seller party information found");
   }
@@ -57,7 +56,7 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   };
 
   // Extract buyer information
-  const buyerParty = invoice.AccountingCustomerParty?.Party;
+  const buyerParty = creditNote.AccountingCustomerParty?.Party;
   if (!buyerParty) {
     throw new Error("Invalid XML: No buyer party information found");
   }
@@ -73,24 +72,24 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   };
 
   // Extract payment means
-  const paymentMeans = (invoice.PaymentMeans || []).map((payment: any) => ({
+  const paymentMeans = (creditNote.PaymentMeans || []).map((payment: any) => ({
     paymentMethod: 'credit_transfer' as const,
     reference: getTextContent(payment.PaymentID),
     iban: getTextContent(payment.PayeeFinancialAccount?.ID),
   }));
 
   // Extract payment terms if present
-  const paymentTerms = invoice.PaymentTerms ? {
-    note: getTextContent(invoice.PaymentTerms.Note),
+  const paymentTerms = creditNote.PaymentTerms ? {
+    note: getTextContent(creditNote.PaymentTerms.Note),
   } : undefined;
 
-  // Extract invoice lines
-  const lines = (invoice.InvoiceLine || []).map((line: any) => ({
+  // Extract credit note lines
+  const lines = (creditNote.CreditNoteLine || []).map((line: any) => ({
     name: getTextContent(line.Item?.Name),
     description: getTextContent(line.Item?.Description),
     sellersId: getTextContent(line.Item?.StandardItemIdentification?.ID),
-    quantity: getNumberContent(line.InvoicedQuantity),
-    unitCode: getTextContent(line.InvoicedQuantity?.["@_unitCode"]),
+    quantity: getNumberContent(line.CreditedQuantity),
+    unitCode: getTextContent(line.CreditedQuantity?.["@_unitCode"]),
     netAmount: getNumberContent(line.LineExtensionAmount),
     netPriceAmount: getNumberContent(line.Price?.PriceAmount),
     vat: {
@@ -100,7 +99,7 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   }));
 
   // Extract VAT information
-  const taxTotal = invoice.TaxTotal;
+  const taxTotal = creditNote.TaxTotal;
   if (!taxTotal) {
     throw new Error("Invalid XML: No tax total information found");
   }
@@ -117,7 +116,7 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   };
 
   // Extract totals
-  const legalMonetaryTotal = invoice.LegalMonetaryTotal;
+  const legalMonetaryTotal = creditNote.LegalMonetaryTotal;
   if (!legalMonetaryTotal) {
     throw new Error("Invalid XML: No legal monetary total information found");
   }
@@ -128,10 +127,9 @@ export function parseInvoiceFromXML(xml: string): Invoice {
     payableAmount: getNumberContent(legalMonetaryTotal.PayableAmount),
   };
 
-  const parsedInvoice = {
-    invoiceNumber,
+  const parsedCreditNote = {
+    creditNoteNumber,
     issueDate,
-    dueDate,
     note,
     buyerReference,
     attachments: attachments.length > 0 ? attachments : [],
@@ -144,8 +142,8 @@ export function parseInvoiceFromXML(xml: string): Invoice {
     totals,
   };
 
-  // Validate the parsed invoice
-  const zodInvoice = invoiceSchema.parse(parsedInvoice);
+  // Validate the parsed credit note
+  const zodCreditNote = creditNoteSchema.parse(parsedCreditNote);
 
-  return zodInvoice;
+  return zodCreditNote;
 } 
