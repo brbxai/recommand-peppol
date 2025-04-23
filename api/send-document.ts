@@ -120,21 +120,21 @@ server.post(
         return c.json(actionFailure("Document could not be parsed."));
       }
 
-      // const response = await sendAs4({
-      //   senderId: senderAddress,
-      //   receiverId: recipientAddress,
-      //   docTypeId: doctypeId,
-      //   processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-      //   countryC1: countryC1,
-      //   body: xmlDocument,
-      // });
+      const response = await sendAs4({
+        senderId: senderAddress,
+        receiverId: recipientAddress,
+        docTypeId: doctypeId,
+        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+        countryC1: countryC1,
+        body: xmlDocument,
+      });
 
-      // const jsonResponse = await response.json();
-      // if (!response.ok || !jsonResponse.overallSuccess) {
-      //   return c.json(
-      //     actionFailure("Failed to send document over Peppol network.")
-      //   );
-      // }
+      const jsonResponse = await response.json();
+      if (!response.ok || !jsonResponse.overallSuccess) {
+        return c.json(
+          actionFailure("Failed to send document over Peppol network.")
+        );
+      }
 
       // Create a new transmittedDocument
       const transmittedDocument = await db
