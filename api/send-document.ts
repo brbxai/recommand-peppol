@@ -106,6 +106,7 @@ server.post(
         const ublCreditNote = creditNoteToUBL(creditNote, senderAddress, recipientAddress);
         xmlDocument = ublCreditNote;
         type = "creditNote";
+        doctypeId = "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
         parsedDocument = creditNote;
       } else if (jsonBody.documentType === SendDocumentType.XML) {
         xmlDocument = document as string;
