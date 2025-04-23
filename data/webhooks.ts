@@ -76,6 +76,7 @@ export async function callWebhook(webhook: Webhook, transmittedDocument: { id: s
   const response = await fetch(webhook.url, {
     method: "POST",
     body: JSON.stringify({
+      eventType: "document.received",
       id: transmittedDocument.id,
       teamId: transmittedDocument.teamId,
       companyId: transmittedDocument.companyId,
