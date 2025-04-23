@@ -9,7 +9,8 @@ const parser = new XMLParser({
     return name === "InvoiceLine" || 
            name === "PaymentMeans" || 
            name === "TaxSubtotal" ||
-           name === "PartyIdentification";
+           name === "PartyIdentification" ||
+           name === "AdditionalDocumentReference";
   },
   removeNSPrefix: true,
 });
