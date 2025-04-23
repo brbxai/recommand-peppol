@@ -77,7 +77,7 @@ export async function callWebhook(webhook: Webhook, transmittedDocument: { id: s
     method: "POST",
     body: JSON.stringify({
       eventType: "document.received",
-      id: transmittedDocument.id,
+      documentId: transmittedDocument.id,
       teamId: transmittedDocument.teamId,
       companyId: transmittedDocument.companyId,
     }),
