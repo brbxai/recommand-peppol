@@ -42,7 +42,7 @@ export async function createFirstPayment(
     },
     customerId: mollieCustomerId,
     sequenceType: SequenceType.first,
-    description: "First payment",
+    description: "Credit card validation",
     redirectUrl: `${process.env.BASE_URL}/`,
     webhookUrl: `${process.env.BASE_URL}/api/peppol/mollie/mandate-webhook`,
     metadata: {
