@@ -20,6 +20,6 @@ export async function getMigrationToken(peppolAddress: string) {
     return migrationToken;
   }catch(error) {
     console.error(error);
-    throw new Error(`Failed to get migration token: ${error}`);
+    throw new Error(`Failed to get migration token. The company you are trying to register is probably already registered with a different Peppol Access Point. Please ensure this is not the case. Feel free to contact support@recommand.eu if you are unsure about how to proceed.`);
   }
 }
