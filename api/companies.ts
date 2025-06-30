@@ -130,7 +130,7 @@ const _createCompany = server.post(
               country: { type: "string" },
               enterpriseNumber: { type: "string", nullable: true },
               vatNumber: { type: "string", nullable: true },
-              isSmpRecipient: { type: "boolean" },
+              isSmpRecipient: { type: "boolean", default: true },
             },
             required: ["name", "address", "postalCode", "city", "country"],
           },
@@ -172,7 +172,7 @@ const _createCompany = server.post(
       country: zodValidCountryCodes,
       enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
       vatNumber: z.string().nullish().transform(cleanVatNumber),
-      isSmpRecipient: z.boolean(),
+      isSmpRecipient: z.boolean().default(true),
     })
   ),
   async (c) => {
@@ -220,7 +220,7 @@ const _updateCompany = server.put(
               country: { type: "string" },
               enterpriseNumber: { type: "string", nullable: true },
               vatNumber: { type: "string", nullable: true },
-              isSmpRecipient: { type: "boolean" },
+              isSmpRecipient: { type: "boolean", default: true },
             },
             required: ["name", "address", "postalCode", "city", "country"],
           },
@@ -263,7 +263,7 @@ const _updateCompany = server.put(
       country: zodValidCountryCodes,
       enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
       vatNumber: z.string().nullish().transform(cleanVatNumber),
-      isSmpRecipient: z.boolean(),
+      isSmpRecipient: z.boolean().default(true),
     })
   ),
   async (c) => {
