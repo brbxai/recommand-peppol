@@ -35,9 +35,19 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
       "cbc:ID": invoice.invoiceNumber,
       "cbc:IssueDate": invoice.issueDate,
       "cbc:DueDate": invoice.dueDate,
+      "cbc:InvoiceTypeCode": "380",
       ...(invoice.note && { "cbc:Note": invoice.note }),
+      "cbc:DocumentCurrencyCode": "EUR",
       ...(invoice.buyerReference && {
         "cbc:BuyerReference": invoice.buyerReference,
+      }),
+      ...(invoice.purchaseOrderReference && {
+        "cac:OrderReference": {
+          "cbc:ID": invoice.purchaseOrderReference,
+        },
+      }),
+      ...(!invoice.buyerReference && !invoice.purchaseOrderReference && {
+        "cbc:BuyerReference": invoice.invoiceNumber,
       }),
       ...(invoice.attachments && {
         "cac:AdditionalDocumentReference": invoice.attachments.map((attachment) => ({
@@ -64,6 +74,10 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
       }),
       "cac:AccountingSupplierParty": {
         "cac:Party": {
+          "cbc:EndpointID": {
+            "@_schemeID": sender.schemeId,
+            "#text": sender.identifier,
+          },
           "cac:PartyIdentification": [
             {
               "cbc:ID": {
@@ -92,10 +106,17 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
               "cbc:ID": "VAT",
             },
           },
+          "cac:PartyLegalEntity": {
+            "cbc:RegistrationName": invoice.seller.name,
+          },
         },
       },
       "cac:AccountingCustomerParty": {
         "cac:Party": {
+          "cbc:EndpointID": {
+            "@_schemeID": recipient.schemeId,
+            "#text": recipient.identifier,
+          },
           "cac:PartyIdentification": [
             {
               "cbc:ID": {
@@ -123,6 +144,9 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
             "cac:TaxScheme": {
               "cbc:ID": "VAT",
             },
+          },
+          "cac:PartyLegalEntity": {
+            "cbc:RegistrationName": invoice.buyer.name,
           },
         },
       },

@@ -34,9 +34,19 @@ export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, r
       "cbc:ProfileID": "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
       "cbc:ID": creditNote.creditNoteNumber,
       "cbc:IssueDate": creditNote.issueDate,
+      "cbc:CreditNoteTypeCode": "381",
       ...(creditNote.note && { "cbc:Note": creditNote.note }),
+      "cbc:DocumentCurrencyCode": "EUR",
       ...(creditNote.buyerReference && {
         "cbc:BuyerReference": creditNote.buyerReference,
+      }),
+      ...(creditNote.purchaseOrderReference && {
+        "cac:OrderReference": {
+          "cbc:ID": creditNote.purchaseOrderReference,
+        },
+      }),
+      ...(!creditNote.buyerReference && !creditNote.purchaseOrderReference && {
+        "cbc:BuyerReference": creditNote.creditNoteNumber,
       }),
       ...(creditNote.attachments && {
         "cac:AdditionalDocumentReference": creditNote.attachments.map((attachment) => ({
@@ -63,6 +73,10 @@ export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, r
       }),
       "cac:AccountingSupplierParty": {
         "cac:Party": {
+          "cbc:EndpointID": {
+            "@_schemeID": sender.schemeId,
+            "#text": sender.identifier,
+          },
           "cac:PartyIdentification": [
             {
               "cbc:ID": {
@@ -91,10 +105,17 @@ export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, r
               "cbc:ID": "VAT",
             },
           },
+          "cac:PartyLegalEntity": {
+            "cbc:RegistrationName": creditNote.seller.name,
+          },
         },
       },
       "cac:AccountingCustomerParty": {
         "cac:Party": {
+          "cbc:EndpointID": {
+            "@_schemeID": recipient.schemeId,
+            "#text": recipient.identifier,
+          },
           "cac:PartyIdentification": [
             {
               "cbc:ID": {
@@ -122,6 +143,9 @@ export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, r
             "cac:TaxScheme": {
               "cbc:ID": "VAT",
             },
+          },
+          "cac:PartyLegalEntity": {
+            "cbc:RegistrationName": creditNote.buyer.name,
           },
         },
       },

@@ -7,6 +7,7 @@ export const creditNoteSchema = z.object({
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
   note: z.string().nullish().openapi({ example: "Thank you for your business" }),
   buyerReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
+  purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
   seller: partySchema,
   buyer: partySchema,
   paymentMeans: z.array(paymentMeansSchema),
