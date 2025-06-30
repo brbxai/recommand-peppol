@@ -32,9 +32,7 @@ export async function getCompanyById(
     .then((rows) => rows[0]);
 }
 
-export async function getCompanyByPeppolId(
-  peppolId: string
-): Promise<Company> {
+export async function getCompanyByPeppolId(peppolId: string): Promise<Company> {
   // The peppolId might start with iso6523-actorid-upis::
   if (peppolId.startsWith("iso6523-actorid-upis::")) {
     peppolId = peppolId.split("::")[1];
@@ -74,7 +72,11 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
     .then((rows) => rows[0]);
 
   try {
-    await registerCompany(createdCompany);
+    if (createdCompany.isSmpRecipient) {
+      await registerCompany(createdCompany);
+    } else {
+      await unregisterCompany(createdCompany);
+    }
   } catch (error) {
     await db.delete(companies).where(eq(companies.id, createdCompany.id));
     throw error;
@@ -86,7 +88,11 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
 export async function updateCompany(
   company: InsertCompany & { id: string }
 ): Promise<Company> {
-  await registerCompany(company);
+  if (company.isSmpRecipient) {
+    await registerCompany(company);
+  } else {
+    await unregisterCompany(company);
+  }
 
   const updatedCompany = await db
     .update(companies)

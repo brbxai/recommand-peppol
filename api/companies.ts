@@ -42,6 +42,7 @@ const _companies = server.get(
               country: { type: "string" },
               enterpriseNumber: { type: "string" },
               vatNumber: { type: "string" },
+              isSmpRecipient: { type: "boolean" },
               createdAt: { type: "string", format: "date-time" },
               updatedAt: { type: "string", format: "date-time" },
             },
@@ -84,6 +85,7 @@ const _company = server.get(
             country: { type: "string" },
             enterpriseNumber: { type: "string" },
             vatNumber: { type: "string" },
+            isSmpRecipient: { type: "boolean" },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
           },
@@ -128,6 +130,7 @@ const _createCompany = server.post(
               country: { type: "string" },
               enterpriseNumber: { type: "string", nullable: true },
               vatNumber: { type: "string", nullable: true },
+              isSmpRecipient: { type: "boolean" },
             },
             required: ["name", "address", "postalCode", "city", "country"],
           },
@@ -148,6 +151,7 @@ const _createCompany = server.post(
             country: { type: "string" },
             enterpriseNumber: { type: "string" },
             vatNumber: { type: "string" },
+            isSmpRecipient: { type: "boolean" },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
           },
@@ -168,6 +172,7 @@ const _createCompany = server.post(
       country: zodValidCountryCodes,
       enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
       vatNumber: z.string().nullish().transform(cleanVatNumber),
+      isSmpRecipient: z.boolean(),
     })
   ),
   async (c) => {
@@ -215,6 +220,7 @@ const _updateCompany = server.put(
               country: { type: "string" },
               enterpriseNumber: { type: "string", nullable: true },
               vatNumber: { type: "string", nullable: true },
+              isSmpRecipient: { type: "boolean" },
             },
             required: ["name", "address", "postalCode", "city", "country"],
           },
@@ -235,6 +241,7 @@ const _updateCompany = server.put(
             country: { type: "string" },
             enterpriseNumber: { type: "string" },
             vatNumber: { type: "string" },
+            isSmpRecipient: { type: "boolean" },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
           },
@@ -256,6 +263,7 @@ const _updateCompany = server.put(
       country: zodValidCountryCodes,
       enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
       vatNumber: z.string().nullish().transform(cleanVatNumber),
+      isSmpRecipient: z.boolean(),
     })
   ),
   async (c) => {

@@ -153,6 +153,7 @@ export const companies = pgTable("peppol_companies", {
   country: validCountryCodes("country").notNull(),
   enterpriseNumber: text("enterprise_number").unique().notNull(),
   vatNumber: text("vat_number").unique(),
+  isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" })
     .defaultNow()

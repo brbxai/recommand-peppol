@@ -6,6 +6,7 @@ import type { Company } from "../types/company";
 import { zodValidCountryCodes } from "../db/schema";
 import { z } from "zod";
 import { AsyncButton } from "@core/components/async-button";
+import { Checkbox } from "@core/components/ui/checkbox";
 
 type CompanyFormProps = {
     company: Partial<Company>;
@@ -78,15 +79,28 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                     onChange={(e) => onChange({ ...company, vatNumber: e.target.value || null })}
                 />
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="enterpriseNumber">Enterprise Number (Optional)</Label>
-                <Input
-                    id="enterpriseNumber"
-                    value={company.enterpriseNumber || ""}
-                    onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value })}
-                />
+            <div className="space-y-1">
+                <div className="space-y-2">
+                    <Label htmlFor="enterpriseNumber">Enterprise Number (Optional)</Label>
+                    <Input
+                        id="enterpriseNumber"
+                        value={company.enterpriseNumber || ""}
+                        onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value })}
+                    />
+                    <p className="text-xs text-pretty text-muted-foreground">Either the VAT number or the enterprise number is required. If no enterprise number is provided, it will be inferred from the VAT number.</p>
+                </div>
             </div>
-            <p className="text-sm text-balance text-muted-foreground">Either the VAT number or the enterprise number is required. If no enterprise number is provided, it will be inferred from the VAT number.</p>
+            <div className="space-y-1">
+                <div className="flex items-start gap-2">
+                    <Checkbox
+                        id="isSmpRecipient"
+                        checked={company.isSmpRecipient}
+                        onCheckedChange={(checked) => onChange({ ...company, isSmpRecipient: checked === true })}
+                    />
+                    <Label htmlFor="isSmpRecipient" className="text-sm mt-0 pt-0">Register as recipient</Label>
+                </div>
+                <p className="text-xs text-pretty text-muted-foreground">If enabled, the company will be registered as a recipient in our SMP (the Peppol address book). This will allow you to send and receive documents. If disabled, you will only be able to send documents via Recommand.</p>
+            </div>
             <div className="flex justify-end gap-2">
                 <Button
                     type="button"

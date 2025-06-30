@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_companies" ADD COLUMN "is_smp_recipient" boolean DEFAULT true NOT NULL;
