@@ -2,6 +2,7 @@ import { billingProfiles } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq } from "drizzle-orm";
 import { createMollieCustomer } from "./mollie";
+import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 
 export async function getBillingProfile(teamId: string) {
   const billingProfile = await db
@@ -27,6 +28,11 @@ export async function upsertBillingProfile(
       set: billingProfile,
     })
     .returning();
+
+  sendSystemAlert(
+    "Billing Profile Created",
+    `Billing profile ${upsertedBillingProfile.id} for company ${upsertedBillingProfile.companyName} has been created.`
+  );
 
   if (!upsertedBillingProfile.mollieCustomerId) {
     const mollieCustomer = await createMollieCustomer(

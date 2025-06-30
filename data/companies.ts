@@ -3,6 +3,7 @@ import { db } from "@recommand/db";
 import { eq, and } from "drizzle-orm";
 import { registerCompany, unregisterCompany } from "./phoss-smp";
 import { cleanEnterpriseNumber, cleanVatNumber } from "@peppol/utils/util";
+import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -77,8 +78,16 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
     } else {
       await unregisterCompany(createdCompany);
     }
+    sendSystemAlert(
+      "Company Created",
+      `Company ${createdCompany.name} has been created. It is ${createdCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
+    );
   } catch (error) {
     await db.delete(companies).where(eq(companies.id, createdCompany.id));
+    sendSystemAlert(
+      "Company Creation Failed",
+      `Company ${createdCompany.name} could not be created. Error: \`\`\`\n${error}\n\`\`\``
+    );
     throw error;
   }
 
@@ -102,6 +111,11 @@ export async function updateCompany(
     )
     .returning()
     .then((rows) => rows[0]);
+
+  sendSystemAlert(
+    "Company Updated",
+    `Company ${updatedCompany.name} has been updated. It is ${updatedCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
+  );
 
   return updatedCompany;
 }

@@ -9,6 +9,7 @@ import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { parseInvoiceFromXML } from "@peppol/utils/parsing/invoice/from-xml";
 import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
 import { parseCreditNoteFromXML } from "@peppol/utils/parsing/creditnote/from-xml";
+import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 
 export const receiveDocumentSchema = z.object({
   senderId: z.string(),
@@ -51,6 +52,14 @@ server.post(
         type = "invoice";
       } catch (error) {
         console.error("Failed to parse invoice XML:", error);
+        sendSystemAlert(
+          "Document Parsing Error",
+          `Failed to parse invoice XML\n\n` +
+            `Company: ${company.name}\n` +
+            `Sender: ${senderId}\n` +
+            `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          "error"
+        );
       }
     } else if (jsonBody.docTypeId.includes("CreditNote")) {
       try {
@@ -58,6 +67,14 @@ server.post(
         type = "creditNote";
       } catch (error) {
         console.error("Failed to parse credit note XML:", error);
+        sendSystemAlert(
+          "Document Parsing Error",
+          `Failed to parse credit note XML\n\n` +
+            `Company: ${company.name}\n` +
+            `Sender: ${senderId}\n` +
+            `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          "error"
+        );
       }
     }
 
