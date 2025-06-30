@@ -22,6 +22,7 @@ import {
 import { addMonths } from "date-fns";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
+import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 
 const server = new Server();
 
@@ -132,6 +133,11 @@ server.post(
 
       const jsonResponse = await response.json();
       if (!response.ok || !jsonResponse.overallSuccess) {
+        sendSystemAlert(
+          "Document Sending Failed",
+          `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(jsonResponse, null, 2)}\n\`\`\``,
+          "error"
+        );
         return c.json(
           actionFailure("Failed to send document over Peppol network.")
         );
