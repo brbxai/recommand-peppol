@@ -8,7 +8,7 @@ RESTful, well-documented, and open-source. Connect your app to Peppol in minutes
 
 **Why?**
 We truly believe that invoicing is a core part of any business and shouldn't be left to the big players.
-You should be in total control of your business' data and operations. Before Peppol, invoicing was easy and accessible, it could be integrated into any software, we want to keep it that way.
+You should be in total control of your business' data and operations. Before Peppol, invoicing was easy and accessible - it could be integrated into any software - we want to keep it that way.
 
 
 ## Features
