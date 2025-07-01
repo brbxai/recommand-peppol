@@ -40,3 +40,6 @@ See [our pricing page](https://recommand.eu/en/pricing) for more info.
 - [GitHub](https://github.com/brbxai/recommand-peppol)
 - [Discord](https://discord.gg/a2tcQYA3ew)
 - [Contact](https://recommand.eu/contact) or email us at [support@recommand.eu](mailto:support@recommand.eu)
+
+## License
+This project is licensed under the AGPL-3.0 license. However, when using our hosted API service, you are subject to our terms of service instead of the AGPL-3.0 license.
