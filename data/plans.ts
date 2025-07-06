@@ -15,7 +15,7 @@ export const allPlans: Plan[] = [
   {
     id: "developer",
     isAvailable: true,
-    name: "Developer",
+    name: "Free",
     basePrice: 0,
     vatRate: 0.21,
     includedMonthlyDocuments: 25,
