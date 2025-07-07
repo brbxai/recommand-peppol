@@ -36,7 +36,11 @@ server.post(
     summary: "Send Document",
     tags: ["Sending"],
     responses: {
-      ...describeSuccessResponse("Successfully sent document"),
+      ...describeSuccessResponse("Successfully sent document", {
+        teamId: { type: "string", description: "The ID of the team that sent the document" },
+        companyId: { type: "string", description: "The ID of the company that sent the document" },
+        id: { type: "string", description: "The ID of the transmitted document" },
+      }),
       ...describeErrorResponse(400, "Invalid document data provided"),
     },
   }),
@@ -170,7 +174,11 @@ server.post(
         transmittedDocumentId: transmittedDocument.id,
       });
 
-      return c.json(actionSuccess());
+      return c.json(actionSuccess({
+        teamId: c.var.team.id,
+        companyId: company.id,
+        id: transmittedDocument.id,
+      }));
     } catch (error) {
       return c.json(
         actionFailure(
