@@ -30,8 +30,8 @@ export async function upsertBillingProfile(
     .returning();
 
   sendSystemAlert(
-    "Billing Profile Created",
-    `Billing profile ${upsertedBillingProfile.id} for company ${upsertedBillingProfile.companyName} has been created.`
+    "Billing Profile Upserted",
+    `Billing profile ${upsertedBillingProfile.id} for company ${upsertedBillingProfile.companyName} has been upserted.`
   );
 
   if (!upsertedBillingProfile.mollieCustomerId) {
