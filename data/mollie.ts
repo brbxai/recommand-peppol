@@ -38,11 +38,11 @@ export async function createFirstPayment(
   const payment = await mollie.payments.create({
     amount: {
       currency: "EUR",
-      value: "0.00",
+      value: "0.02",
     },
     customerId: mollieCustomerId,
     sequenceType: SequenceType.first,
-    description: "Credit card validation",
+    description: "To complete your registration, we need to securely verify your payment method.",
     redirectUrl: `${process.env.BASE_URL}/`,
     webhookUrl: `${process.env.BASE_URL}/api/peppol/mollie/mandate-webhook`,
     metadata: {
