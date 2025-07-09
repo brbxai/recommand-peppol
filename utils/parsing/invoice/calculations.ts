@@ -36,6 +36,13 @@ export function calculateTotals(invoice: Invoice | CreditNote) {
   };
 }
 
+export function calculatePrepaidAmount(taxInclusiveAmount: string, payableAmount: string) {
+  if(new Decimal(payableAmount).gt(new Decimal(taxInclusiveAmount))) {
+    return new Decimal(0).toFixed(2);
+  }
+  return new Decimal(taxInclusiveAmount).minus(new Decimal(payableAmount)).toFixed(2);
+}
+
 export function calculateVat(invoice: Invoice | CreditNote) {
   const subtotalsByCategory = invoice.lines.reduce((acc, line) => {
     const category = line.vat.category;

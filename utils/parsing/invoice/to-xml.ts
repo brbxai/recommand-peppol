@@ -1,6 +1,6 @@
 import { XMLBuilder } from "fast-xml-parser";
 import type { Invoice } from "./schemas";
-import { calculateLineAmount, calculateTotals, calculateVat } from "./calculations";
+import { calculateLineAmount, calculatePrepaidAmount, calculateTotals, calculateVat } from "./calculations";
 import { parsePeppolAddress } from "../peppol-address";
 
 const builder = new XMLBuilder({
@@ -207,6 +207,14 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
         "cbc:TaxInclusiveAmount": {
           "@_currencyID": "EUR",
           "#text": totals.taxInclusiveAmount,
+        },
+        "cbc:PrepaidAmount": {
+          "@_currencyID": "EUR",
+          "#text": calculatePrepaidAmount(totals.taxInclusiveAmount, totals.payableAmount || totals.taxInclusiveAmount),
+        },
+        "cbc:PayableRoundingAmount": {
+          "@_currencyID": "EUR",
+          "#text": "0.00",
         },
         "cbc:PayableAmount": {
           "@_currencyID": "EUR",
