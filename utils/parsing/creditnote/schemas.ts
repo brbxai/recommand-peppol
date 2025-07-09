@@ -10,7 +10,7 @@ export const creditNoteSchema = z.object({
   purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
   seller: partySchema,
   buyer: partySchema,
-  paymentMeans: z.array(paymentMeansSchema),
+  paymentMeans: z.array(paymentMeansSchema).nullish(),
   paymentTerms: z.object({
     note: z.string().openapi({ example: "Net 30" }),
   }).nullish(),

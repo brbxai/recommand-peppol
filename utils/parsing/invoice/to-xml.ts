@@ -1,6 +1,11 @@
 import { XMLBuilder } from "fast-xml-parser";
 import type { Invoice } from "./schemas";
-import { calculateLineAmount, calculatePrepaidAmount, calculateTotals, calculateVat } from "./calculations";
+import {
+  calculateLineAmount,
+  calculatePrepaidAmount,
+  calculateTotals,
+  calculateVat,
+} from "./calculations";
 import { parsePeppolAddress } from "../peppol-address";
 
 const builder = new XMLBuilder({
@@ -9,7 +14,11 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientAddress: string): string {
+export function invoiceToUBL(
+  invoice: Invoice,
+  senderAddress: string,
+  recipientAddress: string
+): string {
   const totals = invoice.totals || calculateTotals(invoice);
   const vat = invoice.vat || calculateVat(invoice);
   const lines = invoice.lines.map((line) => ({
@@ -46,31 +55,34 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
           "cbc:ID": invoice.purchaseOrderReference,
         },
       }),
-      ...(!invoice.buyerReference && !invoice.purchaseOrderReference && {
-        "cbc:BuyerReference": invoice.invoiceNumber,
-      }),
+      ...(!invoice.buyerReference &&
+        !invoice.purchaseOrderReference && {
+          "cbc:BuyerReference": invoice.invoiceNumber,
+        }),
       ...(invoice.attachments && {
-        "cac:AdditionalDocumentReference": invoice.attachments.map((attachment) => ({
-          "cbc:ID": attachment.id,
-          "cbc:DocumentType": attachment.documentType,
-          "cbc:DocumentDescription": attachment.description,
-          ...((attachment.embeddedDocument || attachment.url) && {
-            "cac:Attachment": {
-              ...(attachment.embeddedDocument && {
-                "cbc:EmbeddedDocumentBinaryObject": {
-                  "@_mimeCode": attachment.mimeCode,
-                  "@_filename": attachment.filename,
-                  "#text": attachment.embeddedDocument,
-                }
-              }),
-              ...(attachment.url && {
-                "cac:ExternalReference": {
-                  "cbc:URI": attachment.url,
-                }
-              })
-            }
+        "cac:AdditionalDocumentReference": invoice.attachments.map(
+          (attachment) => ({
+            "cbc:ID": attachment.id,
+            "cbc:DocumentType": attachment.documentType,
+            "cbc:DocumentDescription": attachment.description,
+            ...((attachment.embeddedDocument || attachment.url) && {
+              "cac:Attachment": {
+                ...(attachment.embeddedDocument && {
+                  "cbc:EmbeddedDocumentBinaryObject": {
+                    "@_mimeCode": attachment.mimeCode,
+                    "@_filename": attachment.filename,
+                    "#text": attachment.embeddedDocument,
+                  },
+                }),
+                ...(attachment.url && {
+                  "cac:ExternalReference": {
+                    "cbc:URI": attachment.url,
+                  },
+                }),
+              },
+            }),
           })
-        })),
+        ),
       }),
       "cac:AccountingSupplierParty": {
         "cac:Party": {
@@ -150,20 +162,22 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
           },
         },
       },
-      "cac:PaymentMeans": invoice.paymentMeans.map((payment) => ({
-        "cbc:PaymentMeansCode": {
-          "@_name": "Credit Transfer",
-          "#text": "30",
-        },
-        "cbc:PaymentID": {
-          "#text": payment.reference,
-        },
-        "cac:PayeeFinancialAccount": {
-          "cbc:ID": {
-            "#text": payment.iban,
+      ...(invoice.paymentMeans && {
+        "cac:PaymentMeans": invoice.paymentMeans.map((payment) => ({
+          "cbc:PaymentMeansCode": {
+            "@_name": "Credit Transfer",
+            "#text": "30",
           },
-        },
-      })),
+          "cbc:PaymentID": {
+            "#text": payment.reference,
+          },
+          "cac:PayeeFinancialAccount": {
+            "cbc:ID": {
+              "#text": payment.iban,
+            },
+          },
+        })),
+      }),
       ...(invoice.paymentTerms && {
         "cac:PaymentTerms": {
           "cbc:Note": invoice.paymentTerms.note,
@@ -210,7 +224,10 @@ export function invoiceToUBL(invoice: Invoice, senderAddress: string, recipientA
         },
         "cbc:PrepaidAmount": {
           "@_currencyID": "EUR",
-          "#text": calculatePrepaidAmount(totals.taxInclusiveAmount, totals.payableAmount || totals.taxInclusiveAmount),
+          "#text": calculatePrepaidAmount(
+            totals.taxInclusiveAmount,
+            totals.payableAmount || totals.taxInclusiveAmount
+          ),
         },
         "cbc:PayableRoundingAmount": {
           "@_currencyID": "EUR",

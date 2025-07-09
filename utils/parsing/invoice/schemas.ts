@@ -104,7 +104,7 @@ export const invoiceSchema = z.object({
   purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
   seller: partySchema,
   buyer: partySchema,
-  paymentMeans: z.array(paymentMeansSchema),
+  paymentMeans: z.array(paymentMeansSchema).nullish().openapi({ description: "Optional payment information. For most invoices, this should be provided. For prepaid invoices, this could be omitted." }),
   paymentTerms: z.object({
     note: z.string().openapi({ example: "Net 30" }),
   }).nullish(),

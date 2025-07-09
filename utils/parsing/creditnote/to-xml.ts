@@ -1,6 +1,10 @@
 import { XMLBuilder } from "fast-xml-parser";
 import type { CreditNote } from "./schemas";
-import { calculateLineAmount, calculateTotals, calculateVat } from "../invoice/calculations";
+import {
+  calculateLineAmount,
+  calculateTotals,
+  calculateVat,
+} from "../invoice/calculations";
 import { parsePeppolAddress } from "../peppol-address";
 
 const builder = new XMLBuilder({
@@ -9,7 +13,11 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, recipientAddress: string): string {
+export function creditNoteToUBL(
+  creditNote: CreditNote,
+  senderAddress: string,
+  recipientAddress: string
+): string {
   const totals = creditNote.totals || calculateTotals(creditNote);
   const vat = creditNote.vat || calculateVat(creditNote);
   const lines = creditNote.lines.map((line) => ({
@@ -45,31 +53,34 @@ export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, r
           "cbc:ID": creditNote.purchaseOrderReference,
         },
       }),
-      ...(!creditNote.buyerReference && !creditNote.purchaseOrderReference && {
-        "cbc:BuyerReference": creditNote.creditNoteNumber,
-      }),
+      ...(!creditNote.buyerReference &&
+        !creditNote.purchaseOrderReference && {
+          "cbc:BuyerReference": creditNote.creditNoteNumber,
+        }),
       ...(creditNote.attachments && {
-        "cac:AdditionalDocumentReference": creditNote.attachments.map((attachment) => ({
-          "cbc:ID": attachment.id,
-          "cbc:DocumentType": attachment.documentType,
-          "cbc:DocumentDescription": attachment.description,
-          ...((attachment.embeddedDocument || attachment.url) && {
-            "cac:Attachment": {
-              ...(attachment.embeddedDocument && {
-                "cbc:EmbeddedDocumentBinaryObject": {
-                  "@_mimeCode": attachment.mimeCode,
-                  "@_filename": attachment.filename,
-                  "#text": attachment.embeddedDocument,
-                }
-              }),
-              ...(attachment.url && {
-                "cac:ExternalReference": {
-                  "cbc:URI": attachment.url,
-                }
-              })
-            }
+        "cac:AdditionalDocumentReference": creditNote.attachments.map(
+          (attachment) => ({
+            "cbc:ID": attachment.id,
+            "cbc:DocumentType": attachment.documentType,
+            "cbc:DocumentDescription": attachment.description,
+            ...((attachment.embeddedDocument || attachment.url) && {
+              "cac:Attachment": {
+                ...(attachment.embeddedDocument && {
+                  "cbc:EmbeddedDocumentBinaryObject": {
+                    "@_mimeCode": attachment.mimeCode,
+                    "@_filename": attachment.filename,
+                    "#text": attachment.embeddedDocument,
+                  },
+                }),
+                ...(attachment.url && {
+                  "cac:ExternalReference": {
+                    "cbc:URI": attachment.url,
+                  },
+                }),
+              },
+            }),
           })
-        })),
+        ),
       }),
       "cac:AccountingSupplierParty": {
         "cac:Party": {
@@ -149,20 +160,22 @@ export function creditNoteToUBL(creditNote: CreditNote, senderAddress: string, r
           },
         },
       },
-      "cac:PaymentMeans": creditNote.paymentMeans.map((payment) => ({
-        "cbc:PaymentMeansCode": {
-          "@_name": "Credit Transfer",
-          "#text": "30",
-        },
-        "cbc:PaymentID": {
-          "#text": payment.reference,
-        },
-        "cac:PayeeFinancialAccount": {
-          "cbc:ID": {
-            "#text": payment.iban,
+      ...(creditNote.paymentMeans && {
+        "cac:PaymentMeans": creditNote.paymentMeans.map((payment) => ({
+          "cbc:PaymentMeansCode": {
+            "@_name": "Credit Transfer",
+            "#text": "30",
           },
-        },
-      })),
+          "cbc:PaymentID": {
+            "#text": payment.reference,
+          },
+          "cac:PayeeFinancialAccount": {
+            "cbc:ID": {
+              "#text": payment.iban,
+            },
+          },
+        })),
+      }),
       ...(creditNote.paymentTerms && {
         "cac:PaymentTerms": {
           "cbc:Note": creditNote.paymentTerms.note,
