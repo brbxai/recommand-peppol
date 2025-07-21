@@ -61,7 +61,6 @@ export function creditNoteToUBL(
         "cac:AdditionalDocumentReference": creditNote.attachments.map(
           (attachment) => ({
             "cbc:ID": attachment.id,
-            "cbc:DocumentType": attachment.documentType,
             "cbc:DocumentDescription": attachment.description,
             ...((attachment.embeddedDocument || attachment.url) && {
               "cac:Attachment": {

@@ -32,7 +32,6 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   // Extract attachments
   const attachments = (creditNote.AdditionalDocumentReference || []).map((ref: any) => ({
     id: getTextContent(ref.ID),
-    documentType: getTextContent(ref.DocumentType),
     description: getTextContent(ref.DocumentDescription),
     mimeCode: getTextContent(ref.Attachment?.EmbeddedDocumentBinaryObject?.["@_mimeCode"]),
     filename: getTextContent(ref.Attachment?.EmbeddedDocumentBinaryObject?.["@_filename"]),

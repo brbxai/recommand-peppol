@@ -33,7 +33,6 @@ export function parseInvoiceFromXML(xml: string): Invoice {
   // Extract attachments
   const attachments = (invoice.AdditionalDocumentReference || []).map((ref: any) => ({
     id: getTextContent(ref.ID),
-    documentType: getTextContent(ref.DocumentType),
     description: getTextContent(ref.DocumentDescription),
     mimeCode: getTextContent(ref.Attachment?.EmbeddedDocumentBinaryObject?.["@_mimeCode"]),
     filename: getTextContent(ref.Attachment?.EmbeddedDocumentBinaryObject?.["@_filename"]),

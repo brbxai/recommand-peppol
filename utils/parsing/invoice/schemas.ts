@@ -84,7 +84,6 @@ export const vatTotalsSchema = z.object({
 
 export const attachmentSchema = z.object({
   id: z.string().openapi({ example: "ATT-001" }),
-  documentType: z.string().default("130").openapi({ example: "130" }),
   mimeCode: z.string().default("application/pdf").openapi({ 
     example: "application/pdf",
     description: "MIME type of the document (e.g. application/pdf, text/csv, image/png)"
