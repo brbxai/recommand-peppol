@@ -24,6 +24,6 @@ export const sendCreditNoteSchema = creditNoteSchema.extend({
   issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "If not provided, the issue date will be the current date." }),
   dueDate: z.string().date().nullish().openapi({ example: "2024-04-20", description: "If not provided, the due date will be 1 month from the issue date." }),
   seller: partySchema.nullish().openapi({ description: "If not provided, the seller will be the company that is sending the credit note." }),
-}).openapi({ ref: "SendCreditNote" });
+}).openapi({ ref: "SendCreditNote", title: "Credit Note", description: "Credit note to send to a recipient" });
 
 export type CreditNote = z.infer<typeof creditNoteSchema>;

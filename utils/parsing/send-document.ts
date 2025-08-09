@@ -24,7 +24,7 @@ export const sendDocumentSchema = z.object({
       description: "The type of document to send.",
       example: SendDocumentType.INVOICE,
     }),
-  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, z.string().openapi({ ref: "XML" })]),
+  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
   doctypeId: z.string().optional().openapi({
     description:
       "The document type identifier. Not required, only used when documentType is \"xml\".",

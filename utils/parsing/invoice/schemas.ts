@@ -117,7 +117,7 @@ export const sendInvoiceSchema = invoiceSchema.extend({
   issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "If not provided, the issue date will be the current date." }),
   dueDate: z.string().date().nullish().openapi({ example: "2024-04-20", description: "If not provided, the due date will be 1 month from the issue date." }),
   seller: partySchema.nullish().openapi({ description: "If not provided, the seller will be the company that is sending the invoice." }),
-}).openapi({ ref: "SendInvoice" });
+}).openapi({ ref: "SendInvoice", title: "Invoice", description: "Invoice to send to a recipient" });
 
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type DocumentLine = z.infer<typeof lineSchema>;
