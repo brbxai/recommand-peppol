@@ -1,4 +1,11 @@
-export function describeSuccessResponse(description: string, bodySchema: any = {}) {
+import type { OpenAPIV3 } from "openapi-types";
+
+export function describeSuccessResponse<T>(
+  description: string,
+  bodySchema: any = {}
+): {
+  [key: string]: OpenAPIV3.ReferenceObject | OpenAPIV3.ResponseObject;
+} {
   return {
     [200]: {
       description: description,
@@ -21,7 +28,9 @@ export function describeErrorResponse(
   status: number,
   description: string,
   bodySchema: any = {}
-) {
+): {
+  [key: string]: OpenAPIV3.ReferenceObject | OpenAPIV3.ResponseObject;
+} {
   return {
     [status]: {
       description: description,
