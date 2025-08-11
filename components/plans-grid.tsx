@@ -1,6 +1,6 @@
 import { Button } from "@core/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@core/components/ui/card";
-import { allPlans } from "@peppol/data/plans";
+import { availablePlans } from "@peppol/data/plans";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import { toast } from "@core/components/ui/sonner";
 import { rc } from "@recommand/lib/client";
@@ -43,7 +43,7 @@ export function PlansGrid({ currentSubscription, teamId, onSubscriptionUpdate }:
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      {allPlans.map((plan) => (
+      {availablePlans.map((plan) => (
         <Card key={plan.id} className={currentSubscription?.planId === plan.id ? "border-primary" : ""}>
           <CardHeader>
             <CardTitle>{plan.name}</CardTitle>

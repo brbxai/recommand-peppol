@@ -39,6 +39,15 @@ export const allPlans: Plan[] = [
     includedMonthlyDocuments: 1000,
     documentOveragePrice: 0.1,
   },
+  {
+    id: "enterprise",
+    isAvailable: false,
+    name: "Enterprise",
+    basePrice: 0,
+    vatRate: 0.21,
+    includedMonthlyDocuments: 0,
+    documentOveragePrice: 0.05,
+  }
 ]
 
 export const availablePlans = allPlans.filter((plan) => plan.isAvailable);

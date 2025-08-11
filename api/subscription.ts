@@ -6,7 +6,7 @@ import {
   getActiveSubscription,
   startSubscription,
 } from "@peppol/data/subscriptions";
-import { allPlans } from "@peppol/data/plans";
+import { availablePlans } from "@peppol/data/plans";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { requireTeamAccess } from "@core/lib/auth-middleware";
 
@@ -36,7 +36,7 @@ const _startSubscription = server.post(
     const planId = c.req.valid("json").planId;
 
     // Get plan
-    const plan = allPlans.find((p) => p.id === planId);
+    const plan = availablePlans.find((p) => p.id === planId);
     if (!plan) {
       return c.json(actionFailure("Plan not found"), 404);
     }
