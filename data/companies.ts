@@ -44,7 +44,11 @@ export async function getCompanyById(
  * @param playgroundTeamId The team ID of the playground team, if the company is in a playground team. If no playgroundTeamId is provided, the function will return a production company.
  * @returns The company
  */
-export async function getCompanyByPeppolId(peppolId: string, playgroundTeamId?: string): Promise<Company> {
+export async function getCompanyByPeppolId(
+  peppolId: string,
+  playgroundTeamId?: string
+): Promise<Company> {
+  let originalPeppolId = peppolId;
   // The peppolId might start with iso6523-actorid-upis::
   if (peppolId.startsWith("iso6523-actorid-upis::")) {
     peppolId = peppolId.split("::")[1];
@@ -54,35 +58,51 @@ export async function getCompanyByPeppolId(peppolId: string, playgroundTeamId?: 
   if (peppolId.startsWith("0208:")) {
     const enterpriseNumber = cleanEnterpriseNumber(peppolId.split(":")[1]);
     if (!enterpriseNumber) {
-      throw new Error(`Invalid peppolId enterprise number (${peppolId})`);
+      throw new Error(`Invalid peppol id enterprise number (${originalPeppolId})`);
     }
-    return await db
+    const res = await db
       .select()
       .from(companies)
       .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
       .where(
         and(
           eq(companies.enterpriseNumber, enterpriseNumber),
-          playgroundTeamId ? eq(companies.teamId, playgroundTeamId) : or(isNull(teamExtensions.isPlayground), eq(teamExtensions.isPlayground, false))
+          playgroundTeamId
+            ? eq(companies.teamId, playgroundTeamId)
+            : or(
+                isNull(teamExtensions.isPlayground),
+                eq(teamExtensions.isPlayground, false)
+              )
         )
-      )
-      .then((rows) => rows[0].peppol_companies);
+      );
+    if (res.length === 0) {
+      throw new Error(`Company with peppol id ${originalPeppolId} not found`);
+    }
+    return res[0].peppol_companies;
   } else if (peppolId.startsWith("9925:")) {
     const vatNumber = cleanVatNumber(peppolId.split(":")[1]);
     if (!vatNumber) {
       throw new Error(`Invalid peppolId vat number (${peppolId})`);
     }
-    return await db
+    const res = await db
       .select()
       .from(companies)
       .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
       .where(
         and(
           eq(companies.vatNumber, vatNumber),
-          playgroundTeamId ? eq(companies.teamId, playgroundTeamId) : or(isNull(teamExtensions.isPlayground), eq(teamExtensions.isPlayground, false))
+          playgroundTeamId
+            ? eq(companies.teamId, playgroundTeamId)
+            : or(
+                isNull(teamExtensions.isPlayground),
+                eq(teamExtensions.isPlayground, false)
+              )
         )
-      )
-      .then((rows) => rows[0].peppol_companies);
+      );
+    if (res.length === 0) {
+      throw new Error(`Company with peppol id ${originalPeppolId} not found`);
+    }
+    return res[0].peppol_companies;
   } else {
     throw new Error(`Invalid peppolId (${peppolId})`);
   }
@@ -250,11 +270,14 @@ export async function canUpsertCompany(
         currentCompanyId ? ne(companies.id, currentCompanyId) : undefined, // Exclude the current company from the check
         or(
           eq(companies.teamId, teamId), // Include all companies on the same team
-          isPlaygroundTeam ? undefined : or( // Don't check production companies when on a playground team
-            // Include all production companies when not on a playground team
-            isNull(teamExtensions.isPlayground),
-            eq(teamExtensions.isPlayground, false)
-          ),
+          isPlaygroundTeam
+            ? undefined
+            : or(
+                // Don't check production companies when on a playground team
+                // Include all production companies when not on a playground team
+                isNull(teamExtensions.isPlayground),
+                eq(teamExtensions.isPlayground, false)
+              )
         ),
         or(
           // Check for the enterprise number or vat number
