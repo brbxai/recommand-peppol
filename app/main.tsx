@@ -4,6 +4,8 @@ import { useMenuItemActions } from "@core/lib/menu-store";
 import { useOnboardingActions } from "@core/lib/onboarding-store";
 import BillingOnboarding from "@peppol/components/onboarding/billing";
 import SubscriptionOnboarding from "@peppol/components/onboarding/subscription";
+import AddPlayground from "./add-playground";
+import PlaygroundUI from "./playground-ui";
 
 export default function Main({ children }: { children: React.ReactNode }) {
     const { registerMenuItem } = useMenuItemActions();
@@ -60,5 +62,9 @@ export default function Main({ children }: { children: React.ReactNode }) {
 
     }, [registerMenuItem]);
 
-    return children;
+    return <>
+        {children}
+        <AddPlayground />
+        <PlaygroundUI />
+    </>;
 }

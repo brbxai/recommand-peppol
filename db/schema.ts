@@ -151,8 +151,8 @@ export const companies = pgTable("peppol_companies", {
   postalCode: text("postal_code").notNull(),
   city: text("city").notNull(),
   country: validCountryCodes("country").notNull(),
-  enterpriseNumber: text("enterprise_number").unique().notNull(),
-  vatNumber: text("vat_number").unique(),
+  enterpriseNumber: text("enterprise_number").notNull(),
+  vatNumber: text("vat_number"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" })
@@ -220,4 +220,10 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
     .defaultNow()
     .notNull()
     .$onUpdate(() => sql`now()`),
+});
+
+export const teamExtensions = pgTable("peppol_team_extensions", {
+  id: text("id")
+    .primaryKey(),
+  isPlayground: boolean("is_playground").notNull().default(false),
 });

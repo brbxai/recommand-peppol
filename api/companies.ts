@@ -7,7 +7,7 @@ import {
   updateCompany,
 } from "@peppol/data/companies";
 import { zodValidCountryCodes } from "@peppol/db/schema";
-import { cleanEnterpriseNumber, cleanVatNumber } from "@peppol/utils/util";
+import { cleanEnterpriseNumber, cleanVatNumber, UserFacingError } from "@peppol/utils/util";
 import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -292,6 +292,9 @@ const _updateCompany = server.put(
       }
       return c.json(actionSuccess({ company }));
     } catch (error) {
+      if (error instanceof UserFacingError) {
+        return c.json(actionFailure(error), 400);
+      }
       return c.json(actionFailure("Could not update company"), 500);
     }
   }

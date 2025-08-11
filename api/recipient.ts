@@ -5,7 +5,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { validator as zValidator } from "hono-openapi/zod";
 import { describeRoute } from "hono-openapi";
-import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
+import { describeSuccessResponse } from "@peppol/utils/api-docs";
 import { requireAuth } from "@core/lib/auth-middleware";
 import { searchPeppolDirectory } from "@peppol/data/peppol-directory";
 

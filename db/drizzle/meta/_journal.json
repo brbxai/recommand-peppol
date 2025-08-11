@@ -148,6 +148,20 @@
       "when": 1751313985638,
       "tag": "20250630200625_burly_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1754751811389,
+      "tag": "20250809150331_lame_blazing_skull",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1754760117365,
+      "tag": "20250809172157_pink_millenium_guard",
+      "breakpoints": true
     }
   ]
 }

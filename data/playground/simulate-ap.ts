@@ -1,0 +1,34 @@
+import { getCompanyByPeppolId } from "../companies";
+import { receiveDocument } from "../receive-document";
+
+export async function simulateSendAs4(options: {
+  senderId: string;
+  receiverId: string;
+  docTypeId: string;
+  processId: string;
+  countryC1: string;
+  body: string; // XML string
+
+  // Playground specific options
+  playgroundTeamId: string;
+}) {
+  // Check if the receiverId is registered as a company in this playground team, search by enterprise number
+  const receivingCompany = await getCompanyByPeppolId(options.receiverId, options.playgroundTeamId);
+  if (!receivingCompany || receivingCompany.teamId !== options.playgroundTeamId) {
+    // Silently fail, the receiver is not registered in this playground team, so we don't need to send the document
+    return
+  }
+
+  // The company is registered, so we can receive the document
+  await receiveDocument({
+    senderId: options.senderId,
+    receiverId: options.receiverId,
+    docTypeId: options.docTypeId,
+    processId: options.processId,
+    countryC1: options.countryC1,
+    body: options.body,
+    skipBilling: true,
+    playgroundTeamId: options.playgroundTeamId,
+  });
+  
+}

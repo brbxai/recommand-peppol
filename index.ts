@@ -10,6 +10,7 @@ import transmittedDocumentsServer from "./api/transmitted-documents";
 import { openAPISpecs } from "hono-openapi";
 import webhooksServer from "./api/webhooks";
 import recipientServer from "./api/recipient";
+import playgroundsServer from "./api/playgrounds";
 
 export let logger: Logger;
 
@@ -56,7 +57,7 @@ For some endpoints, you will need to provide a team or company ID.
 
 For additional support or questions, don't hesitate to contact our support team.`,
       },
-      servers: [{ url: process.env.BASE_URL, description: "Recommand API" }],
+      servers: [{ url: process.env.BASE_URL!, description: "Recommand API" }],
       components: {
         securitySchemes: {
           httpBasic: {
@@ -67,6 +68,20 @@ For additional support or questions, don't hesitate to contact our support team.
         },
       },
       security: [{ httpBasic: [] }],
+      tags: [
+        {
+          name: "Sending",
+          description: "Endpoints for sending documents",
+        },
+        {
+          name: "Recipients",
+          description: "Interaction with the Peppol directory. For now, this always returns results from the production Peppol directory, even in playground teams.",
+        },
+        {
+          name: "Playgrounds",
+          description: "Endpoints for working with playgrounds. Playgrounds are used to test the Recommand API without affecting production data or communicating over the Peppol network. A new playground can be created via the Recommand dashboard by clicking the team switcher in the top left, or via the API outlined below. Usage of the playground is free.",
+        }
+      ],
     },
   })
 );
@@ -80,5 +95,6 @@ server.route("/internal/", receiveDocumentServer);
 server.route("/", transmittedDocumentsServer);
 server.route("/", webhooksServer);
 server.route("/", recipientServer);
+server.route("/", playgroundsServer);
 
 export default server;

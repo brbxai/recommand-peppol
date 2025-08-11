@@ -23,6 +23,7 @@ import { addMonths } from "date-fns";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
+import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
 
 const server = new Server();
 
@@ -37,9 +38,18 @@ server.post(
     tags: ["Sending"],
     responses: {
       ...describeSuccessResponse("Successfully sent document", {
-        teamId: { type: "string", description: "The ID of the team that sent the document" },
-        companyId: { type: "string", description: "The ID of the company that sent the document" },
-        id: { type: "string", description: "The ID of the transmitted document" },
+        teamId: {
+          type: "string",
+          description: "The ID of the team that sent the document",
+        },
+        companyId: {
+          type: "string",
+          description: "The ID of the company that sent the document",
+        },
+        id: {
+          type: "string",
+          description: "The ID of the transmitted document",
+        },
       }),
       ...describeErrorResponse(400, "Invalid document data provided"),
     },
@@ -49,6 +59,7 @@ server.post(
     try {
       const jsonBody = c.req.valid("json");
       const document = jsonBody.document;
+      const isPlayground = c.get("team").isPlayground;
 
       let xmlDocument: string | null = null;
       let type: "invoice" | "creditNote" | "unknown" = "unknown";
@@ -89,7 +100,11 @@ server.post(
             1
           ).toISOString();
         }
-        const ublInvoice = invoiceToUBL(invoice, senderAddress, recipientAddress);
+        const ublInvoice = invoiceToUBL(
+          invoice,
+          senderAddress,
+          recipientAddress
+        );
         xmlDocument = ublInvoice;
         type = "invoice";
         parsedDocument = invoice;
@@ -108,10 +123,15 @@ server.post(
         if (!creditNote.issueDate) {
           creditNote.issueDate = new Date().toISOString();
         }
-        const ublCreditNote = creditNoteToUBL(creditNote, senderAddress, recipientAddress);
+        const ublCreditNote = creditNoteToUBL(
+          creditNote,
+          senderAddress,
+          recipientAddress
+        );
         xmlDocument = ublCreditNote;
         type = "creditNote";
-        doctypeId = "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
+        doctypeId =
+          "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
         parsedDocument = creditNote;
       } else if (jsonBody.documentType === SendDocumentType.XML) {
         xmlDocument = document as string;
@@ -126,25 +146,44 @@ server.post(
         return c.json(actionFailure("Document could not be parsed."));
       }
 
-      const response = await sendAs4({
-        senderId: senderAddress,
-        receiverId: recipientAddress,
-        docTypeId: doctypeId,
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-        countryC1: countryC1,
-        body: xmlDocument,
-      });
-
-      const jsonResponse = await response.json();
-      if (!response.ok || !jsonResponse.overallSuccess) {
-        sendSystemAlert(
-          "Document Sending Failed",
-          `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(jsonResponse, null, 2)}\n\`\`\``,
-          "error"
-        );
-        return c.json(
-          actionFailure("Failed to send document over Peppol network.")
-        );
+      if (isPlayground) {
+        await simulateSendAs4({
+          senderId: senderAddress,
+          receiverId: recipientAddress,
+          docTypeId: doctypeId,
+          processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+          countryC1: countryC1,
+          body: xmlDocument,
+          playgroundTeamId: c.var.team.id, // Must be the same as the sender team: we don't support cross-team sending
+        });
+      } else {
+        const response = await sendAs4({
+          senderId: senderAddress,
+          receiverId: recipientAddress,
+          docTypeId: doctypeId,
+          processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+          countryC1: countryC1,
+          body: xmlDocument,
+        });
+        const jsonResponse = await response.json();
+        if (!response.ok || !jsonResponse.overallSuccess) {
+          sendSystemAlert(
+            "Document Sending Failed",
+            `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(jsonResponse, null, 2)}\n\`\`\``,
+            "error"
+          );
+          let additionalContext = "";
+          try{
+            // Extract sendingException.message from jsonResponse
+            const sendingException = jsonResponse.sendingException;
+            additionalContext = sendingException.message;
+          } catch (error) {
+            additionalContext = "No additional context available, please contact support@recommand.eu if you could use our help.";
+          }
+          return c.json(
+            actionFailure(`Failed to send document over Peppol network. ${additionalContext}`)
+          );
+        }
       }
 
       // Create a new transmittedDocument
@@ -167,18 +206,22 @@ server.post(
         .then((rows) => rows[0]);
 
       // Create a new transferEvent for billing
-      await db.insert(transferEvents).values({
-        teamId: c.var.team.id,
-        companyId: company.id,
-        direction: "outgoing",
-        transmittedDocumentId: transmittedDocument.id,
-      });
+      if (!isPlayground) {
+        await db.insert(transferEvents).values({
+          teamId: c.var.team.id,
+          companyId: company.id,
+          direction: "outgoing",
+          transmittedDocumentId: transmittedDocument.id,
+        });
+      }
 
-      return c.json(actionSuccess({
-        teamId: c.var.team.id,
-        companyId: company.id,
-        id: transmittedDocument.id,
-      }));
+      return c.json(
+        actionSuccess({
+          teamId: c.var.team.id,
+          companyId: company.id,
+          id: transmittedDocument.id,
+        })
+      );
     } catch (error) {
       return c.json(
         actionFailure(

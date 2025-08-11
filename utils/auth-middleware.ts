@@ -1,8 +1,12 @@
-import { getTeam, isMember } from "@core/data/teams";
-import type { AuthenticatedTeamContext, AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { isMember } from "@core/data/teams";
+import type {
+  AuthenticatedTeamContext,
+  AuthenticatedUserContext,
+} from "@core/lib/auth-middleware";
 import { verifySession } from "@core/lib/session";
 import { getBillingProfile } from "@peppol/data/billing-profile";
 import { getCompanyById, type Company } from "@peppol/data/companies";
+import { getExtendedTeam, type ExtendedTeam } from "@peppol/data/teams";
 import { actionFailure } from "@recommand/lib/utils";
 import { createMiddleware } from "hono/factory";
 
@@ -26,11 +30,14 @@ export function requireInternalToken() {
 type CompanyAccessContext = {
   Variables: {
     company: Company;
+    team: ExtendedTeam;
   };
 };
 
 export function requireCompanyAccess() {
-  return createMiddleware<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext>(async (c, next) => {
+  return createMiddleware<
+    AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext
+  >(async (c, next) => {
     // Verify user's session
     await verifySession(c);
 
@@ -39,7 +46,7 @@ export function requireCompanyAccess() {
     if (!user?.id) {
       return c.json(actionFailure("Unauthorized"), 401);
     }
-    
+
     const companyId = c.req.param("companyId");
     if (!companyId) {
       return c.json(actionFailure("Company ID is required"), 400);
@@ -49,13 +56,21 @@ export function requireCompanyAccess() {
       return c.json(actionFailure("Company not found"), 404);
     }
 
-    // Check if user is member of team
-    if (!(await isMember(user.id, company.teamId))) {
-      return c.json(actionFailure("Unauthorized"), 401);
+    const apiKey = c.get("apiKey");
+    if (apiKey) {
+      // If the user is authenticated via an API key, ensure the API key belongs to the team
+      if (apiKey.teamId !== company.teamId) {
+        return c.json(actionFailure("Unauthorized"), 401);
+      }
+    } else {
+      // If the user is not authenticated via an API key, ensure they are a member of the team
+      if (!(await isMember(user.id, company.teamId))) {
+        return c.json(actionFailure("Unauthorized"), 401);
+      }
     }
 
     // Get team based on company
-    const team = await getTeam(company.teamId);
+    const team = await getExtendedTeam(company.teamId);
     if (!team) {
       return c.json(actionFailure("Team not found"), 404);
     }
@@ -68,18 +83,27 @@ export function requireCompanyAccess() {
 }
 
 export function requireValidSubscription() {
-  return createMiddleware<AuthenticatedUserContext & AuthenticatedTeamContext>(async (c, next) => {
-    const team = c.var.team;
-    if (!team) {
-      return c.json(actionFailure("Team not found"), 404);
-    }
+  return createMiddleware<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext>(
+    async (c, next) => {
+      const team = c.var.team;
+      if (!team) {
+        return c.json(actionFailure("Team not found"), 404);
+      }
 
-    // Ensure the team has a valid billing profile
-    const billingProfile = await getBillingProfile(team.id);
-    if (!billingProfile || !billingProfile.isMandateValidated) {
-      return c.json(actionFailure(`Team ${team.name} does not have a valid billing profile`), 401);
-    }
+      // Ensure the team has a valid billing profile if it's not a playground team
+      if (!team.isPlayground) {
+        const billingProfile = await getBillingProfile(team.id);
+        if (!billingProfile || !billingProfile.isMandateValidated) {
+          return c.json(
+            actionFailure(
+              `Team ${team.name} does not have a valid billing profile`
+            ),
+            401
+          );
+        }
+      }
 
-    await next();
-  });
+      await next();
+    }
+  );
 }

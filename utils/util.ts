@@ -9,3 +9,10 @@ export function cleanEnterpriseNumber(enterpriseNumber: string | undefined | nul
   // Replace every non-numeric character with an empty string
   return enterpriseNumber.replace(/[^0-9]/g, "");
 }
+
+export class UserFacingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UserFacingError";
+  }
+}
