@@ -72,7 +72,13 @@ export async function createCompanyDocumentType(
     .then((rows) => rows[0]);
 
   if(!skipSmpRegistration){
-    await upsertCompanyRegistrations(companyDocumentType.companyId);
+    try {
+      await upsertCompanyRegistrations(companyDocumentType.companyId);
+    } catch (error) {
+      // If registration fails, rollback the creation of the document type
+      await db.delete(companyDocumentTypes).where(eq(companyDocumentTypes.id, createdDocumentType.id));
+      throw error;
+    }
   }
 
   return createdDocumentType;
@@ -122,8 +128,14 @@ export async function updateCompanyDocumentType(
     .then((rows) => rows[0]);
 
   if(!skipSmpRegistration){
-    await unregisterCompanyDocumentType(oldDocumentType); // Unregister the old document type
-    await upsertCompanyRegistrations(companyDocumentType.companyId); // Register the new document type
+    try {
+      await unregisterCompanyDocumentType(oldDocumentType); // Unregister the old document type
+      await upsertCompanyRegistrations(companyDocumentType.companyId); // Register the new document type
+    } catch (error) {
+      // If registration fails, rollback the update of the document type
+      await db.update(companyDocumentTypes).set(oldDocumentType).where(eq(companyDocumentTypes.id, companyDocumentType.id));
+      throw error;
+    }
   }
 
   return updatedDocumentType;
@@ -139,6 +151,10 @@ export async function deleteCompanyDocumentType(
     throw new UserFacingError("Company document type not found");
   }
 
+  if(!skipSmpRegistration){
+    await unregisterCompanyDocumentType(documentType);
+  }
+
   await db
     .delete(companyDocumentTypes)
     .where(
@@ -147,8 +163,4 @@ export async function deleteCompanyDocumentType(
         eq(companyDocumentTypes.id, documentTypeId)
       )
     );
-
-  if(!skipSmpRegistration){
-    await unregisterCompanyDocumentType(documentType);
-  }
 }

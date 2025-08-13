@@ -92,6 +92,10 @@ export async function createCompanyIdentifier(
     );
   }
 
+  if(!skipSmpRegistration){
+    await upsertCompanyRegistration(companyIdentifier.companyId, companyIdentifier);
+  }
+
   const createdIdentifier = await db
     .insert(companyIdentifiers)
     .values({
@@ -101,11 +105,7 @@ export async function createCompanyIdentifier(
     })
     .returning()
     .then((rows) => rows[0]);
-
-  if(!skipSmpRegistration){
-    await upsertCompanyRegistration(companyIdentifier.companyId, createdIdentifier);
-  }
-
+  
   return createdIdentifier;
 }
 
@@ -135,6 +135,11 @@ export async function updateCompanyIdentifier(
     return oldIdentifier;
   }
 
+  if(!skipSmpRegistration){
+    await unregisterCompanyIdentifier(oldIdentifier); // Unregister the old identifier
+    await upsertCompanyRegistration(companyIdentifier.companyId, companyIdentifier); // Register the new identifier
+  }
+
   const updatedIdentifier = await db
     .update(companyIdentifiers)
     .set({
@@ -150,11 +155,6 @@ export async function updateCompanyIdentifier(
     .returning()
     .then((rows) => rows[0]);
 
-  if(!skipSmpRegistration){
-    await unregisterCompanyIdentifier(oldIdentifier); // Unregister the old identifier
-    await upsertCompanyRegistration(companyIdentifier.companyId, updatedIdentifier); // Register the new identifier
-  }
-
   return updatedIdentifier;
 }
 
@@ -168,6 +168,10 @@ export async function deleteCompanyIdentifier(
     throw new UserFacingError("Company identifier not found");
   }
 
+  if(!skipSmpRegistration){
+    await unregisterCompanyIdentifier(identifier);
+  }
+
   await db
     .delete(companyIdentifiers)
     .where(
@@ -177,9 +181,6 @@ export async function deleteCompanyIdentifier(
       )
     );
 
-  if(!skipSmpRegistration){
-    await unregisterCompanyIdentifier(identifier);
-  }
 }
 
 /**

@@ -7,6 +7,11 @@ import { getMigrationToken } from "../hermes";
 import { getCompanyIdentifiers, type CompanyIdentifier } from "../company-identifiers";
 import { getCompanyDocumentTypes, type CompanyDocumentType } from "../company-document-types";
 
+type MinimalCompanyIdentifier = {
+  scheme: string;
+  identifier: string;
+}
+
 export async function upsertCompanyRegistrations(companyId: string) {
   const company = await getCompanyById(companyId);
   if(company && !company.isSmpRecipient){
@@ -34,7 +39,7 @@ export async function unregisterCompanyRegistrations(companyId: string) {
   }
 }
 
-export async function upsertCompanyRegistration(companyId: string, identifier: CompanyIdentifier) {
+export async function upsertCompanyRegistration(companyId: string, identifier: MinimalCompanyIdentifier) {
   const company = await getCompanyById(companyId);
   const documentTypes = await getCompanyDocumentTypes(companyId);
   if(!company || !documentTypes){
@@ -52,7 +57,7 @@ export async function unregisterCompanyDocumentType(documentType: CompanyDocumen
   }
 }
 
-export async function registerCompanyIdentifier(company: Company | InsertCompany, identifier: CompanyIdentifier, documentTypes: CompanyDocumentType[]) {
+export async function registerCompanyIdentifier(company: Company | InsertCompany, identifier: MinimalCompanyIdentifier, documentTypes: CompanyDocumentType[]) {
 
   if(!company.isSmpRecipient){
     return;
