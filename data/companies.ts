@@ -197,7 +197,15 @@ export async function updateCompany(
 
   if(!(await isPlayground(company.teamId)) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient){
     if(updatedCompany.isSmpRecipient){
-      await upsertCompanyRegistrations(updatedCompany.id);
+      try{
+        await upsertCompanyRegistrations(updatedCompany.id);
+      } catch(error){
+        // If registration fails, unregister any company registrations that might have been registered
+        await unregisterCompanyRegistrations(updatedCompany.id);
+        // Also rollback the update of the company
+        await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
+        throw error;
+      }
     } else {
       await unregisterCompanyRegistrations(updatedCompany.id);
     }
