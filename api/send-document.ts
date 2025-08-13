@@ -7,7 +7,7 @@ import {
   sendDocumentSchema,
   SendDocumentType,
 } from "utils/parsing/send-document";
-import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import { sendInvoiceSchema, type Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import { sendAs4 } from "@peppol/data/phase4-ap/client";
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
@@ -20,7 +20,7 @@ import {
   describeSuccessResponse,
 } from "@peppol/utils/api-docs";
 import { addMonths, formatISO } from "date-fns";
-import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import { sendCreditNoteSchema, type CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
@@ -81,6 +81,13 @@ server.post(
 
       if (jsonBody.documentType === SendDocumentType.INVOICE) {
         const invoice = document as Invoice;
+
+        // Check the invoice corresponds to the required zod schema
+        const parsedInvoice = sendInvoiceSchema.safeParse(invoice);
+        if (!parsedInvoice.success) {
+          return c.json(actionFailure("Invalid invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"));
+        }
+
         if (!invoice.seller) {
           invoice.seller = {
             vatNumber: c.var.company.vatNumber ?? "",
@@ -110,6 +117,13 @@ server.post(
         parsedDocument = invoice;
       } else if (jsonBody.documentType === SendDocumentType.CREDIT_NOTE) {
         const creditNote = document as CreditNote;
+
+        // Check the credit note corresponds to the required zod schema
+        const parsedCreditNote = sendCreditNoteSchema.safeParse(creditNote);
+        if (!parsedCreditNote.success) {
+          return c.json(actionFailure("Invalid credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"));
+        }
+
         if (!creditNote.seller) {
           creditNote.seller = {
             vatNumber: c.var.company.vatNumber ?? "",
@@ -223,6 +237,14 @@ server.post(
         })
       );
     } catch (error) {
+      console.error(error);
+
+      sendSystemAlert(
+        "Document Sending Failed",
+        `Failed to send document over Peppol network. Error: \`\`\`\n${error}\n\`\`\``,
+        "error"
+      );
+
       return c.json(
         actionFailure(
           error instanceof Error ? error.message : "Failed to send document"
