@@ -1,7 +1,7 @@
 import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq, and, or, isNull, ne } from "drizzle-orm";
-import { unregisterCompanyRegistrations } from "./phoss-smp";
+import { unregisterCompanyRegistrations, upsertCompanyRegistrations } from "./phoss-smp";
 import {
   cleanEnterpriseNumber,
   cleanVatNumber,
@@ -136,12 +136,12 @@ export async function setupCompanyDefaults(company: Company, isPlayground: boole
     companyId: company.id,
     docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
     processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-  }, isPlayground);
+  }, isPlayground || !company.isSmpRecipient);
   await createCompanyDocumentType({
     companyId: company.id,
     docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
     processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-  }, isPlayground);
+  }, isPlayground || !company.isSmpRecipient);
 
   const countryInfo = COUNTRIES.find((country) => country.code === company.country);
   if (countryInfo?.defaultEnterpriseNumberScheme) {
@@ -149,7 +149,7 @@ export async function setupCompanyDefaults(company: Company, isPlayground: boole
       companyId: company.id,
       scheme: countryInfo.defaultEnterpriseNumberScheme,
       identifier: cleanEnterpriseNumber(company.enterpriseNumber)!,
-    }, isPlayground);
+    }, isPlayground || !company.isSmpRecipient);
   }
   const cleanedVatNumber = cleanVatNumber(company.vatNumber);
   if (countryInfo?.defaultVatScheme && cleanedVatNumber) {
@@ -157,7 +157,7 @@ export async function setupCompanyDefaults(company: Company, isPlayground: boole
       companyId: company.id,
       scheme: countryInfo.defaultVatScheme,
       identifier: cleanedVatNumber,
-    }, isPlayground);
+    }, isPlayground || !company.isSmpRecipient);
   }
 }
 
@@ -195,6 +195,14 @@ export async function updateCompany(
     .returning()
     .then((rows) => rows[0]);
 
+  if(!(await isPlayground(company.teamId)) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient){
+    if(updatedCompany.isSmpRecipient){
+      await upsertCompanyRegistrations(updatedCompany.id);
+    } else {
+      await unregisterCompanyRegistrations(updatedCompany.id);
+    }
+  }
+
   if (!isPlaygroundTeam) {
     sendSystemAlert(
       "Company Updated",
@@ -217,7 +225,7 @@ export async function deleteCompany(
   if (!company) {
     throw new Error("Company not found");
   }
-  if (!(await isPlayground(teamId))) {
+  if (!(await isPlayground(teamId)) && company.isSmpRecipient) {
     await unregisterCompanyRegistrations(companyId);
   }
   await db

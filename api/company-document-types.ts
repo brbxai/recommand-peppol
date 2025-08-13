@@ -157,7 +157,7 @@ const _createCompanyDocumentType = server.post(
       const documentType = await createCompanyDocumentType({
         ...c.req.valid("json"),
         companyId: c.req.valid("param").companyId,
-      }, c.var.team.isPlayground); // Skip SMP registration for playground teams
+      }, c.var.team.isPlayground || !c.var.company.isSmpRecipient); // Skip SMP registration for playground teams
       
       return c.json(actionSuccess({ documentType }));
     } catch (error) {
@@ -227,7 +227,7 @@ const _updateCompanyDocumentType = server.put(
         ...c.req.valid("json"),
         companyId: c.req.valid("param").companyId,
         id: c.req.valid("param").documentTypeId,
-      }, c.var.team.isPlayground); // Skip SMP registration for playground teams
+      }, c.var.team.isPlayground || !c.var.company.isSmpRecipient); // Skip SMP registration for playground teams
       
       return c.json(actionSuccess({ documentType }));
     } catch (error) {
@@ -263,7 +263,7 @@ const _deleteCompanyDocumentType = server.delete(
       await deleteCompanyDocumentType(
         c.req.valid("param").companyId, 
         c.req.valid("param").documentTypeId,
-        c.var.team.isPlayground // Skip SMP registration for playground teams
+        c.var.team.isPlayground || !c.var.company.isSmpRecipient // Skip SMP registration for playground teams
       );
       
       return c.json(actionSuccess());

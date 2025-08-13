@@ -9,6 +9,9 @@ import { getCompanyDocumentTypes, type CompanyDocumentType } from "../company-do
 
 export async function upsertCompanyRegistrations(companyId: string) {
   const company = await getCompanyById(companyId);
+  if(company && !company.isSmpRecipient){
+    return;
+  }
   const identifiers = await getCompanyIdentifiers(companyId);
   const documentTypes = await getCompanyDocumentTypes(companyId);
   if(!company || !identifiers || !documentTypes){
@@ -50,6 +53,10 @@ export async function unregisterCompanyDocumentType(documentType: CompanyDocumen
 }
 
 export async function registerCompanyIdentifier(company: Company | InsertCompany, identifier: CompanyIdentifier, documentTypes: CompanyDocumentType[]) {
+
+  if(!company.isSmpRecipient){
+    return;
+  }
 
   const address = `${company.address}, ${company.postalCode} ${company.city}, ${company.country}`;
   try{

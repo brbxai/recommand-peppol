@@ -157,7 +157,7 @@ const _createCompanyIdentifier = server.post(
       const identifier = await createCompanyIdentifier({
         ...c.req.valid("json"),
         companyId: c.req.valid("param").companyId,
-      }, c.var.team.isPlayground); // Skip SMP registration for playground teams
+      }, c.var.team.isPlayground || !c.var.company.isSmpRecipient); // Skip SMP registration for playground teams
       
       return c.json(actionSuccess({ identifier }));
     } catch (error) {
@@ -227,7 +227,7 @@ const _updateCompanyIdentifier = server.put(
         ...c.req.valid("json"),
         companyId: c.req.valid("param").companyId,
         id: c.req.valid("param").identifierId,
-      }, c.var.team.isPlayground); // Skip SMP registration for playground teams
+      }, c.var.team.isPlayground || !c.var.company.isSmpRecipient); // Skip SMP registration for playground teams
       
       return c.json(actionSuccess({ identifier }));
     } catch (error) {
@@ -263,7 +263,7 @@ const _deleteCompanyIdentifier = server.delete(
       await deleteCompanyIdentifier(
         c.req.valid("param").companyId, 
         c.req.valid("param").identifierId,
-        c.var.team.isPlayground // Skip SMP registration for playground teams
+        c.var.team.isPlayground || !c.var.company.isSmpRecipient // Skip SMP registration for playground teams
       );
       
       return c.json(actionSuccess());
