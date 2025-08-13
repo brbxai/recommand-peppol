@@ -115,7 +115,7 @@ export default function CompanyDetailPage() {
       toast.success("Company deleted successfully");
       navigate("/companies");
     } catch (error) {
-      toast.error("Failed to delete company");
+      toast.error("Failed to delete company: " + error);
     }
   };
 

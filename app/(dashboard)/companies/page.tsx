@@ -178,7 +178,7 @@ export default function Page() {
       await handleApiResponse(response, "Company deleted successfully");
       fetchCompanies();
     } catch (error) {
-      toast.error("Failed to delete company");
+      toast.error("Failed to delete company: " + error);
     }
   };
 

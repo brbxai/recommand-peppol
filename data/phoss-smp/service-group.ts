@@ -63,6 +63,8 @@ export async function deleteServiceGroup(
   );
 
   if (!response.ok) {
+    console.error("Failed to delete service group in SMP");
+    console.error(await response.text());
     throw new UserFacingError("Failed to delete service group in SMP");
   }
 
