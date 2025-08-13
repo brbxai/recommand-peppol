@@ -1,7 +1,8 @@
 import { db } from "@recommand/db";
 import { eq } from "drizzle-orm";
-import { teamExtensions } from "@peppol/db/schema";
+import { companies, teamExtensions } from "@peppol/db/schema";
 import { teams } from "@core/db/schema";
+import type { Company } from "./companies";
 
 export type TeamExtension = Partial<typeof teamExtensions.$inferSelect>; // Partial because we don't always have a team extension
 
@@ -35,6 +36,21 @@ export async function getTeamExtension(
     return null;
   }
   return team[0];
+}
+
+export async function getTeamExtensionAndCompanyByCompanyId(companyId: string): Promise<{ teamExtension: TeamExtension | null; company: Company } | null> {
+  const team = await db
+    .select()
+    .from(companies)
+    .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
+    .where(eq(companies.id, companyId));
+  if (team.length === 0) {
+    return null;
+  }
+  return {
+    teamExtension: team[0].peppol_team_extensions,
+    company: team[0].peppol_companies,
+  };
 }
 
 export async function isPlayground(teamId: string): Promise<boolean> {

@@ -24,6 +24,7 @@ import { sendCreditNoteSchema, type CreditNote } from "@peppol/utils/parsing/cre
 import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
+import { getSendingCompanyIdentifier } from "@peppol/data/company-identifiers";
 
 const server = new Server();
 
@@ -69,7 +70,8 @@ server.post(
 
       // Get senderId, countryC1 from company
       const company = c.var.company;
-      const senderAddress = "0208:" + company.enterpriseNumber;
+      const senderIdentifier = await getSendingCompanyIdentifier(company.id);
+      const senderAddress = `${senderIdentifier.scheme}:${senderIdentifier.identifier}`;
       const countryC1 = company.country;
 
       // Parse recipient

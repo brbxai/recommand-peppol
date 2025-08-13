@@ -4,6 +4,8 @@ import { Logger } from "@recommand/lib/logger";
 import subscriptionServer from "./api/subscription";
 import billingProfileServer from "./api/billing-profile";
 import companiesServer from "./api/companies";
+import companyIdentifiersServer from "./api/company-identifiers";
+import companyDocumentTypesServer from "./api/company-document-types";
 import sendDocumentServer from "./api/send-document";
 import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/transmitted-documents";
@@ -70,8 +72,28 @@ For additional support or questions, don't hesitate to contact our support team.
       security: [{ httpBasic: [] }],
       tags: [
         {
+          name: "Authentication",
+          description: "Authentication endpoints for the Recommand Peppol API.",
+        },
+        {
           name: "Sending",
           description: "Endpoints for sending documents",
+        },
+        {
+          name: "Documents",
+          description: "Endpoints for managing documents.",
+        },
+        {
+          name: "Companies",
+          description: "You can manage all companies for a team. Each business you want to send or receive Peppol documents for needs to be registered as a company.",
+        },
+        {
+          name: "Company Identifiers",
+          description: "You can manage all Peppol identifiers for a company. Peppol identifiers are used to identify a company in the Peppol network. They are structured as scheme:identifier, e.g. '0208:1012081766' for the Belgian business with enterprise number 1012081766.",
+        },
+        {
+          name: "Company Document Types",
+          description: "You can manage all Peppol document types for a company. Peppol document types are used to identify the type of document that can be received by a company.",
         },
         {
           name: "Recipients",
@@ -80,7 +102,7 @@ For additional support or questions, don't hesitate to contact our support team.
         {
           name: "Playgrounds",
           description: "Endpoints for working with playgrounds. Playgrounds are used to test the Recommand API without affecting production data or communicating over the Peppol network. A new playground can be created via the Recommand dashboard by clicking the team switcher in the top left, or via the API outlined below. Usage of the playground is free.",
-        }
+        },
       ],
     },
   })
@@ -91,6 +113,8 @@ server.route("/", sendDocumentServer);
 server.route("/", subscriptionServer);
 server.route("/", billingProfileServer);
 server.route("/", companiesServer);
+server.route("/", companyIdentifiersServer);
+server.route("/", companyDocumentTypesServer);
 server.route("/internal/", receiveDocumentServer);
 server.route("/", transmittedDocumentsServer);
 server.route("/", webhooksServer);

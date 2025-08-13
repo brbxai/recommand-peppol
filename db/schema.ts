@@ -8,9 +8,11 @@ import {
   pgEnum,
   decimal,
   boolean,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
-import { sql } from "drizzle-orm";
+import { SQL, sql } from "drizzle-orm";
+import { uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
@@ -161,6 +163,42 @@ export const companies = pgTable("peppol_companies", {
     .$onUpdate(() => sql`now()`),
 });
 
+export const companyIdentifiers = pgTable("peppol_company_identifiers", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "ci_" + ulid()),
+  companyId: text("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  scheme: text("scheme").notNull(),
+  identifier: text("identifier").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => sql`now()`),
+}, (table) => [
+  uniqueIndex("peppol_company_identifiers_unique").on(table.companyId, lower(table.scheme), lower(table.identifier)),
+]);
+
+export const companyDocumentTypes = pgTable("peppol_company_document_types", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "cdt_" + ulid()),
+  companyId: text("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  docTypeId: text("doc_type_id").notNull(),
+  processId: text("process_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "string" })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => sql`now()`),
+}, (table) => [
+  uniqueIndex("peppol_company_document_types_unique").on(table.companyId, table.docTypeId, table.processId),
+]);
+
 export const webhooks = pgTable("peppol_webhooks", {
   id: text("id")
     .primaryKey()
@@ -227,3 +265,7 @@ export const teamExtensions = pgTable("peppol_team_extensions", {
     .primaryKey(),
   isPlayground: boolean("is_playground").notNull().default(false),
 });
+
+export function lower(email: AnyPgColumn): SQL {
+  return sql`lower(${email})`;
+}

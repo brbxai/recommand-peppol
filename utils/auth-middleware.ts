@@ -75,6 +75,12 @@ export function requireCompanyAccess() {
       return c.json(actionFailure("Team not found"), 404);
     }
 
+    // If there is a teamId param as well, ensure it matches the company's teamId
+    const teamId = c.req.param("teamId");
+    if (teamId && teamId !== company.teamId) {
+      return c.json(actionFailure("Unauthorized: provided teamId does not match company's teamId"), 401);
+    }
+
     c.set("team", team);
     c.set("company", company);
 

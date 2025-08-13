@@ -1,7 +1,7 @@
-import { companies, teamExtensions } from "@peppol/db/schema";
+import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq, and, or, isNull, ne } from "drizzle-orm";
-import { registerCompany, unregisterCompany } from "./phoss-smp";
+import { unregisterCompanyRegistrations } from "./phoss-smp";
 import {
   cleanEnterpriseNumber,
   cleanVatNumber,
@@ -9,6 +9,9 @@ import {
 } from "@peppol/utils/util";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { isPlayground } from "./teams";
+import { createCompanyDocumentType } from "./company-document-types";
+import { createCompanyIdentifier } from "./company-identifiers";
+import { COUNTRIES } from "@peppol/utils/countries";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -54,58 +57,31 @@ export async function getCompanyByPeppolId(
     peppolId = peppolId.split("::")[1];
   }
 
-  // The peppolId is in the format of 0208:0659689080 (0208 for enterprise number, 9925 for vat number)
-  if (peppolId.startsWith("0208:")) {
-    const enterpriseNumber = cleanEnterpriseNumber(peppolId.split(":")[1]);
-    if (!enterpriseNumber) {
-      throw new Error(`Invalid peppol id enterprise number (${originalPeppolId})`);
-    }
-    const res = await db
-      .select()
-      .from(companies)
-      .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
-      .where(
-        and(
-          eq(companies.enterpriseNumber, enterpriseNumber),
-          playgroundTeamId
-            ? eq(companies.teamId, playgroundTeamId)
-            : or(
-                isNull(teamExtensions.isPlayground),
-                eq(teamExtensions.isPlayground, false)
-              )
-        )
-      );
-    if (res.length === 0) {
-      throw new Error(`Company with peppol id ${originalPeppolId} not found`);
-    }
-    return res[0].peppol_companies;
-  } else if (peppolId.startsWith("9925:")) {
-    const vatNumber = cleanVatNumber(peppolId.split(":")[1]);
-    if (!vatNumber) {
-      throw new Error(`Invalid peppolId vat number (${peppolId})`);
-    }
-    const res = await db
-      .select()
-      .from(companies)
-      .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
-      .where(
-        and(
-          eq(companies.vatNumber, vatNumber),
-          playgroundTeamId
-            ? eq(companies.teamId, playgroundTeamId)
-            : or(
-                isNull(teamExtensions.isPlayground),
-                eq(teamExtensions.isPlayground, false)
-              )
-        )
-      );
-    if (res.length === 0) {
-      throw new Error(`Company with peppol id ${originalPeppolId} not found`);
-    }
-    return res[0].peppol_companies;
-  } else {
-    throw new Error(`Invalid peppolId (${peppolId})`);
+  // The peppolId is in the format of 0208:0659689080 (e.g. 0208 for enterprise number, 9925 for vat number)
+  const scheme = peppolId.split(":")[0];
+  const identifier = peppolId.split(":")[1];
+  if(!scheme || !identifier){
+    throw new UserFacingError("Invalid Peppol ID. The Peppol ID must be in the format of scheme:identifier");
   }
+  const results = await db
+    .select()
+    .from(companies)
+    .innerJoin(companyIdentifiers, eq(companies.id, companyIdentifiers.companyId))
+    .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
+    .where(
+      and(
+        eq(companyIdentifiers.scheme, scheme.toLowerCase()),
+        eq(companyIdentifiers.identifier, identifier.toLowerCase()),
+        playgroundTeamId ? eq(companies.teamId, playgroundTeamId) : or(
+          isNull(teamExtensions.isPlayground),
+          eq(teamExtensions.isPlayground, false)
+        )
+      )
+    );
+  if(results.length === 0){
+    throw new Error(`Company with peppol id ${originalPeppolId} not found`);
+  }
+  return results[0].peppol_companies;
 }
 
 export async function createCompany(company: InsertCompany): Promise<Company> {
@@ -113,7 +89,7 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
 
   // Check if there exists a company with the same enterprise number or vat number
   if (
-    await canUpsertCompany(
+    !await canUpsertCompany(
       company.enterpriseNumber,
       company.vatNumber,
       undefined,
@@ -132,31 +108,57 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
     .returning()
     .then((rows) => rows[0]);
 
-  // If the company is in a playground team, don't affect the SMP
-  if (isPlaygroundTeam) {
-    return createdCompany;
-  }
-
   try {
-    if (createdCompany.isSmpRecipient) {
-      await registerCompany(createdCompany);
-    } else {
-      await unregisterCompany(createdCompany);
-    }
     sendSystemAlert(
       "Company Created",
       `Company ${createdCompany.name} has been created. It is ${createdCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
     );
+    await setupCompanyDefaults(createdCompany, isPlaygroundTeam);
   } catch (error) {
-    await db.delete(companies).where(eq(companies.id, createdCompany.id));
     sendSystemAlert(
       "Company Creation Failed",
       `Company ${createdCompany.name} could not be created. Error: \`\`\`\n${error}\n\`\`\``
     );
+    await db.delete(companies).where(eq(companies.id, createdCompany.id));
     throw error;
   }
 
   return createdCompany;
+}
+
+/**
+ * Setup the default document types and identifiers for a company.
+ * @param company The company to setup defaults for
+ * @param isPlayground Whether the company is in a playground team, if so we don't register the company in the SMP
+ */
+export async function setupCompanyDefaults(company: Company, isPlayground: boolean): Promise<void> {
+  await createCompanyDocumentType({
+    companyId: company.id,
+    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
+    processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+  }, isPlayground);
+  await createCompanyDocumentType({
+    companyId: company.id,
+    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
+    processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+  }, isPlayground);
+
+  const countryInfo = COUNTRIES.find((country) => country.code === company.country);
+  if (countryInfo?.defaultEnterpriseNumberScheme) {
+    await createCompanyIdentifier({
+      companyId: company.id,
+      scheme: countryInfo.defaultEnterpriseNumberScheme,
+      identifier: cleanEnterpriseNumber(company.enterpriseNumber)!,
+    }, isPlayground);
+  }
+  const cleanedVatNumber = cleanVatNumber(company.vatNumber);
+  if (countryInfo?.defaultVatScheme && cleanedVatNumber) {
+    await createCompanyIdentifier({
+      companyId: company.id,
+      scheme: countryInfo.defaultVatScheme,
+      identifier: cleanedVatNumber,
+    }, isPlayground);
+  }
 }
 
 export async function updateCompany(
@@ -171,7 +173,7 @@ export async function updateCompany(
 
   // Check if there exists a company with the same enterprise number or vat number
   if (
-    await canUpsertCompany(
+    !await canUpsertCompany(
       company.enterpriseNumber,
       company.vatNumber,
       company.id,
@@ -182,25 +184,6 @@ export async function updateCompany(
     throw new UserFacingError(
       "Company with this enterprise number or vat number already exists"
     );
-  }
-
-  // If the team is a playground team, we don't affect the SMP
-  if (!isPlaygroundTeam) {
-    const didIdentifierChange =
-      oldCompany?.enterpriseNumber !== company.enterpriseNumber ||
-      oldCompany?.vatNumber !== company.vatNumber;
-
-    if (didIdentifierChange) {
-      // Always unregister the old company registration first
-      await unregisterCompany(oldCompany);
-    }
-
-    if (company.isSmpRecipient) {
-      await registerCompany(company);
-    } else if (!didIdentifierChange) {
-      // Unregister if the identifier didn't change, otherwise just don't register
-      await unregisterCompany(company);
-    }
   }
 
   const updatedCompany = await db
@@ -235,7 +218,7 @@ export async function deleteCompany(
     throw new Error("Company not found");
   }
   if (!(await isPlayground(teamId))) {
-    await unregisterCompany(company);
+    await unregisterCompanyRegistrations(companyId);
   }
   await db
     .delete(companies)
@@ -254,7 +237,7 @@ export async function deleteCompany(
  * @param isPlaygroundTeam Whether the team is a playground team
  * @returns Whether the company can be upserted
  */
-export async function canUpsertCompany(
+async function canUpsertCompany(
   enterpriseNumber: string,
   vatNumber: string | undefined | null,
   currentCompanyId: string | undefined,
@@ -273,11 +256,10 @@ export async function canUpsertCompany(
           isPlaygroundTeam
             ? undefined
             : or(
-                // Don't check production companies when on a playground team
-                // Include all production companies when not on a playground team
-                isNull(teamExtensions.isPlayground),
-                eq(teamExtensions.isPlayground, false)
-              )
+              // Include all production companies when not on a playground team
+              isNull(teamExtensions.isPlayground),
+              eq(teamExtensions.isPlayground, false)
+            )
         ),
         or(
           // Check for the enterprise number or vat number
@@ -286,5 +268,5 @@ export async function canUpsertCompany(
         )
       )
     )
-    .then((rows) => rows.length > 0);
+    .then((rows) => rows.length === 0);
 }

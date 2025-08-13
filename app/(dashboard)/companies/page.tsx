@@ -15,6 +15,7 @@ import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { useActiveTeam } from "@core/hooks/user";
+import { useNavigate } from "react-router-dom";
 import { Trash2, Loader2, Pencil, Copy } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import {
@@ -30,6 +31,7 @@ import { defaultCompanyFormData } from "../../../types/company";
 import { DataTableToolbar } from "@core/components/data-table/toolbar";
 import { DataTablePagination } from "@core/components/data-table/pagination";
 import { AsyncButton } from "@core/components/async-button";
+import { Link } from "react-router-dom";
 
 const client = rc<Companies>("peppol");
 
@@ -60,6 +62,7 @@ const createColumn = (
 });
 
 export default function Page() {
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -187,9 +190,12 @@ export default function Page() {
         const id = row.getValue("id") as string;
         return (
           <div className="flex items-center gap-2">
-            <pre className="font-mono text-xs">
+            <Link
+              to={`/companies/${id}`}
+              className="p-0 h-auto font-mono text-xs hover:underline"
+            >
               {id.slice(0, 6)}...{id.slice(-6)}
-            </pre>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
@@ -205,7 +211,23 @@ export default function Page() {
       },
       enableGlobalFilter: true,
     },
-    createColumn("name", "Name"),
+    {
+      accessorKey: "name",
+      header: ({ column }) => <ColumnHeader column={column} title="Name" />,
+      cell: ({ row }) => {
+        const name = row.getValue("name") as string;
+        const id = row.original.id;
+        return (
+          <Link
+            to={`/companies/${id}`}
+            className="p-0 h-auto font-normal text-left hover:underline"
+          >
+            {name}
+          </Link>
+        );
+      },
+      enableGlobalFilter: true,
+    },
     createColumn("enterpriseNumber", "Enterprise Number"),
     createColumn("city", "City"),
     createColumn("country", "Country"),
@@ -222,12 +244,8 @@ export default function Page() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => {
-                setEditingCompany(row.original);
-                setFormData(row.original);
-                setDialogMode("edit");
-                setIsDialogOpen(true);
-              }}
+              onClick={() => navigate(`/companies/${id}`)}
+              title="Edit"
             >
               <Pencil className="h-4 w-4" />
             </Button>
@@ -235,6 +253,7 @@ export default function Page() {
               variant="ghost"
               size="icon"
               onClick={async () => await handleDeleteCompany(id)}
+              title="Delete"
             >
               <Trash2 className="h-4 w-4 text-destructive" />
             </AsyncButton>

@@ -100,3 +100,26 @@ export async function registerServiceMetadata(
 
   return true;
 }
+
+export async function deleteServiceMetadata(
+  peppolIdentifierEas: string,
+  peppolIdentifierAddress: string,
+  documentTypeCode: string,
+) {
+  const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
+  const documentTypeId = `${DOCUMENT_SCHEME}::${documentTypeCode}`;
+  const encodedDocumentTypeId = encodeURIComponent(documentTypeId);
+
+  const response = await fetchSmp(
+    `${PARTICIPANT_SCHEME}::${serviceGroupId}/services/${encodedDocumentTypeId}`,
+    {
+      method: "DELETE"
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to delete service metadata: " + await response.text());
+  }
+
+  return true;
+}

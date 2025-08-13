@@ -162,6 +162,20 @@
       "when": 1754760117365,
       "tag": "20250809172157_pink_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1755076846539,
+      "tag": "20250813092046_brief_cannonball",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1755077290667,
+      "tag": "20250813092810_swift_red_wolf",
+      "breakpoints": true
     }
   ]
 }

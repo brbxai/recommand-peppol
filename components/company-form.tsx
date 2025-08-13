@@ -7,6 +7,7 @@ import { zodValidCountryCodes } from "../db/schema";
 import { z } from "zod";
 import { AsyncButton } from "@core/components/async-button";
 import { Checkbox } from "@core/components/ui/checkbox";
+import { COUNTRIES } from "@peppol/utils/countries";
 
 type CompanyFormProps = {
     company: Partial<Company>;
@@ -67,7 +68,11 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                         <SelectValue placeholder="Select a country" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="BE">🇧🇪 Belgium</SelectItem>
+                        {COUNTRIES.map((country) => (
+                            <SelectItem key={country.code} value={country.code}>
+                                {country.flag} {country.name}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
