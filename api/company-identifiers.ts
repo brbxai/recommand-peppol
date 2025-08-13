@@ -5,7 +5,6 @@ import {
   getCompanyIdentifiers,
   updateCompanyIdentifier,
 } from "@peppol/data/company-identifiers";
-import { getCompany } from "@peppol/data/companies";
 import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";

@@ -28,7 +28,8 @@ export async function getCompanyIdentifiers(companyId: string): Promise<CompanyI
   return await db
     .select()
     .from(companyIdentifiers)
-    .where(eq(companyIdentifiers.companyId, companyId));
+    .where(eq(companyIdentifiers.companyId, companyId))
+    .orderBy(asc(companyIdentifiers.scheme), asc(companyIdentifiers.identifier));
 }
 
 export async function getCompanyIdentifier(
@@ -123,7 +124,6 @@ export async function updateCompanyIdentifier(
 
   // Check if the company identifier can be upserted
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, companyIdentifier.id, companyIdentifier.companyId);
-
   if (!canUpsert) {
     throw new UserFacingError(
       `Company identifier with scheme '${companyIdentifier.scheme}' and value '${companyIdentifier.identifier}' already exists for this company`
@@ -196,7 +196,9 @@ export async function deleteCompanyIdentifier(
 async function canUpsertCompanyIdentifier(scheme: string, identifier: string, currentIdentifierId: string | undefined, companyId: string): Promise<boolean> {
   const teamInfo = await getTeamExtensionAndCompanyByCompanyId(companyId);
   if(!teamInfo){
-    return false; // This should never happen, a company is always associated with a team
+    console.error("Company is not associated with a team", companyId);
+    // This should never happen, a company is always associated with a team
+    throw new Error("Company is not associated with a team");
   }
   const isPlaygroundTeam = teamInfo.teamExtension?.isPlayground ?? false;
   return await db
@@ -206,7 +208,7 @@ async function canUpsertCompanyIdentifier(scheme: string, identifier: string, cu
     .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
     .where(
       and(
-        currentIdentifierId ? ne(companies.id, currentIdentifierId) : undefined, // Exclude the current identifier from the check
+        currentIdentifierId ? ne(companyIdentifiers.id, currentIdentifierId) : undefined, // Exclude the current identifier from the check
         or(
           eq(companies.teamId, teamInfo.company.teamId), // Include all companies on the same team
           isPlaygroundTeam
