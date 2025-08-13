@@ -136,8 +136,8 @@ export async function updateCompanyIdentifier(
   }
 
   if(!skipSmpRegistration){
-    await unregisterCompanyIdentifier(oldIdentifier); // Unregister the old identifier
     await upsertCompanyRegistration(companyIdentifier.companyId, companyIdentifier); // Register the new identifier
+    await unregisterCompanyIdentifier(oldIdentifier); // Unregister the old identifier
   }
 
   const updatedIdentifier = await db
