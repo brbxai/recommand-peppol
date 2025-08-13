@@ -19,7 +19,7 @@ import {
   describeErrorResponse,
   describeSuccessResponse,
 } from "@peppol/utils/api-docs";
-import { addMonths } from "date-fns";
+import { addMonths, formatISO } from "date-fns";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
@@ -95,10 +95,10 @@ server.post(
           invoice.issueDate = new Date().toISOString();
         }
         if (!invoice.dueDate) {
-          invoice.dueDate = addMonths(
-            new Date(invoice.issueDate),
-            1
-          ).toISOString();
+          invoice.dueDate = formatISO(
+            addMonths(new Date(invoice.issueDate), 1),
+            { representation: 'date' }
+          );
         }
         const ublInvoice = invoiceToUBL(
           invoice,
