@@ -102,11 +102,11 @@ export function CompanyDocumentTypesManager({ teamId, companyId }: CompanyDocume
             toast.success("Document type added successfully");
             setFormData({ docTypeId: "", processId: "" });
             setIsAdding(false);
-            fetchDocumentTypes();
         } catch (error) {
             toast.error("Failed to add document type: " + error);
         } finally {
             setIsSubmitting(false);
+            fetchDocumentTypes();
         }
     };
 
@@ -139,11 +139,11 @@ export function CompanyDocumentTypesManager({ teamId, companyId }: CompanyDocume
             toast.success("Document type updated successfully");
             setEditingId(null);
             setEditFormData({ docTypeId: "", processId: "" });
-            fetchDocumentTypes();
         } catch (error) {
             toast.error("Failed to update document type: " + error);
         } finally {
             setIsSubmitting(false);
+            fetchDocumentTypes();
         }
     };
 
@@ -159,9 +159,10 @@ export function CompanyDocumentTypesManager({ teamId, companyId }: CompanyDocume
             }
 
             toast.success("Document type deleted successfully");
-            fetchDocumentTypes();
         } catch (error) {
-            toast.error("Failed to delete document type");
+            toast.error("Failed to delete document type: " + error);
+        } finally {
+            fetchDocumentTypes();
         }
     };
 

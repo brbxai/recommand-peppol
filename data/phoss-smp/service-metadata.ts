@@ -1,3 +1,4 @@
+import { UserFacingError } from "@peppol/utils/util";
 import { fetchSmp } from "./client";
 import { XMLBuilder } from "fast-xml-parser";
 
@@ -95,7 +96,7 @@ export async function registerServiceMetadata(
 
   if (!response.ok) {
     console.error(await response.text());
-    throw new Error("Failed to register service metadata");
+    throw new UserFacingError("Failed to register service metadata in SMP");
   }
 
   return true;
@@ -118,7 +119,7 @@ export async function deleteServiceMetadata(
   );
 
   if (!response.ok) {
-    throw new Error("Failed to delete service metadata: " + await response.text());
+    throw new UserFacingError("Failed to delete service metadata in SMP");
   }
 
   return true;

@@ -1,3 +1,4 @@
+import { UserFacingError } from "@peppol/utils/util";
 import { fetchSmp } from "./client";
 import { XMLBuilder } from "fast-xml-parser";
 
@@ -41,7 +42,7 @@ export async function registerServiceGroup(
 
   if (!response.ok) {
     console.error(await response.text());
-    throw new Error("Failed to register service group");
+    throw new UserFacingError("Failed to register service group in SMP");
   }
 
   const data = await response.json();
@@ -62,7 +63,7 @@ export async function deleteServiceGroup(
   );
 
   if (!response.ok) {
-    throw new Error("Failed to delete service group: " + await response.text());
+    throw new UserFacingError("Failed to delete service group in SMP");
   }
 
   return true;
@@ -87,7 +88,7 @@ export async function migrateParticipantToOurSMP(
 
   if (!response.ok) {
     console.error(await response.text());
-    throw new Error("Failed to migrate participant");
+    throw new UserFacingError("Failed to migrate participant to our SMP");
   }
 
   return true;

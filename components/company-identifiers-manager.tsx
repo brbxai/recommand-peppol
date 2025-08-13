@@ -56,7 +56,7 @@ export function CompanyIdentifiersManager({ teamId, companyId }: CompanyIdentifi
             })));
         } catch (error) {
             console.error("Error fetching identifiers:", error);
-            toast.error("Failed to load company identifiers");
+            toast.error("Failed to load company identifiers: " + error);
         } finally {
             setIsLoading(false);
         }
@@ -87,11 +87,11 @@ export function CompanyIdentifiersManager({ teamId, companyId }: CompanyIdentifi
             toast.success("Identifier added successfully");
             setFormData({ scheme: "", identifier: "" });
             setIsAdding(false);
-            fetchIdentifiers();
         } catch (error) {
             toast.error("Failed to add identifier: " + error);
         } finally {
             setIsSubmitting(false);
+            fetchIdentifiers();
         }
     };
 
@@ -124,11 +124,11 @@ export function CompanyIdentifiersManager({ teamId, companyId }: CompanyIdentifi
             toast.success("Identifier updated successfully");
             setEditingId(null);
             setEditFormData({ scheme: "", identifier: "" });
-            fetchIdentifiers();
         } catch (error) {
             toast.error("Failed to update identifier: " + error);
         } finally {
             setIsSubmitting(false);
+            fetchIdentifiers();
         }
     };
 
@@ -144,9 +144,10 @@ export function CompanyIdentifiersManager({ teamId, companyId }: CompanyIdentifi
             }
 
             toast.success("Identifier deleted successfully");
-            fetchIdentifiers();
         } catch (error) {
             toast.error("Failed to delete identifier: " + error);
+        } finally {
+            fetchIdentifiers();
         }
     };
 

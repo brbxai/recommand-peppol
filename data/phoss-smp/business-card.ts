@@ -1,6 +1,7 @@
 import { fetchSmp } from "./client";
 import { XMLBuilder } from "fast-xml-parser";
 import { PARTICIPANT_SCHEME } from "./service-metadata";
+import { UserFacingError } from "@peppol/utils/util";
 
 const builder = new XMLBuilder({
   ignoreAttributes: false,
@@ -56,7 +57,7 @@ export async function registerBusinessCard(
 
   if (!response.ok) {
     console.error(await response.text());
-    throw new Error("Failed to register business card");
+    throw new UserFacingError("Failed to register business card in SMP");
   }
 
   return true;
