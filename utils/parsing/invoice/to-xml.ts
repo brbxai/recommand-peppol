@@ -167,9 +167,11 @@ export function invoiceToUBL(
             "@_name": "Credit Transfer",
             "#text": "30",
           },
-          "cbc:PaymentID": {
-            "#text": payment.reference,
-          },
+          ...(payment.reference && {
+            "cbc:PaymentID": {
+              "#text": payment.reference,
+            },
+          }),
           "cac:PayeeFinancialAccount": {
             "cbc:ID": {
               "#text": payment.iban,

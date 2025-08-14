@@ -101,7 +101,7 @@ server.post(
           };
         }
         if (!invoice.issueDate) {
-          invoice.issueDate = new Date().toISOString();
+          invoice.issueDate = formatISO(new Date(), { representation: 'date' });
         }
         if (!invoice.dueDate) {
           invoice.dueDate = formatISO(
@@ -137,7 +137,7 @@ server.post(
           };
         }
         if (!creditNote.issueDate) {
-          creditNote.issueDate = new Date().toISOString();
+          creditNote.issueDate = formatISO(new Date(), { representation: 'date' });
         }
         const ublCreditNote = creditNoteToUBL(
           creditNote,
