@@ -1,19 +1,11 @@
 import { PageTemplate } from "@core/components/page-template";
 // @ts-expect-error
 import Logo from "@core/assets/recommand-logo.svg";
-import { useUserStore } from "@core/lib/user-store";
-import { useEffect, useState } from "react";
-import { getPlayground, type PlaygroundType } from "@peppol/lib/client/playgrounds";
+import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { Factory, ToyBrick } from "lucide-react";
 
 export default function Page() {
-  const { activeTeam } = useUserStore(x => x);
-  const [playground, setPlayground] = useState<PlaygroundType | null>(null);
-  useEffect(() => {
-    if (activeTeam) {
-      getPlayground(activeTeam.id).then(setPlayground);
-    }
-  }, [activeTeam]);
+  const playground = useIsPlayground();
   
   return (
     <PageTemplate>

@@ -1,20 +1,9 @@
-import { useEffect, useState } from "react";
 import { Info } from "lucide-react";
-import { useUserStore } from "@core/lib/user-store";
-import { getPlayground } from "@peppol/lib/client/playgrounds";
+import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@core/components/ui/tooltip";
 
 export default function PlaygroundUI() {
-  const { activeTeam } = useUserStore(x => x);
-  const [isPlayground, setIsPlayground] = useState(false);
-
-  useEffect(() => {
-    if (activeTeam) {
-      getPlayground(activeTeam.id).then(playground => {
-        setIsPlayground(playground?.isPlayground ?? false);
-      });
-    }
-  }, [activeTeam]);
+  const isPlayground = useIsPlayground();
 
   return isPlayground && <div className="absolute top-0 left-0 right-0 mx-auto z-50 bg-primary w-fit h-fit py-1 px-2 rounded-b-sm">
     <div className="flex items-center justify-center gap-2">

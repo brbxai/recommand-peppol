@@ -41,6 +41,7 @@ import {
 import { BillingProfileForm, DEFAULT_BILLING_PROFILE_FORM_DATA, type BillingProfileFormData } from "@peppol/components/billing-profile-form";
 import { PlansGrid } from "@peppol/components/plans-grid";
 import { updateBillingProfile, fetchBillingProfile as fetchBillingProfileFromApi } from "@peppol/lib/billing";
+import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 
 const subscriptionClient = rc<Subscription>("peppol");
 const billingProfileClient = rc<BillingProfile>("peppol");
@@ -55,6 +56,7 @@ export default function Page() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
   const activeTeam = useActiveTeam();
+  const isPlayground = useIsPlayground();
 
   const fetchSubscription = async () => {
     if (!activeTeam?.id) {
@@ -71,6 +73,7 @@ export default function Page() {
       const data = await response.json();
 
       if (!data.success || !data.subscription) {
+        setCurrentSubscription(null);
         return;
       }
 
@@ -127,14 +130,19 @@ export default function Page() {
         country: billingProfile.country,
         vatNumber: billingProfile.vatNumber || '',
       });
+    }else{
+      setBillingProfile(null);
     }
   };
 
   useEffect(() => {
+    if(isPlayground){
+      return;
+    }
     fetchSubscription();
     fetchCurrentUsage();
     fetchBillingProfile();
-  }, [activeTeam?.id]);
+  }, [activeTeam?.id, isPlayground]);
 
   const handleCancelSubscription = async () => {
     if (!activeTeam?.id) return;
@@ -173,6 +181,20 @@ export default function Page() {
     >
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    </PageTemplate>;
+  }
+
+  if(isPlayground){
+    return <PageTemplate
+      breadcrumbs={[
+        { label: "Team Settings" },
+        { label: "Billing" },
+        { label: "Subscription" },
+      ]}
+    >
+      <div className="flex items-center justify-center py-8 text-center">
+        <p className="text-muted-foreground">This is a playground environment. Playground usage is entirely free of charge.<br/>Switch to a production team to manage your subscription.</p>
       </div>
     </PageTemplate>;
   }

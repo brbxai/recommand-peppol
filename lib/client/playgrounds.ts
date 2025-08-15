@@ -1,6 +1,8 @@
 import { rc } from "@recommand/lib/client";
 import type { Playgrounds } from "@peppol/api/playgrounds";
 import type { InferResponseType } from 'hono/client';
+import { useEffect, useState } from "react";
+import { useUserStore } from "@core/lib/user-store";
 
 export const client = rc<Playgrounds>("peppol");
 
@@ -59,4 +61,19 @@ export async function getPlayground(teamId: string): Promise<PlaygroundType | nu
   // Store the promise in the cache
   getPlaygroundPromiseCache.set(teamId, promise);
   return promise;
+}
+
+export function useIsPlayground() {
+  const { activeTeam } = useUserStore(x => x);
+  const [isPlayground, setIsPlayground] = useState(false);
+
+  useEffect(() => {
+    if (activeTeam) {
+      getPlayground(activeTeam.id).then(playground => {
+        setIsPlayground(playground?.isPlayground ?? false);
+      });
+    }
+  }, [activeTeam]);
+
+  return isPlayground;
 }
