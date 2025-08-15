@@ -21,19 +21,17 @@ export const COUNTRIES: CountryInfo[] = [
         defaultEnterpriseNumberScheme: "0208",
     },
     {
-        code: "CY",
-        name: "Cyprus",
-        flag: "🇨🇾",
-    },
-    {
         code: "DK",
         name: "Denmark",
         flag: "🇩🇰",
+        defaultEnterpriseNumberScheme: "9902",
     },
     {
         code: "FI",
         name: "Finland",
         flag: "🇫🇮",
+        defaultVatScheme: "0213",
+        defaultEnterpriseNumberScheme: "0212",
     },
     {
         code: "FR",
@@ -57,11 +55,13 @@ export const COUNTRIES: CountryInfo[] = [
         code: "IS",
         name: "Iceland",
         flag: "🇮🇸",
+        defaultEnterpriseNumberScheme: "0196",
     },
     {
         code: "IE",
         name: "Ireland",
         flag: "🇮🇪",
+        defaultVatScheme: "9935",
     },
     {
         code: "IT",
@@ -84,6 +84,7 @@ export const COUNTRIES: CountryInfo[] = [
         code: "PL",
         name: "Poland",
         flag: "🇵🇱",
+        defaultVatScheme: "9945",
     },
     {
         code: "SE",
@@ -94,21 +95,13 @@ export const COUNTRIES: CountryInfo[] = [
         code: "GB",
         name: "United Kingdom",
         flag: "🇬🇧",
+        defaultVatScheme: "9932",
     },
     {
         code: "AU",
         name: "Australia",
         flag: "🇦🇺",
-    },
-    {
-        code: "CN",
-        name: "China",
-        flag: "🇨🇳",
-    },
-    {
-        code: "IN",
-        name: "India",
-        flag: "🇮🇳",
+        defaultEnterpriseNumberScheme: "0151",
     },
     {
         code: "JP",
@@ -131,30 +124,9 @@ export const COUNTRIES: CountryInfo[] = [
         flag: "🇸🇬",
     },
     {
-        code: "CA",
-        name: "Canada",
-        flag: "🇨🇦",
-    },
-    {
-        code: "MX",
-        name: "Mexico",
-        flag: "🇲🇽",
-    },
-    {
         code: "US",
         name: "United States",
         flag: "🇺🇸",
-    },
-
-    {
-        code: "AM",
-        name: "Armenia",
-        flag: "🇦🇲",
-    },
-    {
-        code: "ZA",
-        name: "South Africa",
-        flag: "🇿🇦",
     },
     {
         code: "AE",
