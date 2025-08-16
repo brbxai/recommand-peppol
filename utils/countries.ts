@@ -32,13 +32,12 @@ export const COUNTRIES: CountryInfo[] = [
         code: "FI",
         name: "Finland",
         flag: "🇫🇮",
-        defaultVatScheme: "0213",
-        defaultEnterpriseNumberScheme: "0212",
     },
     {
         code: "FR",
         name: "France",
         flag: "🇫🇷",
+        defaultVatScheme: "9957",
         defaultEnterpriseNumberScheme: "0002",
     },
     {
@@ -81,6 +80,7 @@ export const COUNTRIES: CountryInfo[] = [
         code: "NO",
         name: "Norway",
         flag: "🇳🇴",
+        defaultEnterpriseNumberScheme: "0192",
     },
     {
         code: "PL",
