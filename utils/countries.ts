@@ -24,7 +24,7 @@ export const COUNTRIES: CountryInfo[] = [
         code: "DK",
         name: "Denmark",
         flag: "🇩🇰",
-        defaultVatScheme: "0184",
+        defaultEnterpriseNumberScheme: "0184",
     },
     {
         code: "FI",
