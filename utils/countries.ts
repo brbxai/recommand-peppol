@@ -12,6 +12,8 @@ export const COUNTRIES: CountryInfo[] = [
         code: "AT",
         name: "Austria",
         flag: "🇦🇹",
+        defaultVatScheme: "9914",
+        defaultEnterpriseNumberScheme: "9919",
     },
     {
         code: "BE",
