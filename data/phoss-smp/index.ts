@@ -87,7 +87,7 @@ export async function registerCompanyIdentifier(company: Company | InsertCompany
         // Ignore the error
       }
       if(smpHostnames.length > 0){
-        throw new UserFacingError(`Failed to register company identifier ${identifier.scheme}:${identifier.identifier}, it might already be registered with another SMP (e.g. ${smpHostnames.join(", ")}). Please revoke your registration with the other SMP and try again. Feel free to contact support@recommand.eu if you are unsure about how to proceed.`);
+        throw new UserFacingError(`Failed to register company identifier ${identifier.scheme}:${identifier.identifier}, it might already be registered with another SMP (${smpHostnames.join(", ")}). Please revoke your registration with the other SMP and try again. Feel free to contact support@recommand.eu if you are unsure about how to proceed.`);
       }else{
         throw new UserFacingError(`Failed to register company identifier ${identifier.scheme}:${identifier.identifier}, it might already be registered with another SMP. Please ensure this is not the case. Feel free to contact support@recommand.eu if you are unsure about how to proceed.`);
       }
