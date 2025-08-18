@@ -36,6 +36,8 @@ const _verifyRecipient = server.post(
       ...describeSuccessResponse("Successfully verified recipient", {
         isValid: { type: "boolean", description: "Whether the recipient is registered in the Peppol network." },
         smpUrl: { type: "string", description: "The SMP URL of the recipient." },
+        serviceMetadataReferences: { type: "array", items: { type: "string" }, description: "The service metadata references of the recipient." },
+        smpHostnames: { type: "array", items: { type: "string" }, description: "The SMP hostnames of the recipient." },
       }),
     },
   }),

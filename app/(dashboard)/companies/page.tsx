@@ -42,11 +42,11 @@ const handleApiResponse = async (
 ) => {
   const json = await response.json();
   if (!json.success) {
-    throw new Error(
-      "Invalid response format: " + stringifyActionFailure(json.errors)
-    );
+    toast.error(stringifyActionFailure(json.errors));
+    throw new Error(stringifyActionFailure(json.errors));
+  }else{
+    toast.success(successMessage);
   }
-  toast.success(successMessage);
   return json;
 };
 
@@ -157,9 +157,7 @@ export default function Page() {
       setEditingCompany(null);
       setIsDialogOpen(false);
     } catch (error) {
-      toast.error(
-        `Failed to ${dialogMode === "create" ? "create" : "update"} company. It might already be registered.`
-      );
+      console.error("Error submitting company:", error);
     }
   };
 
@@ -178,7 +176,7 @@ export default function Page() {
       await handleApiResponse(response, "Company deleted successfully");
       fetchCompanies();
     } catch (error) {
-      toast.error("Failed to delete company: " + error);
+      console.error("Error deleting company:", error);
     }
   };
 

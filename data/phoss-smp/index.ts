@@ -6,6 +6,7 @@ import { registerBusinessCard } from "./business-card";
 import { getMigrationToken } from "../hermes";
 import { getCompanyIdentifiers, type CompanyIdentifier } from "../company-identifiers";
 import { getCompanyDocumentTypes, type CompanyDocumentType } from "../company-document-types";
+import { verifyRecipient } from "../recipient";
 
 type MinimalCompanyIdentifier = {
   scheme: string;
@@ -67,12 +68,29 @@ export async function registerCompanyIdentifier(company: Company | InsertCompany
   try{
     await registerServiceGroup(identifier.scheme, identifier.identifier);
   }catch(error){
-    if(identifier.scheme === "0208"){
-      // The company might be registered in Hermes already, try to migrate it to our SMP
-      const migrationToken = await getMigrationToken(identifier.identifier);
-      await migrateParticipantToOurSMP(identifier.scheme, identifier.identifier, migrationToken);
-    } else {
-      throw error;
+    try{
+      if(identifier.scheme === "0208"){
+        // The company might be registered in Hermes already, try to migrate it to our SMP
+        const migrationToken = await getMigrationToken(identifier.identifier);
+        await migrateParticipantToOurSMP(identifier.scheme, identifier.identifier, migrationToken);
+      } else {
+        throw error;
+      }
+    }catch(error){
+      console.error(error);
+      // Try to get the SMP hostnames so we can make a more descriptive error message
+      let smpHostnames: string[] = [];
+      try{
+        const recipientVerification = await verifyRecipient(identifier.scheme + ":" + identifier.identifier);
+        smpHostnames = recipientVerification.smpHostnames;
+      }catch(error){
+        // Ignore the error
+      }
+      if(smpHostnames.length > 0){
+        throw new UserFacingError(`Failed to register company identifier ${identifier.scheme}:${identifier.identifier}, it might already be registered with another SMP (e.g. ${smpHostnames.join(", ")}). Please revoke your registration with the other SMP and try again. Feel free to contact support@recommand.eu if you are unsure about how to proceed.`);
+      }else{
+        throw new UserFacingError(`Failed to register company identifier ${identifier.scheme}:${identifier.identifier}, it might already be registered with another SMP. Please ensure this is not the case. Feel free to contact support@recommand.eu if you are unsure about how to proceed.`);
+      }
     }
   }
 
