@@ -42,7 +42,9 @@ const handleApiResponse = async (
 ) => {
   const json = await response.json();
   if (!json.success) {
-    toast.error(stringifyActionFailure(json.errors));
+    toast.error(stringifyActionFailure(json.errors), {
+      duration: 10000,
+    });
     throw new Error(stringifyActionFailure(json.errors));
   }else{
     toast.success(successMessage);
