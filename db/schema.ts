@@ -16,6 +16,7 @@ import { uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import { autoUpdateTimestamp } from "@recommand/db/custom-types";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -64,11 +65,8 @@ export const billingProfiles = pgTable("peppol_billing_profiles", {
   country: validCountryCodes("country").notNull(),
   vatNumber: text("vat_number"),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => sql`now()`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
 });
 
 export const subscriptions = pgTable("peppol_subscriptions", {
@@ -86,11 +84,8 @@ export const subscriptions = pgTable("peppol_subscriptions", {
     .notNull(),
   endDate: timestamp("end_date", { withTimezone: true }),
   lastBilledAt: timestamp("last_billed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => sql`now()`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
 });
 
 export const subscriptionBillingEvents = pgTable(
@@ -133,11 +128,8 @@ export const subscriptionBillingEvents = pgTable(
     paymentMethod: text("payment_method"),
     paymentDate: timestamp("payment_date"),
 
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "string" })
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => sql`now()`),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: autoUpdateTimestamp(),
   }
 );
 
@@ -156,11 +148,8 @@ export const companies = pgTable("peppol_companies", {
   enterpriseNumber: text("enterprise_number").notNull(),
   vatNumber: text("vat_number"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => sql`now()`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
 });
 
 export const companyIdentifiers = pgTable("peppol_company_identifiers", {
@@ -172,11 +161,8 @@ export const companyIdentifiers = pgTable("peppol_company_identifiers", {
     .notNull(),
   scheme: text("scheme").notNull(),
   identifier: text("identifier").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => sql`now()`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
 }, (table) => [
   uniqueIndex("peppol_company_identifiers_unique").on(table.companyId, lower(table.scheme), lower(table.identifier)),
 ]);
@@ -190,11 +176,8 @@ export const companyDocumentTypes = pgTable("peppol_company_document_types", {
     .notNull(),
   docTypeId: text("doc_type_id").notNull(),
   processId: text("process_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => sql`now()`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
 }, (table) => [
   uniqueIndex("peppol_company_document_types_unique").on(table.companyId, table.docTypeId, table.processId),
 ]);
@@ -209,11 +192,8 @@ export const webhooks = pgTable("peppol_webhooks", {
   companyId: text("company_id")
     .references(() => companies.id, { onDelete: "cascade" }),
   url: text("url").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => sql`now()`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
 });
 
 export const transferEvents = pgTable("peppol_transfer_events", {
@@ -227,7 +207,7 @@ export const transferEvents = pgTable("peppol_transfer_events", {
     .notNull(),
   transmittedDocumentId: text("transmitted_document_id"),
   direction: transferEventDirectionEnum("direction").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
@@ -253,11 +233,8 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   parsed: jsonb("parsed").$type<Invoice | CreditNote>(),
 
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => sql`now()`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
 });
 
 export const teamExtensions = pgTable("peppol_team_extensions", {

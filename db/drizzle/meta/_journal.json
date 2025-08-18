@@ -176,6 +176,20 @@
       "when": 1755077290667,
       "tag": "20250813092810_swift_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1755526726868,
+      "tag": "20250818141846_curious_lady_bullseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1755526810777,
+      "tag": "20250818142010_perpetual_firebrand",
+      "breakpoints": true
     }
   ]
 }
