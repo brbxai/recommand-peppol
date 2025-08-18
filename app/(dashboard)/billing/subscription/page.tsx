@@ -80,6 +80,7 @@ export default function Page() {
       setCurrentSubscription({
         ...data.subscription,
         createdAt: new Date(data.subscription.createdAt),
+        updatedAt: new Date(data.subscription.updatedAt),
         startDate: new Date(data.subscription.startDate),
         endDate: data.subscription.endDate
           ? new Date(data.subscription.endDate)

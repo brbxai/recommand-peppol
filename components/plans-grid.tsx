@@ -28,6 +28,7 @@ export function PlansGrid({ currentSubscription, teamId, onSubscriptionUpdate }:
         onSubscriptionUpdate?.({
           ...data.subscription,
           createdAt: new Date(data.subscription.createdAt),
+          updatedAt: new Date(data.subscription.updatedAt),
           startDate: new Date(data.subscription.startDate),
           endDate: data.subscription.endDate ? new Date(data.subscription.endDate) : null,
           lastBilledAt: data.subscription.lastBilledAt ? new Date(data.subscription.lastBilledAt) : null,

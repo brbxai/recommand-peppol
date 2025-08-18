@@ -52,7 +52,7 @@ export function CompanyIdentifiersManager({ teamId, companyId }: CompanyIdentifi
             setIdentifiers((json.identifiers || []).map(id => ({
                 ...id,
                 createdAt: new Date(id.createdAt),
-                updatedAt: id.updatedAt // Keep as string since that's what the schema expects
+                updatedAt: new Date(id.updatedAt),
             })));
         } catch (error) {
             console.error("Error fetching identifiers:", error);

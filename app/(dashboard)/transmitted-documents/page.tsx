@@ -112,6 +112,7 @@ export default function Page() {
             ...doc,
             readAt: doc.readAt ? new Date(doc.readAt) : null,
             createdAt: new Date(doc.createdAt),
+            updatedAt: new Date(doc.updatedAt),
           }))
         );
         setTotal(json.pagination.total);

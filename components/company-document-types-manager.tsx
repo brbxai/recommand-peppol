@@ -67,7 +67,7 @@ export function CompanyDocumentTypesManager({ teamId, companyId }: CompanyDocume
             setDocumentTypes((json.documentTypes || []).map(dt => ({
                 ...dt,
                 createdAt: new Date(dt.createdAt),
-                updatedAt: dt.updatedAt // Keep as string since that's what the schema expects
+                updatedAt: new Date(dt.updatedAt),
             })));
         } catch (error) {
             console.error("Error fetching document types:", error);
