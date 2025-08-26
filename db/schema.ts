@@ -17,6 +17,7 @@ import { z } from "zod";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import { autoUpdateTimestamp } from "@recommand/db/custom-types";
+import { COUNTRIES } from "@peppol/utils/countries";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -29,7 +30,7 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "failed",
 ]);
 
-export const zodValidCountryCodes = z.enum(["BE"]);
+export const zodValidCountryCodes = z.enum(COUNTRIES.map((c) => c.code) as [string, ...string[]]);
 export const validCountryCodes = pgEnum("peppol_valid_country_codes", zodValidCountryCodes.options);
 
 export const supportedDocumentTypes = z.enum(["invoice", "creditNote", "unknown"]);
