@@ -1,4 +1,4 @@
-import { zValidator } from "@hono/zod-validator";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { Server } from "@recommand/lib/api";
 import { z } from "zod";
 import {
@@ -15,7 +15,7 @@ const server = new Server();
 const _getActiveSubscription = server.get(
   "/:teamId/subscription",
   requireTeamAccess(),
-  zValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     const subscription = await getActiveSubscription(c.var.team.id);
     return c.json(actionSuccess({ subscription }));
@@ -25,8 +25,8 @@ const _getActiveSubscription = server.get(
 const _startSubscription = server.post(
   "/:teamId/subscription",
   requireTeamAccess(),
-  zValidator("param", z.object({ teamId: z.string() })),
-  zValidator(
+  zodValidator("param", z.object({ teamId: z.string() })),
+  zodValidator(
     "json",
     z.object({
       planId: z.string(),
@@ -55,7 +55,7 @@ const _startSubscription = server.post(
 const _cancelSubscription = server.post(
   "/:teamId/subscription/cancel",
   requireTeamAccess(),
-  zValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     await cancelSubscription(c.var.team.id);
     return c.json(actionSuccess());

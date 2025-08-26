@@ -9,7 +9,7 @@ import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
 import "zod-openapi/extend";
-import { validator as zValidator } from "hono-openapi/zod";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
 import { requireCompanyAccess } from "@peppol/utils/auth-middleware";
@@ -46,7 +46,7 @@ const _companyIdentifiers = server.get(
       ...describeErrorResponse(500, "Failed to fetch company identifiers"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
   async (c) => {
     try {
       const identifiers = await getCompanyIdentifiers(c.var.company.id);
@@ -83,7 +83,7 @@ const _companyIdentifier = server.get(
       ...describeErrorResponse(500, "Failed to fetch company identifier"),
     },
   }),
-  zValidator("param", z.object({ 
+  zodValidator("param", z.object({ 
     teamId: z.string(), 
     companyId: z.string(), 
     identifierId: z.string() 
@@ -144,8 +144,8 @@ const _createCompanyIdentifier = server.post(
       ...describeErrorResponse(500, "Failed to create company identifier"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
-  zValidator(
+  zodValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
+  zodValidator(
     "json",
     z.object({
       scheme: z.string().min(1, "Scheme is required"),
@@ -209,12 +209,12 @@ const _updateCompanyIdentifier = server.put(
       ...describeErrorResponse(500, "Failed to update company identifier"),
     },
   }),
-  zValidator("param", z.object({ 
+  zodValidator("param", z.object({ 
     teamId: z.string(), 
     companyId: z.string(), 
     identifierId: z.string() 
   })),
-  zValidator(
+  zodValidator(
     "json",
     z.object({
       scheme: z.string().min(1, "Scheme is required"),
@@ -253,7 +253,7 @@ const _deleteCompanyIdentifier = server.delete(
       ...describeErrorResponse(500, "Failed to delete company identifier"),
     },
   }),
-  zValidator("param", z.object({ 
+  zodValidator("param", z.object({ 
     teamId: z.string(), 
     companyId: z.string(), 
     identifierId: z.string() 

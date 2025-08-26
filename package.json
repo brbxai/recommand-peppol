@@ -16,7 +16,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@hono/zod-validator": "^0.4.3",
     "@mollie/api-client": "^4.2.0",
     "@types/jszip": "^3.4.1",
     "date-fns": "^4.1.0",

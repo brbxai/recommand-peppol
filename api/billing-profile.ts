@@ -1,4 +1,4 @@
-import { zValidator } from "@hono/zod-validator";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { Server } from "@recommand/lib/api";
 import { z } from "zod";
 import {
@@ -31,7 +31,7 @@ export type BillingProfileData = {
 const _getBillingProfile = server.get(
   "/:teamId/billing-profile",
   requireTeamAccess(),
-  zValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {
       const billingProfile = await getBillingProfile(c.var.team.id);
@@ -48,8 +48,8 @@ const _getBillingProfile = server.get(
 const _upsertBillingProfile = server.put(
   "/:teamId/billing-profile",
   requireTeamAccess(),
-  zValidator("param", z.object({ teamId: z.string() })),
-  zValidator(
+  zodValidator("param", z.object({ teamId: z.string() })),
+  zodValidator(
     "json",
     z.object({
       companyName: z.string(),
@@ -92,7 +92,7 @@ const _upsertBillingProfile = server.put(
 const _endBillingCycle = server.post(
   "/:teamId/billing-profile/end-billing-cycle",
   requireAdmin(),
-  zValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     const endOfPreviousMonth = endOfMonth(subMonths(new Date(), 1));
     await endBillingCycle(c.req.param("teamId"), endOfPreviousMonth);
@@ -103,7 +103,7 @@ const _endBillingCycle = server.post(
 const _getCurrentUsage = server.get(
   "/:teamId/billing-profile/current-usage",
   requireTeamAccess(),
-  zValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {
       const usage = await getCurrentUsage(c.var.team.id);

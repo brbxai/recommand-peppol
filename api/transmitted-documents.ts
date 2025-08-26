@@ -1,7 +1,7 @@
 import { Server } from "@recommand/lib/api";
 import { z } from "zod";
 import "zod-openapi/extend";
-import { validator as zValidator } from "hono-openapi/zod";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { requireTeamAccess } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
@@ -78,7 +78,7 @@ const _transmittedDocuments = server.get(
       ...describeErrorResponse(500, "Failed to fetch transmitted documents"),
     },
   }),
-  zValidator(
+  zodValidator(
     "query",
     z.object({
       page: z.coerce.number().min(1).default(1).openapi({
@@ -164,7 +164,7 @@ const _deleteTransmittedDocument = server.delete(
       ...describeErrorResponse(500, "Failed to delete document"),
     },
   }),
-  zValidator(
+  zodValidator(
     "param",
     z.object({
       teamId: z.string().openapi({
@@ -225,7 +225,7 @@ const _getInbox = server.get(
       ...describeErrorResponse(500, "Failed to fetch inbox documents"),
     },
   }),
-  zValidator(
+  zodValidator(
     "query",
     z.object({
       companyId: z.string().optional().openapi({
@@ -259,7 +259,7 @@ const _markAsRead = server.post(
       ...describeErrorResponse(500, "Failed to update document read status"),
     },
   }),
-  zValidator(
+  zodValidator(
     "param",
     z.object({
       teamId: z.string().openapi({
@@ -270,7 +270,7 @@ const _markAsRead = server.post(
       }),
     })
   ),
-  zValidator(
+  zodValidator(
     "json",
     z
       .object({
@@ -315,7 +315,7 @@ const _getTransmittedDocument = server.get(
       ...describeErrorResponse(500, "Failed to fetch document"),
     },
   }),
-  zValidator(
+  zodValidator(
     "param",
     z.object({
       teamId: z.string().openapi({
@@ -367,7 +367,7 @@ const _downloadDocument = server.get(
       ...describeErrorResponse(500, "Failed to download document"),
     },
   }),
-  zValidator(
+  zodValidator(
     "param",
     z.object({
       teamId: z.string().openapi({

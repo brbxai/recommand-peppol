@@ -3,7 +3,7 @@ import { getPlayground, createPlayground } from "@peppol/data/playground/playgro
 import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { z } from "zod";
 import "zod-openapi/extend";
 import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
@@ -38,7 +38,7 @@ const _getPlayground = server.get(
       ...describeErrorResponse(500, "Failed to fetch playground"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {
       const playground = await getPlayground(c.var.team.id);
@@ -69,7 +69,7 @@ const _createPlayground = server.post(
       ...describeErrorResponse(500, "Failed to create playground"),
     },
   }),
-  zValidator(
+  zodValidator(
     "json",
     z.object({
       name: z.string().min(1).openapi({ description: "Playground name" }),

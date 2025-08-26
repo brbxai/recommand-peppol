@@ -79,6 +79,7 @@ export default function CompanyDetailPage() {
       });
 
       const json = await response.json();
+      console.log("json", json);
       if (!json.success) {
         throw new Error(stringifyActionFailure(json.errors));
       }
@@ -88,6 +89,7 @@ export default function CompanyDetailPage() {
       setFormData(companyData);
       toast.success("Company updated successfully");
     } catch (error) {
+      console.error(error);
       toast.error("Failed to update company. (" + error + ")");
     }
   };

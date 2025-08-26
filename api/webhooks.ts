@@ -11,7 +11,7 @@ import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
 import "zod-openapi/extend";
-import { validator as zValidator } from "hono-openapi/zod";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import {
   describeErrorResponse,
@@ -63,8 +63,8 @@ const _webhooks = server.get(
       ...describeErrorResponse(500, "Failed to fetch webhooks"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string() })),
-  zValidator("query", z.object({ companyId: z.string().nullish() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("query", z.object({ companyId: z.string().nullish() })),
   async (c) => {
     try {
       const { companyId } = c.req.valid("query");
@@ -95,7 +95,7 @@ const _webhook = server.get(
       ...describeErrorResponse(500, "Failed to fetch webhook"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
   async (c) => {
     try {
       const webhook = await getWebhook(
@@ -143,8 +143,8 @@ const _createWebhook = server.post(
       ...describeErrorResponse(500, "Failed to create webhook"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string() })),
-  zValidator(
+  zodValidator("param", z.object({ teamId: z.string() })),
+  zodValidator(
     "json",
     z.object({
       url: z.string().url(),
@@ -196,8 +196,8 @@ const _updateWebhook = server.put(
       ...describeErrorResponse(500, "Failed to update webhook"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
-  zValidator(
+  zodValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
+  zodValidator(
     "json",
     z.object({
       url: z.string().url(),
@@ -234,7 +234,7 @@ const _deleteWebhook = server.delete(
       ...describeErrorResponse(500, "Failed to delete webhook"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string(), webhookId: z.string() })),
   async (c) => {
     try {
       await deleteWebhook(c.var.team.id, c.req.valid("param").webhookId);

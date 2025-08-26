@@ -1,6 +1,6 @@
 import { Server } from "@recommand/lib/api";
 import { describeRoute } from "hono-openapi";
-import { validator as zValidator } from "hono-openapi/zod";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { invoiceToUBL } from "@peppol/utils/parsing/invoice/to-xml";
 import {
@@ -55,7 +55,7 @@ server.post(
       ...describeErrorResponse(400, "Invalid document data provided"),
     },
   }),
-  zValidator("json", sendDocumentSchema),
+  zodValidator("json", sendDocumentSchema),
   async (c) => {
     try {
       const jsonBody = c.req.valid("json");

@@ -1,5 +1,5 @@
 import { Server } from "@recommand/lib/api";
-import { zValidator } from "@hono/zod-validator";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { z } from "zod";
 import { requireInternalToken } from "@peppol/utils/auth-middleware";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
@@ -20,7 +20,7 @@ const server = new Server();
 server.post(
   "/receiveDocument",
   requireInternalToken(),
-  zValidator("json", receiveDocumentSchema),
+  zodValidator("json", receiveDocumentSchema),
   async (c) => {
     const jsonBody = c.req.valid("json");
 

@@ -12,7 +12,7 @@ import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
 import "zod-openapi/extend";
-import { validator as zValidator } from "hono-openapi/zod";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
 
@@ -52,7 +52,7 @@ const _companies = server.get(
       ...describeErrorResponse(500, "Failed to fetch companies"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {
       const allCompanies = await getCompanies(c.var.team.id);
@@ -95,7 +95,7 @@ const _company = server.get(
       ...describeErrorResponse(500, "Failed to fetch company"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
   async (c) => {
     try {
       const company = await getCompany(
@@ -161,8 +161,8 @@ const _createCompany = server.post(
       ...describeErrorResponse(500, "Failed to create company"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string() })),
-  zValidator(
+  zodValidator("param", z.object({ teamId: z.string() })),
+  zodValidator(
     "json",
     z.object({
       name: z.string(),
@@ -255,8 +255,8 @@ const _updateCompany = server.put(
       ...describeErrorResponse(500, "Failed to update company"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
-  zValidator(
+  zodValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
+  zodValidator(
     "json",
     z.object({
       name: z.string(),
@@ -298,6 +298,7 @@ const _updateCompany = server.put(
       if (error instanceof UserFacingError) {
         return c.json(actionFailure(error), 400);
       }
+      console.error(error);
       return c.json(actionFailure("Could not update company"), 500);
     }
   }
@@ -316,7 +317,7 @@ const _deleteCompany = server.delete(
       ...describeErrorResponse(500, "Failed to delete company"),
     },
   }),
-  zValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
+  zodValidator("param", z.object({ teamId: z.string(), companyId: z.string() })),
   async (c) => {
     try {
       await deleteCompany(c.var.team.id, c.req.valid("param").companyId);

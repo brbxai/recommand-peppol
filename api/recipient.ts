@@ -3,7 +3,7 @@ import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
 import "zod-openapi/extend";
-import { validator as zValidator } from "hono-openapi/zod";
+import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeSuccessResponse } from "@peppol/utils/api-docs";
 import { requireAuth } from "@core/lib/auth-middleware";
@@ -41,7 +41,7 @@ const _verifyRecipient = server.post(
       }),
     },
   }),
-  zValidator(
+  zodValidator(
     "json",
     z.object({
       peppolAddress: z.string().openapi({
@@ -89,7 +89,7 @@ const _verifyDocumentSupport = server.post(
       }),
     },
   }),
-  zValidator(
+  zodValidator(
     "json",
     z.object({
       peppolAddress: z.string().openapi({
@@ -154,7 +154,7 @@ const _searchDirectory = server.post(
       }),
     },
   }),
-  zValidator(
+  zodValidator(
     "json",
     z.object({
       query: z.string().openapi({
