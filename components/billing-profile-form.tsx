@@ -2,13 +2,14 @@ import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
+import { COUNTRIES } from "@peppol/utils/countries";
 
 export type BillingProfileFormData = {
   companyName: string;
   address: string;
   postalCode: string;
   city: string;
-  country: "BE";
+  country: string;
   vatNumber: string | null;
 };
 
@@ -69,13 +70,17 @@ export function BillingProfileForm({ profileForm, onChange, onCancel, onSubmit }
         <Label htmlFor="country">Country</Label>
         <Select
           value={profileForm.country}
-          onValueChange={(value) => onChange({ ...profileForm, country: value as 'BE' })}
+          onValueChange={(value) => onChange({ ...profileForm, country: value })}
         >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="BE">Belgium</SelectItem>
+            {COUNTRIES.map((country) => (
+              <SelectItem key={country.code} value={country.code}>
+                {country.flag} {country.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

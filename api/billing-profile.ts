@@ -10,6 +10,7 @@ import { createFirstPayment, processFirstPayment, processPayment } from "@peppol
 import { endBillingCycle, getCurrentUsage } from "@peppol/data/billing";
 import { endOfMonth, subMonths } from "date-fns";
 import { requireAdmin, requireTeamAccess } from "@core/lib/auth-middleware";
+import { zodValidCountryCodes } from "@peppol/db/schema";
 
 const server = new Server();
 
@@ -21,7 +22,7 @@ export type BillingProfileData = {
   address: string;
   postalCode: string;
   city: string;
-  country: "BE";
+  country: string;
   vatNumber: string | null;
   firstPaymentId: string | null;
   firstPaymentStatus: 'none' | 'open' | 'pending' | 'authorized' | 'paid' | 'canceled' | 'expired' | 'failed';
@@ -56,7 +57,7 @@ const _upsertBillingProfile = server.put(
       address: z.string(),
       postalCode: z.string(),
       city: z.string(),
-      country: z.enum(["BE"]),
+      country: zodValidCountryCodes,
       vatNumber: z.string().optional().nullable(),
     })
   ),
