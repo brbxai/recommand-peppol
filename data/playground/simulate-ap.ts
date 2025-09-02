@@ -22,8 +22,8 @@ export async function simulateSendAs4(options: {
   // Check if the receiverId is registered as a company in this playground team, search by enterprise number
   try {
     const receivingCompany = await getCompanyByPeppolId(options.receiverId, options.playgroundTeamId);
-    if (!receivingCompany || receivingCompany.teamId !== options.playgroundTeamId) {
-      // Silently fail, the receiver is not registered in this playground team, so we don't need to send the document
+    if (!receivingCompany || receivingCompany.teamId !== options.playgroundTeamId || !receivingCompany.isSmpRecipient) {
+      // Silently fail, the receiver is not registered in this playground team or is not an SMP recipient, so we don't need to send the document
       return
     }
   } catch (error) {
