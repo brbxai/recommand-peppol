@@ -18,11 +18,16 @@ export const VAT_CATEGORIES = {
 export type VatCategory = keyof typeof VAT_CATEGORIES;
 
 const toDecimalString = (val: number | string) => new Decimal(val).toFixed(2);
+const unlimitedDecimalString = (val: number | string) => new Decimal(val).toString();
 
 // Create a reusable decimal transform schema
 export const decimalSchema = z.union([z.number(), z.string()])
   .transform(toDecimalString)
-  .openapi({ type: 'string', example: "21.00" });
+  .openapi({ type: 'string', example: "21.00", description: "Decimal number as a string with 2 decimal places" });
+
+export const unlimitedDecimalSchema = z.union([z.number(), z.string()])
+  .transform(unlimitedDecimalString)
+  .openapi({ type: 'string', example: "21.00", description: "Decimal number as a string with flexible precision" });
 
 export const partySchema = z.object({
   vatNumber: z.string().openapi({ example: "BE0123456789" }),
@@ -70,10 +75,10 @@ export const lineSchema = z.object({
   name: z.string().default("").openapi({ example: "Consulting Services" }),
   description: z.string().nullish().openapi({ example: "Professional consulting services" }),
   sellersId: z.string().nullish().openapi({ example: "CS-001" }),
-  quantity: decimalSchema.default("1.00"),
+  quantity: unlimitedDecimalSchema.default("1.00"),
   unitCode: z.string().default("C62").openapi({ example: "HUR", description: "Recommended unit codes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNECERec20/)." }),
-  netPriceAmount: decimalSchema,
-  netAmount: decimalSchema.nullish(),
+  netPriceAmount: unlimitedDecimalSchema,
+  netAmount: decimalSchema.nullish().openapi({ description: "The total net amount of the line: quantity * netPriceAmount. Rounded to 2 decimal places. If not provided, it will be calculated automatically." }),
   vat: vatSchema,
 }).openapi({ ref: "Line" });
 
