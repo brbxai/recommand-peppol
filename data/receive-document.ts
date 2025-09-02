@@ -1,11 +1,9 @@
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import { getCompanyByPeppolId } from "@peppol/data/companies";
-import { parseInvoiceFromXML } from "@peppol/utils/parsing/invoice/from-xml";
 import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
-import { parseCreditNoteFromXML } from "@peppol/utils/parsing/creditnote/from-xml";
-import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { UserFacingError } from "@peppol/utils/util";
+import { parseDocument } from "@peppol/utils/parsing/parse-document";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -32,39 +30,7 @@ export async function receiveDocument(options: {
   }
 
   // Parse the XML document
-  let parsedDocument = null;
-  let type: "invoice" | "creditNote" | "unknown" = "unknown";
-  if (options.docTypeId.includes("Invoice")) {
-    try {
-      parsedDocument = parseInvoiceFromXML(options.body);
-      type = "invoice";
-    } catch (error) {
-      console.error("Failed to parse invoice XML:", error);
-      sendSystemAlert(
-        "Document Parsing Error",
-        `Failed to parse invoice XML\n\n` +
-          `Company: ${company.name}\n` +
-          `Sender: ${senderId}\n` +
-          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
-    }
-  } else if (options.docTypeId.includes("CreditNote")) {
-    try {
-      parsedDocument = parseCreditNoteFromXML(options.body);
-      type = "creditNote";
-    } catch (error) {
-      console.error("Failed to parse credit note XML:", error);
-      sendSystemAlert(
-        "Document Parsing Error",
-        `Failed to parse credit note XML\n\n` +
-          `Company: ${company.name}\n` +
-          `Sender: ${senderId}\n` +
-          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        "error"
-      );
-    }
-  }
+  const { parsedDocument, type } = parseDocument(options.docTypeId, options.body, company, senderId);
 
   // Create a new transmittedDocument
   const transmittedDocument = await db

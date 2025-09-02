@@ -25,6 +25,7 @@ import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
 import { getSendingCompanyIdentifier } from "@peppol/data/company-identifiers";
+import { parseDocument } from "@peppol/utils/parsing/parse-document";
 
 const server = new Server();
 
@@ -154,6 +155,10 @@ server.post(
         if (jsonBody.doctypeId) {
           doctypeId = jsonBody.doctypeId;
         }
+
+        const parsed = parseDocument(doctypeId, xmlDocument, company, senderAddress);
+        parsedDocument = parsed.parsedDocument;
+        type = parsed.type;
       } else {
         return c.json(actionFailure("Invalid document type provided."));
       }
