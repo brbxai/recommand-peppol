@@ -1,15 +1,19 @@
 import { Button } from "@core/components/ui/button";
 import { BillingProfileForm, DEFAULT_BILLING_PROFILE_FORM_DATA, type BillingProfileFormData } from "../billing-profile-form";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { updateBillingProfile, fetchBillingProfile } from "@peppol/lib/billing";
 import { useActiveTeam } from "@core/hooks/user";
 import type { BillingProfileData } from "@peppol/api/billing-profile";
+import PlaygroundOption from "./playground-option";
 
 export default function BillingOnboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     const [profileForm, setProfileForm] = useState<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
     const [billingProfile, setBillingProfile] = useState<BillingProfileData | null>(null);
     const activeTeam = useActiveTeam();
+    
+    const profileFormRef = useRef<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
+    profileFormRef.current = profileForm;
 
     useEffect(() => {
         const checkPaymentMandate = async () => {
@@ -21,12 +25,12 @@ export default function BillingOnboarding({ onComplete }: { onComplete: () => Pr
 
             if (billingProfile) {
                 setProfileForm({
-                    companyName: billingProfile?.companyName || '',
-                    address: billingProfile?.address || '',
-                    postalCode: billingProfile?.postalCode || '',
-                    city: billingProfile?.city || '',
-                    country: billingProfile?.country || 'BE',
-                    vatNumber: billingProfile?.vatNumber || '',
+                    companyName: profileFormRef.current.companyName.length > 0 ? profileFormRef.current.companyName : billingProfile?.companyName ?? "",
+                    address: profileFormRef.current.address.length > 0 ? profileFormRef.current.address : billingProfile?.address ?? "",
+                    postalCode: profileFormRef.current.postalCode.length > 0 ? profileFormRef.current.postalCode : billingProfile?.postalCode ?? "",
+                    city: profileFormRef.current.city.length > 0 ? profileFormRef.current.city : billingProfile?.city ?? "",
+                    country: profileFormRef.current.country != "BE" ? profileFormRef.current.country : billingProfile?.country ?? "BE",
+                    vatNumber: profileFormRef.current.vatNumber && profileFormRef.current.vatNumber.length > 0 ? profileFormRef.current.vatNumber : billingProfile?.vatNumber ?? "",
                 });
             }
 
@@ -66,5 +70,9 @@ export default function BillingOnboarding({ onComplete }: { onComplete: () => Pr
                 Setup Payment Method
             </Button>
         </div>
+        <PlaygroundOption 
+          buttonText="Skip Billing" 
+          description="Skip billing setup by creating a playground to test your Peppol API integrations without billing requirements, or switch to another team."
+        />
     </div>;
 }
