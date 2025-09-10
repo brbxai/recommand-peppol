@@ -6,6 +6,7 @@ import { updateBillingProfile, fetchBillingProfile } from "@peppol/lib/billing";
 import { useActiveTeam } from "@core/hooks/user";
 import type { BillingProfileData } from "@peppol/api/billing-profile";
 import PlaygroundOption from "./playground-option";
+import { CreateTeamButton } from "@core/components/create-team-button";
 
 export default function BillingOnboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     const [profileForm, setProfileForm] = useState<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
@@ -46,9 +47,10 @@ export default function BillingOnboarding({ onComplete }: { onComplete: () => Pr
     }, [activeTeam?.id]);
 
     if (!activeTeam?.id) {
-        return <p>
-            You must be in a team to complete this step
-        </p>;
+        return <div className="text-center space-y-4">
+            <p>You must be in a team to complete this step</p>
+            <CreateTeamButton />
+        </div>;
     }
 
     return <div>

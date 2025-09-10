@@ -48,8 +48,7 @@ export const billingProfiles = pgTable("peppol_billing_profiles", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => "bp_" + ulid()),
-  teamId: text("team_id")
-    .references(() => teams.id)
+  teamId: text("team_id") // Not linked to teams table, as we don't want to delete the billing profile when the team is deleted
     .notNull()
     .unique(),
   mollieCustomerId: text("mollie_customer_id"),
@@ -74,8 +73,7 @@ export const subscriptions = pgTable("peppol_subscriptions", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => "sub_" + ulid()),
-  teamId: text("team_id")
-    .references(() => teams.id)
+  teamId: text("team_id") // Not linked to teams table, as we don't want to delete the subscription when the team is deleted
     .notNull(),
   planId: text("plan_id"),
   planName: text("plan_name").notNull(),
@@ -95,8 +93,7 @@ export const subscriptionBillingEvents = pgTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => "sbe_" + ulid()),
-    teamId: text("team_id")
-      .references(() => teams.id)
+    teamId: text("team_id") // Not linked to teams table, as we don't want to delete the subscription billing events when the team is deleted
       .notNull(),
     subscriptionId: text("subscription_id")
       .references(() => subscriptions.id)
@@ -139,7 +136,7 @@ export const companies = pgTable("peppol_companies", {
     .primaryKey()
     .$defaultFn(() => "c_" + ulid()),
   teamId: text("team_id")
-    .references(() => teams.id)
+    .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),
   name: text("name").notNull(),
   address: text("address").notNull(),
@@ -188,7 +185,7 @@ export const webhooks = pgTable("peppol_webhooks", {
     .primaryKey()
     .$defaultFn(() => "wh_" + ulid()),
   teamId: text("team_id")
-    .references(() => teams.id)
+    .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),
   companyId: text("company_id")
     .references(() => companies.id, { onDelete: "cascade" }),
@@ -201,8 +198,7 @@ export const transferEvents = pgTable("peppol_transfer_events", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => "te_" + ulid()),
-  teamId: text("team_id")
-    .references(() => teams.id)
+  teamId: text("team_id") // Not linked to teams table, as we don't want to delete the transfer events when the team is deleted
     .notNull(),
   companyId: text("company_id")
     .notNull(),
@@ -216,7 +212,7 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
     .primaryKey()
     .$defaultFn(() => "doc_" + ulid()),
   teamId: text("team_id")
-    .references(() => teams.id)
+    .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),
   companyId: text("company_id")
     .references(() => companies.id, { onDelete: "cascade" })
@@ -240,7 +236,8 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
 
 export const teamExtensions = pgTable("peppol_team_extensions", {
   id: text("id")
-    .primaryKey(),
+    .primaryKey()
+    .references(() => teams.id, { onDelete: "cascade" }),
   isPlayground: boolean("is_playground").notNull().default(false),
 });
 
