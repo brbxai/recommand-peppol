@@ -225,7 +225,7 @@ const _updateCompany = server.put(
               vatNumber: { type: "string", nullable: true },
               isSmpRecipient: { type: "boolean", default: true },
             },
-            required: ["name", "address", "postalCode", "city", "country"],
+            required: [],
           },
         },
       },
@@ -259,36 +259,24 @@ const _updateCompany = server.put(
   zodValidator(
     "json",
     z.object({
-      name: z.string(),
-      address: z.string(),
-      postalCode: z.string(),
-      city: z.string(),
-      country: zodValidCountryCodes,
+      name: z.string().optional(),
+      address: z.string().optional(),
+      postalCode: z.string().optional(),
+      city: z.string().optional(),
+      country: zodValidCountryCodes.optional(),
       enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
       vatNumber: z.string().nullish().transform(cleanVatNumber),
-      isSmpRecipient: z.boolean().default(true),
+      isSmpRecipient: z.boolean().optional(),
     })
   ),
   async (c) => {
     try {
-      let enterpriseNumber = c.req.valid("json").enterpriseNumber;
-      if (!enterpriseNumber && c.req.valid("json").vatNumber) {
-        enterpriseNumber = cleanEnterpriseNumber(
-          c.req.valid("json").vatNumber!
-        );
-      }
-      if (!enterpriseNumber) {
-        return c.json(
-          actionFailure("Enterprise number or VAT number is required"),
-          400
-        );
-      }
+      const updateData = c.req.valid("json");
 
       const company = await updateCompany({
-        ...c.req.valid("json"),
+        ...updateData,
         teamId: c.var.team.id,
         id: c.req.valid("param").companyId,
-        enterpriseNumber: enterpriseNumber!,
       });
       if (!company) {
         return c.json(actionFailure("Company not found"), 404);

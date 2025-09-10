@@ -60,7 +60,7 @@ export async function getCompanyByPeppolId(
   // The peppolId is in the format of 0208:0659689080 (e.g. 0208 for enterprise number, 9925 for vat number)
   const scheme = peppolId.split(":")[0];
   const identifier = peppolId.split(":")[1];
-  if(!scheme || !identifier){
+  if (!scheme || !identifier) {
     throw new UserFacingError("Invalid Peppol ID. The Peppol ID must be in the format of scheme:identifier");
   }
   const results = await db
@@ -78,7 +78,7 @@ export async function getCompanyByPeppolId(
         )
       )
     );
-  if(results.length === 0){
+  if (results.length === 0) {
     throw new Error(`Company with peppol id ${originalPeppolId} not found`);
   }
   return results[0].peppol_companies;
@@ -162,7 +162,7 @@ export async function setupCompanyDefaults(company: Company, isPlayground: boole
 }
 
 export async function updateCompany(
-  company: InsertCompany & { id: string }
+  company: Partial<InsertCompany> & { id: string; teamId: string }
 ): Promise<Company> {
   const oldCompany = await getCompany(company.teamId, company.id);
   if (!oldCompany) {
@@ -171,11 +171,20 @@ export async function updateCompany(
 
   const isPlaygroundTeam = await isPlayground(company.teamId);
 
+  // Merge with existing company data, only updating provided fields
+  const updatedFields = Object.fromEntries(
+    Object.entries(company).filter(([_, value]) => value !== undefined)
+  );
+  const mergedCompany = {
+    ...oldCompany,
+    ...updatedFields,
+  } as InsertCompany & { id: string };
+
   // Check if there exists a company with the same enterprise number or vat number
   if (
     !await canUpsertCompany(
-      company.enterpriseNumber,
-      company.vatNumber,
+      mergedCompany.enterpriseNumber,
+      mergedCompany.vatNumber,
       company.id,
       company.teamId,
       isPlaygroundTeam
@@ -188,18 +197,18 @@ export async function updateCompany(
 
   const updatedCompany = await db
     .update(companies)
-    .set(company)
+    .set(updatedFields)
     .where(
       and(eq(companies.teamId, company.teamId), eq(companies.id, company.id))
     )
     .returning()
     .then((rows) => rows[0]);
 
-  if(!(await isPlayground(company.teamId)) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient){
-    if(updatedCompany.isSmpRecipient){
-      try{
+  if (!(await isPlayground(company.teamId)) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient) {
+    if (updatedCompany.isSmpRecipient) {
+      try {
         await upsertCompanyRegistrations(updatedCompany.id);
-      } catch(error){
+      } catch (error) {
         // If registration fails, unregister any company registrations that might have been registered
         await unregisterCompanyRegistrations(updatedCompany.id);
         // Also rollback the update of the company
