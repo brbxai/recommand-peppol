@@ -36,7 +36,7 @@ export const sendDocumentSchema = z.object({
     }),
   }).optional().openapi({
     ref: "Email",
-    description: "Send your document over email as well. You can choose to always send the email, or only when we cannot reach the recipient via Peppol. Each sent email is counted towards your document quota."
+    description: "Send your document over email as well. You can choose to always send the email, or only when we cannot reach the recipient via Peppol. Each sent email is counted towards your document quota. When an email is expected to be sent, the request will succeed as long as an email has been sent, even if the Peppol sending failed (e.g. due to a non-existing Peppol address)."
   }),
   documentType: z
     .enum([SendDocumentType.INVOICE, SendDocumentType.CREDIT_NOTE, SendDocumentType.XML])
