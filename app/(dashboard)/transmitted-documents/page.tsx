@@ -13,7 +13,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Network, Mail } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -25,6 +25,7 @@ import {
   DataTableToolbar,
   type FilterConfig,
 } from "@core/components/data-table/toolbar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@core/components/ui/tooltip";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -243,6 +244,47 @@ export default function Page() {
     {
       accessorKey: "receiverId",
       header: ({ column }) => <ColumnHeader column={column} title="Receiver" />,
+      cell: ({ row }) => {
+        const receiverId = row.getValue("receiverId") as string;
+        const sentOverPeppol = row.original.sentOverPeppol;
+        const sentOverEmail = row.original.sentOverEmail;
+        const emailRecipients = row.original.emailRecipients;
+        
+        return (
+          <div className="flex items-center gap-2">
+            <span>{receiverId}</span>
+            <div className="flex items-center gap-1">
+              {!sentOverPeppol && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Network className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Not sent over Peppol network</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {sentOverEmail && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div>
+                      <p className="font-medium">Sent via email to:</p>
+                      <ul className="mt-1 space-y-1">
+                        {emailRecipients?.map((email, index) => (
+                          <li key={index} className="text-xs">{email}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+        );
+      },
       enableGlobalFilter: true,
     },
     {

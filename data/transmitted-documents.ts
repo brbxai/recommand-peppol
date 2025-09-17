@@ -69,6 +69,9 @@ export async function getTransmittedDocuments(
       createdAt: transmittedDocuments.createdAt,
       updatedAt: transmittedDocuments.updatedAt,
       type: transmittedDocuments.type,
+      sentOverPeppol: transmittedDocuments.sentOverPeppol,
+      sentOverEmail: transmittedDocuments.sentOverEmail,
+      emailRecipients: transmittedDocuments.emailRecipients,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
@@ -118,6 +121,9 @@ export async function getInbox(
       createdAt: transmittedDocuments.createdAt,
       updatedAt: transmittedDocuments.updatedAt,
       type: transmittedDocuments.type,
+      sentOverPeppol: transmittedDocuments.sentOverPeppol,
+      sentOverEmail: transmittedDocuments.sentOverEmail,
+      emailRecipients: transmittedDocuments.emailRecipients,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))

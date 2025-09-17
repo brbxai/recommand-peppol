@@ -44,6 +44,11 @@ export const transferEventDirectionEnum = pgEnum(
   ["incoming", "outgoing"]
 );
 
+export const transferEventTypeEnum = pgEnum(
+  "peppol_transfer_event_type",
+  ["peppol", "email"]
+);
+
 export const billingProfiles = pgTable("peppol_billing_profiles", {
   id: text("id")
     .primaryKey()
@@ -202,6 +207,7 @@ export const transferEvents = pgTable("peppol_transfer_events", {
     .notNull(),
   companyId: text("company_id")
     .notNull(),
+  type: transferEventTypeEnum("type").notNull().default("peppol"),
   transmittedDocumentId: text("transmitted_document_id"),
   direction: transferEventDirectionEnum("direction").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -225,6 +231,10 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   processId: text("process_id").notNull(), // e.g. urn:fdc:peppol.eu:2017:poacc:billing:01:1.0
   countryC1: text("country_c1").notNull(), // e.g. BE
   xml: text("xml"), // XML body of the document, can be null if the body was not kept
+
+  sentOverPeppol: boolean("sent_over_peppol").notNull().default(true),
+  sentOverEmail: boolean("sent_over_email").notNull().default(false),
+  emailRecipients: text("email_recipients").notNull().array().default([]),
 
   type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
   parsed: jsonb("parsed").$type<Invoice | CreditNote>(),

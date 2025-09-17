@@ -41,6 +41,9 @@ const describeTransmittedDocumentResponse = {
       updatedAt: { type: "string", format: "date-time" },
       xml: { type: "string" },
       parsed: { type: "object" },
+      sentOverPeppol: { type: "boolean" },
+      sentOverEmail: { type: "boolean" },
+      emailRecipients: { type: "array", items: { type: "string" } },
     },
   },
 };

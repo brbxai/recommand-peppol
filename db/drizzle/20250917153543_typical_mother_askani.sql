@@ -1,0 +1,2 @@
+CREATE TYPE "public"."peppol_transfer_event_type" AS ENUM('peppol', 'email');--> statement-breakpoint
+ALTER TABLE "peppol_transfer_events" ADD COLUMN "type" "peppol_transfer_event_type" DEFAULT 'peppol' NOT NULL;

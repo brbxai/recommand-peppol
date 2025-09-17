@@ -26,6 +26,7 @@ import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
 import { getSendingCompanyIdentifier } from "@peppol/data/company-identifiers";
 import { parseDocument } from "@peppol/utils/parsing/parse-document";
+import { sendDocumentEmail } from "@peppol/data/email/send-email";
 
 const server = new Server();
 
@@ -40,6 +41,18 @@ server.post(
     tags: ["Sending"],
     responses: {
       ...describeSuccessResponse("Successfully sent document", {
+        sentOverPeppol: {
+          type: "boolean",
+          description: "Whether the document was sent over Peppol",
+        },
+        sentOverEmail: {
+          type: "boolean",
+          description: "Whether the document was sent over email",
+        },
+        emailRecipients: {
+          type: "array",
+          description: "The email addresses that the document was sent to",
+        },
         teamId: {
           type: "string",
           description: "The ID of the team that sent the document",
@@ -167,6 +180,11 @@ server.post(
         return c.json(actionFailure("Document could not be parsed."));
       }
 
+      let sentPeppol = false;
+      let sentEmailRecipients: string[] = [];
+      let additionalPeppolFailureContext = "";
+      let additionalEmailFailureContext = "";
+
       if (isPlayground) {
         await simulateSendAs4({
           senderId: senderAddress,
@@ -177,6 +195,7 @@ server.post(
           body: xmlDocument,
           playgroundTeamId: c.var.team.id, // Must be the same as the sender team: we don't support cross-team sending
         });
+        sentPeppol = true;
       } else {
         const response = await sendAs4({
           senderId: senderAddress,
@@ -193,18 +212,51 @@ server.post(
             `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(jsonResponse, null, 2)}\n\`\`\``,
             "error"
           );
-          let additionalContext = "";
-          try{
+          try {
             // Extract sendingException.message from jsonResponse
             const sendingException = jsonResponse.sendingException;
-            additionalContext = sendingException.message;
+            additionalPeppolFailureContext = sendingException.message;
           } catch (error) {
-            additionalContext = "No additional context available, please contact support@recommand.eu if you could use our help.";
+            additionalPeppolFailureContext = "No additional context available, please contact support@recommand.eu if you could use our help.";
           }
-          return c.json(
-            actionFailure(`Failed to send document over Peppol network. ${additionalContext}`)
-          );
+
+          // If send over email is disabled, return an error
+          if (!jsonBody.email) {
+            return c.json(
+              actionFailure(`Failed to send document over Peppol network. ${additionalPeppolFailureContext}`)
+            );
+          }
         }
+        sentPeppol = true;
+      }
+
+      // If send over email is enabled, send the email
+      if (jsonBody.email && (jsonBody.email.when === "always" || !sentPeppol)) {
+        for (const recipient of jsonBody.email.to) {
+          try {
+            await sendDocumentEmail({
+              to: recipient,
+              subject: jsonBody.email.subject,
+              htmlBody: jsonBody.email.htmlBody,
+              xmlDocument: xmlDocument,
+              type,
+              parsedDocument: parsedDocument,
+            });
+            sentEmailRecipients.push(recipient);
+          } catch (error) {
+            console.error("Failed to send email:", error);
+            additionalEmailFailureContext = error instanceof Error ? error.message : "No additional context available, please contact support@recommand.eu if you could use our help.";
+          }
+        }
+      }
+
+      if (!sentPeppol && sentEmailRecipients.length === 0) {
+        sendSystemAlert(
+          "Document Sending Failed",
+          `Failed to send document over Peppol network and email. ${additionalPeppolFailureContext} ${additionalEmailFailureContext}`,
+          "error"
+        );
+        return c.json(actionFailure(`Failed to send document over Peppol network and email. ${additionalPeppolFailureContext} ${additionalEmailFailureContext}`));
       }
 
       // Create a new transmittedDocument
@@ -220,6 +272,11 @@ server.post(
           processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
           countryC1: countryC1,
           xml: xmlDocument,
+
+          sentOverPeppol: sentPeppol,
+          sentOverEmail: sentEmailRecipients.length > 0,
+          emailRecipients: sentEmailRecipients,
+
           type,
           parsed: parsedDocument,
         })
@@ -228,12 +285,26 @@ server.post(
 
       // Create a new transferEvent for billing
       if (!isPlayground) {
-        await db.insert(transferEvents).values({
-          teamId: c.var.team.id,
-          companyId: company.id,
-          direction: "outgoing",
-          transmittedDocumentId: transmittedDocument.id,
-        });
+        const te: typeof transferEvents.$inferInsert[] = [];
+        if (sentPeppol) {
+          te.push({
+            teamId: c.var.team.id,
+            companyId: company.id,
+            direction: "outgoing",
+            type: "peppol",
+            transmittedDocumentId: transmittedDocument.id,
+          });
+        }
+        for (const _ of sentEmailRecipients) {
+          te.push({
+            teamId: c.var.team.id,
+            companyId: company.id,
+            direction: "outgoing",
+            type: "email",
+            transmittedDocumentId: transmittedDocument.id,
+          });
+        }
+        await db.insert(transferEvents).values(te);
       }
 
       return c.json(
@@ -241,6 +312,11 @@ server.post(
           teamId: c.var.team.id,
           companyId: company.id,
           id: transmittedDocument.id,
+          sentOverPeppol: sentPeppol,
+          sentOverEmail: sentEmailRecipients.length > 0,
+          emailRecipients: sentEmailRecipients,
+          ...(additionalPeppolFailureContext ? { additionalPeppolFailureContext } : {}),
+          ...(additionalEmailFailureContext ? { additionalEmailFailureContext } : {}),
         })
       );
     } catch (error) {
