@@ -13,7 +13,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Network, Mail } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Mail, CloudAlert } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -257,7 +257,7 @@ export default function Page() {
               {!sentOverPeppol && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Network className="h-4 w-4 text-muted-foreground" />
+                    <CloudAlert className="h-4 w-4 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Not sent over Peppol network</p>
