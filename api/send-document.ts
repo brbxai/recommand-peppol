@@ -219,15 +219,16 @@ server.post(
           } catch (error) {
             additionalPeppolFailureContext = "No additional context available, please contact support@recommand.eu if you could use our help.";
           }
-
+          
           // If send over email is disabled, return an error
           if (!jsonBody.email) {
             return c.json(
               actionFailure(`Failed to send document over Peppol network. ${additionalPeppolFailureContext}`)
             );
           }
+        }else{
+          sentPeppol = true;
         }
-        sentPeppol = true;
       }
 
       // If send over email is enabled, send the email
