@@ -1,6 +1,4 @@
 import { PageTemplate } from "@core/components/page-template";
-// @ts-expect-error
-import Logo from "@core/assets/recommand-logo.svg";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { Factory, ToyBrick } from "lucide-react";
 
@@ -11,7 +9,7 @@ export default function Page() {
     <PageTemplate>
       <div className="flex flex-col items-center justify-center py-12 space-y-6 h-[calc(100vh-10rem)]">
         <div className="p-6">
-          <img src={Logo} alt="Recommand Logo" className="h-8 w-auto min-w-32" />
+          <img src="/logo.svg" alt="Recommand Logo" className="h-8 w-auto min-w-32" />
         </div>
         <p className="text-muted-foreground max-w-md text-center">
           Manage your companies, send and receive Peppol documents, and monitor your subscription all in one place.
