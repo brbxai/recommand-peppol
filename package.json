@@ -26,6 +26,7 @@
     "hono-openapi": "^0.4.6",
     "jszip": "^3.10.1",
     "postgres": "^3.4.3",
+    "shiki": "^3.13.0",
     "zod": "^3.24.2",
     "zod-openapi": "^4.2.3"
   }

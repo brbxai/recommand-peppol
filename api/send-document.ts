@@ -7,7 +7,10 @@ import {
   sendDocumentSchema,
   SendDocumentType,
 } from "utils/parsing/send-document";
-import { sendInvoiceSchema, type Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import {
+  sendInvoiceSchema,
+  type Invoice,
+} from "@peppol/utils/parsing/invoice/schemas";
 import { sendAs4 } from "@peppol/data/phase4-ap/client";
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
@@ -20,7 +23,10 @@ import {
   describeSuccessResponse,
 } from "@peppol/utils/api-docs";
 import { addMonths, formatISO } from "date-fns";
-import { sendCreditNoteSchema, type CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import {
+  sendCreditNoteSchema,
+  type CreditNote,
+} from "@peppol/utils/parsing/creditnote/schemas";
 import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
@@ -30,7 +36,7 @@ import { sendDocumentEmail } from "@peppol/data/email/send-email";
 
 const server = new Server();
 
-server.post(
+const _sendDocument = server.post(
   "/:companyId/sendDocument",
   requireCompanyAccess(),
   requireValidSubscription(),
@@ -101,7 +107,11 @@ server.post(
         // Check the invoice corresponds to the required zod schema
         const parsedInvoice = sendInvoiceSchema.safeParse(invoice);
         if (!parsedInvoice.success) {
-          return c.json(actionFailure("Invalid invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"));
+          return c.json(
+            actionFailure(
+              "Invalid invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+            )
+          );
         }
 
         if (!invoice.seller) {
@@ -115,12 +125,12 @@ server.post(
           };
         }
         if (!invoice.issueDate) {
-          invoice.issueDate = formatISO(new Date(), { representation: 'date' });
+          invoice.issueDate = formatISO(new Date(), { representation: "date" });
         }
         if (!invoice.dueDate) {
           invoice.dueDate = formatISO(
             addMonths(new Date(invoice.issueDate), 1),
-            { representation: 'date' }
+            { representation: "date" }
           );
         }
         const ublInvoice = invoiceToUBL(
@@ -137,7 +147,11 @@ server.post(
         // Check the credit note corresponds to the required zod schema
         const parsedCreditNote = sendCreditNoteSchema.safeParse(creditNote);
         if (!parsedCreditNote.success) {
-          return c.json(actionFailure("Invalid credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"));
+          return c.json(
+            actionFailure(
+              "Invalid credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+            )
+          );
         }
 
         if (!creditNote.seller) {
@@ -151,7 +165,9 @@ server.post(
           };
         }
         if (!creditNote.issueDate) {
-          creditNote.issueDate = formatISO(new Date(), { representation: 'date' });
+          creditNote.issueDate = formatISO(new Date(), {
+            representation: "date",
+          });
         }
         const ublCreditNote = creditNoteToUBL(
           creditNote,
@@ -169,7 +185,12 @@ server.post(
           doctypeId = jsonBody.doctypeId;
         }
 
-        const parsed = parseDocument(doctypeId, xmlDocument, company, senderAddress);
+        const parsed = parseDocument(
+          doctypeId,
+          xmlDocument,
+          company,
+          senderAddress
+        );
         parsedDocument = parsed.parsedDocument;
         type = parsed.type;
       } else {
@@ -217,16 +238,19 @@ server.post(
             const sendingException = jsonResponse.sendingException;
             additionalPeppolFailureContext = sendingException.message;
           } catch (error) {
-            additionalPeppolFailureContext = "No additional context available, please contact support@recommand.eu if you could use our help.";
+            additionalPeppolFailureContext =
+              "No additional context available, please contact support@recommand.eu if you could use our help.";
           }
-          
+
           // If send over email is disabled, return an error
           if (!jsonBody.email) {
             return c.json(
-              actionFailure(`Failed to send document over Peppol network. ${additionalPeppolFailureContext}`)
+              actionFailure(
+                `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
+              )
             );
           }
-        }else{
+        } else {
           sentPeppol = true;
         }
       }
@@ -246,7 +270,10 @@ server.post(
             sentEmailRecipients.push(recipient);
           } catch (error) {
             console.error("Failed to send email:", error);
-            additionalEmailFailureContext = error instanceof Error ? error.message : "No additional context available, please contact support@recommand.eu if you could use our help.";
+            additionalEmailFailureContext =
+              error instanceof Error
+                ? error.message
+                : "No additional context available, please contact support@recommand.eu if you could use our help.";
           }
         }
       }
@@ -257,7 +284,11 @@ server.post(
           `Failed to send document over Peppol network and email. ${additionalPeppolFailureContext} ${additionalEmailFailureContext}`,
           "error"
         );
-        return c.json(actionFailure(`Failed to send document over Peppol network and email. ${additionalPeppolFailureContext} ${additionalEmailFailureContext}`));
+        return c.json(
+          actionFailure(
+            `Failed to send document over Peppol network and email. ${additionalPeppolFailureContext} ${additionalEmailFailureContext}`
+          )
+        );
       }
 
       // Create a new transmittedDocument
@@ -286,7 +317,7 @@ server.post(
 
       // Create a new transferEvent for billing
       if (!isPlayground) {
-        const te: typeof transferEvents.$inferInsert[] = [];
+        const te: (typeof transferEvents.$inferInsert)[] = [];
         if (sentPeppol) {
           te.push({
             teamId: c.var.team.id,
@@ -316,8 +347,12 @@ server.post(
           sentOverPeppol: sentPeppol,
           sentOverEmail: sentEmailRecipients.length > 0,
           emailRecipients: sentEmailRecipients,
-          ...(additionalPeppolFailureContext ? { additionalPeppolFailureContext } : {}),
-          ...(additionalEmailFailureContext ? { additionalEmailFailureContext } : {}),
+          ...(additionalPeppolFailureContext
+            ? { additionalPeppolFailureContext }
+            : {}),
+          ...(additionalEmailFailureContext
+            ? { additionalEmailFailureContext }
+            : {}),
         })
       );
     } catch (error) {
@@ -337,5 +372,7 @@ server.post(
     }
   }
 );
+
+export type SendDocument = typeof _sendDocument;
 
 export default server;
