@@ -11,9 +11,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@core/components/ui/card";
+import { Badge } from "@core/components/ui/badge";
+import { Progress } from "@core/components/ui/progress";
+import { Separator } from "@core/components/ui/separator";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Loader2, XCircle, CheckCircle, Pencil, Check, CreditCard } from "lucide-react";
+import {
+  Loader2,
+  XCircle,
+  CheckCircle,
+  Pencil,
+  Check,
+  CreditCard,
+  Calendar,
+  FileText,
+  TrendingUp,
+  AlertTriangle,
+} from "lucide-react";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import {
   AlertDialog,
@@ -38,9 +52,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@core/components/ui/dialog";
-import { BillingProfileForm, DEFAULT_BILLING_PROFILE_FORM_DATA, type BillingProfileFormData } from "@peppol/components/billing-profile-form";
+import {
+  BillingProfileForm,
+  DEFAULT_BILLING_PROFILE_FORM_DATA,
+  type BillingProfileFormData,
+} from "@peppol/components/billing-profile-form";
 import { PlansGrid } from "@peppol/components/plans-grid";
-import { updateBillingProfile, fetchBillingProfile as fetchBillingProfileFromApi } from "@peppol/lib/billing";
+import {
+  updateBillingProfile,
+  fetchBillingProfile as fetchBillingProfileFromApi,
+} from "@peppol/lib/billing";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 
 const subscriptionClient = rc<Subscription>("peppol");
@@ -54,7 +75,9 @@ export default function Page() {
   const [billingProfile, setBillingProfile] =
     useState<BillingProfileData | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
+  const [profileForm, setProfileForm] = useState<BillingProfileFormData>(
+    DEFAULT_BILLING_PROFILE_FORM_DATA
+  );
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
 
@@ -129,15 +152,15 @@ export default function Page() {
         postalCode: billingProfile.postalCode,
         city: billingProfile.city,
         country: billingProfile.country,
-        vatNumber: billingProfile.vatNumber || '',
+        vatNumber: billingProfile.vatNumber || "",
       });
-    }else{
+    } else {
       setBillingProfile(null);
     }
   };
 
   useEffect(() => {
-    if(isPlayground){
+    if (isPlayground) {
       return;
     }
     fetchSubscription();
@@ -173,205 +196,418 @@ export default function Page() {
   };
 
   if (isLoading) {
-    return <PageTemplate
+    return (
+      <PageTemplate
+        breadcrumbs={[
+          { label: "Team Settings" },
+          { label: "Billing" },
+          { label: "Subscription" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </PageTemplate>
+    );
+  }
+
+  if (isPlayground) {
+    return (
+      <PageTemplate
+        breadcrumbs={[
+          { label: "Team Settings" },
+          { label: "Billing" },
+          { label: "Subscription" },
+        ]}
+      >
+        <div className="flex items-center justify-center py-8 text-center">
+          <p className="text-muted-foreground">
+            This is a playground environment. Playground usage is entirely free
+            of charge.
+            <br />
+            Switch to a production team to manage your subscription.
+          </p>
+        </div>
+      </PageTemplate>
+    );
+  }
+
+  return (
+    <PageTemplate
       breadcrumbs={[
         { label: "Team Settings" },
         { label: "Billing" },
         { label: "Subscription" },
       ]}
+      description="Manage your subscription plan and billing information"
     >
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    </PageTemplate>;
-  }
-
-  if(isPlayground){
-    return <PageTemplate
-      breadcrumbs={[
-        { label: "Team Settings" },
-        { label: "Billing" },
-        { label: "Subscription" },
-      ]}
-    >
-      <div className="flex items-center justify-center py-8 text-center">
-        <p className="text-muted-foreground">This is a playground environment. Playground usage is entirely free of charge.<br/>Switch to a production team to manage your subscription.</p>
-      </div>
-    </PageTemplate>;
-  }
-
-  return <PageTemplate
-    breadcrumbs={[
-      { label: "Team Settings" },
-      { label: "Billing" },
-      { label: "Subscription" },
-    ]}
-  >
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2 items-start">
-        {currentSubscription ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Current Subscription</CardTitle>
-              <CardDescription>
-                Your current plan and subscription details
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm">Plan</h3>
-                  <p className="text-muted-foreground">{currentSubscription.planName}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm">Monthly Price</h3>
-                  <p className="text-muted-foreground">€{currentSubscription.billingConfig.basePrice.toFixed(2)}</p>
-                </div>
-                {currentUsage !== -1 && (
-                  <div>
-                    <h3 className="text-sm">Transmitted Documents</h3>
-                    <p className="text-muted-foreground">{currentUsage} documents were transmitted this month</p>
+      <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2 items-start">
+          <div>
+            {currentSubscription ? (
+              <Card className="border-l-4 border-l-primary">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        {/* <Shield className="h-5 w-5 text-primary" /> */}
+                        {currentSubscription.planName} Plan
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        Active subscription with full access
+                      </CardDescription>
+                    </div>
+                    <Badge variant="success">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Active
+                    </Badge>
                   </div>
-                )}
-                <div>
-                  <h3 className="text-sm">Included Documents</h3>
-                  <p className="text-muted-foreground">{currentSubscription.billingConfig.includedMonthlyDocuments} documents per month</p>
-                </div>
-                <div>
-                  <h3 className="text-sm">Overage Rate</h3>
-                  <p className="text-muted-foreground">€{currentSubscription.billingConfig.documentOveragePrice.toFixed(2)} per document</p>
-                </div>
-                <div>
-                  <h3 className="text-sm">Start Date</h3>
-                  <p className="text-muted-foreground">{new Date(currentSubscription.startDate).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">
-                    <XCircle className="h-4 w-4" />
-                    Cancel Subscription
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to cancel your subscription?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. You will lose access to your current plan features immediately. Billing will be prorated for the current month.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>
-                      <XCircle className="h-4 w-4" />
-                      Keep Subscription
-                    </AlertDialogCancel>
-                    <AlertDialogAction onClick={handleCancelSubscription} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      <CheckCircle className="h-4 w-4" />
-                      Yes, Cancel Subscription
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardFooter>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>No Active Subscription</CardTitle>
-              <CardDescription>
-                Choose a plan to get started with Peppol
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Usage Progress */}
+                  {currentUsage !== -1 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">
+                            Document Usage
+                          </span>
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {currentSubscription.billingConfig
+                            .includedMonthlyDocuments === 0
+                            ? `${currentUsage} documents`
+                            : `${currentUsage} / ${currentSubscription.billingConfig.includedMonthlyDocuments}`}
+                        </span>
+                      </div>
+                      {currentSubscription.billingConfig
+                        .includedMonthlyDocuments > 0 ? (
+                        <>
+                          <Progress
+                            value={
+                              (currentUsage /
+                                currentSubscription.billingConfig
+                                  .includedMonthlyDocuments) *
+                              100
+                            }
+                            className="h-2"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {currentSubscription.billingConfig
+                              .includedMonthlyDocuments -
+                              currentUsage >
+                            0
+                              ? `${currentSubscription.billingConfig.includedMonthlyDocuments - currentUsage} documents remaining this month`
+                              : `${currentUsage - currentSubscription.billingConfig.includedMonthlyDocuments} documents over limit`}
+                          </p>
+                        </>
+                      ) : (
+                        <div className="p-3 bg-muted/50 rounded-lg">
+                          <p className="text-xs text-muted-foreground">
+                            Unlimited usage - pay per document transmitted (€
+                            {currentSubscription.billingConfig.documentOveragePrice.toFixed(
+                              2
+                            )}{" "}
+                            each)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing Profile</CardTitle>
-            <CardDescription>
-              Your billing information for invoices
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {billingProfile ? (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm">Company Name</h3>
-                  <p className="text-muted-foreground">{billingProfile.companyName}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm">Address</h3>
-                  <p className="text-muted-foreground">{billingProfile.address} {billingProfile.postalCode} {billingProfile.city}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm">Country</h3>
-                  <p className="text-muted-foreground">{billingProfile.country}</p>
-                </div>
-                {billingProfile.vatNumber && (
-                  <div>
-                    <h3 className="text-sm">VAT Number</h3>
-                    <p className="text-muted-foreground">{billingProfile.vatNumber}</p>
+                  <Separator />
+
+                  {/* Plan Details Grid */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          {currentSubscription.billingConfig.basePrice === 0
+                            ? "Pricing Model"
+                            : "Monthly Price"}
+                        </div>
+                        {currentSubscription.billingConfig.basePrice === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            Volume-based
+                          </p>
+                        ) : (
+                          <p className="text-2xl font-bold text-primary">
+                            €
+                            {currentSubscription.billingConfig.basePrice.toFixed(
+                              2
+                            )}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          Start Date
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(
+                            currentSubscription.startDate
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          Included Documents
+                        </div>
+                        {currentSubscription.billingConfig
+                          .includedMonthlyDocuments === 0 ? (
+                          <p className="text-sm text-muted-foreground">∞</p>
+                        ) : (
+                          <p className="text-lg font-semibold">
+                            {
+                              currentSubscription.billingConfig
+                                .includedMonthlyDocuments
+                            }
+                            <span className="text-sm font-normal text-muted-foreground ml-1">
+                              per month
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                          {currentSubscription.billingConfig
+                            .includedMonthlyDocuments === 0
+                            ? "Price per Document"
+                            : "Overage Rate"}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          €
+                          {currentSubscription.billingConfig.documentOveragePrice.toFixed(
+                            2
+                          )}{" "}
+                          per document
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div className="pt-4">
-                  <div className="flex items-center space-x-2 mt-2">
-                    {billingProfile.isMandateValidated ? (
-                      <Check className="h-4 w-4 text-accent" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-destructive" />
+                </CardContent>
+                <CardFooter className="pt-6">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">
+                        <XCircle className="h-4 w-4" />
+                        Cancel Subscription
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-5 w-5 text-destructive" />
+                          Cancel Subscription?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. You will lose access to
+                          your current plan features immediately. Billing will
+                          be prorated for the current month.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCancelSubscription}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Yes, Cancel Subscription
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardFooter>
+              </Card>
+            ) : (
+              <Card className="border-dashed border-2 border-muted-foreground/25">
+                <CardHeader className="text-center pb-2">
+                  <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                    <CreditCard className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <CardTitle className="text-xl">
+                    No Active Subscription
+                  </CardTitle>
+                  <CardDescription className="text-base">
+                    Choose a plan below to get started with Peppol document
+                    transmission
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
+          </div>
+
+          <div>
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Billing Profile
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                      Your billing information for invoices
+                    </CardDescription>
+                  </div>
+                  {billingProfile && (
+                    <Badge
+                      variant={
+                        billingProfile.isMandateValidated
+                          ? "secondary"
+                          : "destructive"
+                      }
+                    >
+                      {billingProfile.isMandateValidated ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Verified
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Pending
+                        </>
+                      )}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {billingProfile ? (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-1">
+                        Company Name
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {billingProfile.companyName}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-1">
+                        Address
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {billingProfile.address}
+                        <br />
+                        {billingProfile.postalCode} {billingProfile.city}
+                        <br />
+                        {billingProfile.country}
+                      </p>
+                    </div>
+                    {billingProfile.vatNumber && (
+                      <div>
+                        <h3 className="text-sm font-medium text-foreground mb-1">
+                          VAT Number
+                        </h3>
+                        <p className="text-sm text-muted-foreground font-mono">
+                          {billingProfile.vatNumber}
+                        </p>
+                      </div>
                     )}
-                    <p className="text-muted-foreground text-sm">
-                      Payment Mandate: {billingProfile.isMandateValidated ? 'Validated' : 'Not validated'}
+
+                    <Separator />
+
+                    <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                      {billingProfile.isMandateValidated ? (
+                        <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium">
+                          Payment Mandate{" "}
+                          {billingProfile.isMandateValidated
+                            ? "Verified"
+                            : "Pending"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {billingProfile.isMandateValidated
+                            ? "Your payment method is set up and ready for billing."
+                            : "Complete payment setup to activate your subscription."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                      <CreditCard className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      No billing profile set up yet.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Set up your billing profile to manage subscriptions.
                     </p>
                   </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No billing profile set up yet.</p>
-            )}
-          </CardContent>
-          <CardFooter>
-            {/* <Button
+                )}
+              </CardContent>
+              <CardFooter>
+                {/* <Button
               onClick={() => billingProfileClient[':teamId']['billing-profile']['end-billing-cycle'].$post({
                 param: { teamId: activeTeam!.id }
               })}
             >Test billing period end</Button> */}
-            <Dialog open={isEditingProfile} onOpenChange={setIsEditingProfile}>
-              <DialogTrigger asChild>
-                <Button>
-                  {billingProfile && !billingProfile.isMandateValidated && <CreditCard className="h-4 w-4 mr-2" />}
-                  {(billingProfile && billingProfile.isMandateValidated || !billingProfile) && <Pencil className="h-4 w-4 mr-2" />}
-                  {billingProfile ? (billingProfile.isMandateValidated ? 'Edit Billing Profile' : 'Validate Payment Mandate') : 'Set Up Profile'}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{billingProfile ? 'Edit Billing Profile' : 'Set Up Billing Profile'}</DialogTitle>
-                  <DialogDescription>
-                    Update your billing information for invoices
-                  </DialogDescription>
-                </DialogHeader>
-                <BillingProfileForm
-                  profileForm={profileForm}
-                  onChange={setProfileForm}
-                  onCancel={() => setIsEditingProfile(false)}
-                  onSubmit={handleUpdateProfile}
-                />
-              </DialogContent>
-            </Dialog>
-          </CardFooter>
-        </Card>
-      </div>
+                <Dialog
+                  open={isEditingProfile}
+                  onOpenChange={setIsEditingProfile}
+                >
+                  <DialogTrigger asChild>
+                    <Button>
+                      {billingProfile && !billingProfile.isMandateValidated && (
+                        <CreditCard className="h-4 w-4 mr-2" />
+                      )}
+                      {((billingProfile && billingProfile.isMandateValidated) ||
+                        !billingProfile) && <Pencil className="h-4 w-4 mr-2" />}
+                      {billingProfile
+                        ? billingProfile.isMandateValidated
+                          ? "Edit Billing Profile"
+                          : "Validate Payment Mandate"
+                        : "Set Up Profile"}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {billingProfile
+                          ? "Edit Billing Profile"
+                          : "Set Up Billing Profile"}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Update your billing information for invoices
+                      </DialogDescription>
+                    </DialogHeader>
+                    <BillingProfileForm
+                      profileForm={profileForm}
+                      onChange={setProfileForm}
+                      onCancel={() => setIsEditingProfile(false)}
+                      onSubmit={handleUpdateProfile}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
 
-      {activeTeam?.id && (
-        <PlansGrid
-          currentSubscription={currentSubscription}
-          teamId={activeTeam.id}
-          onSubscriptionUpdate={setCurrentSubscription}
-        />
-      )}
-    </div>
-  </PageTemplate>;
+        {activeTeam?.id && (
+          <PlansGrid
+            currentSubscription={currentSubscription}
+            teamId={activeTeam.id}
+            onSubscriptionUpdate={setCurrentSubscription}
+          />
+        )}
+      </div>
+    </PageTemplate>
+  );
 }
