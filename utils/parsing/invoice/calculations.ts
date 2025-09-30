@@ -1,5 +1,5 @@
 import { Decimal } from "decimal.js";
-import type { Invoice, DocumentLine, VatCategory } from "./schemas";
+import type { Invoice, DocumentLine, VatCategory, Totals } from "./schemas";
 import type { CreditNote } from "../creditnote/schemas";
 
 export function calculateLineAmount(line: DocumentLine | DocumentLine) {
@@ -33,14 +33,59 @@ export function calculateTotals(invoice: Invoice | CreditNote) {
     taxExclusiveAmount,
     taxInclusiveAmount,
     payableAmount: taxInclusiveAmount,
+    paidAmount: "0.00",
   };
 }
 
-export function calculatePrepaidAmount(taxInclusiveAmount: string, payableAmount: string) {
-  if(new Decimal(payableAmount).gt(new Decimal(taxInclusiveAmount))) {
-    return new Decimal(0).toNearest(0.01).toFixed(2);
+export function extractTotals(totals: Totals){
+  // Tax exclusive and inclusive amounts are always provided
+  const taxExclusiveAmount = new Decimal(totals.taxExclusiveAmount).toNearest(0.01);
+  const taxInclusiveAmount = new Decimal(totals.taxInclusiveAmount).toNearest(0.01);
+  
+  // Payable amount and paid amount are optional
+  let payableAmountStr = totals.payableAmount ?? null;
+  let paidAmountStr = totals.paidAmount ?? null;
+
+  let payableAmount = new Decimal(0);
+  let paidAmount = new Decimal(0);
+
+  if(payableAmountStr) {
+    // Payable amount is provided
+    payableAmount = new Decimal(payableAmountStr).toNearest(0.01);
+    if(paidAmountStr) {
+      // Paid amount is provided
+      paidAmount = new Decimal(paidAmountStr).toNearest(0.01);
+    } else {
+      // Paid amount is not provided, so we can calculate it from the totals
+      if(payableAmount.gt(taxInclusiveAmount)) {
+        paidAmount = new Decimal(0);
+      }else{
+        paidAmount = taxInclusiveAmount.minus(payableAmount).toNearest(0.01);
+      }
+    }
+  }else{
+    // Payable amount is not provided, so we have to calculate it from the totals
+    if(paidAmountStr) {
+      // Paid amount is provided
+      paidAmount = new Decimal(paidAmountStr).toNearest(0.01);
+    } else {
+      // Paid amount is not provided, we assume it to be 0
+      paidAmount = new Decimal(0);
+    }
+    payableAmount = paidAmount.gt(taxInclusiveAmount) ? new Decimal(0) : taxInclusiveAmount.minus(paidAmount).toNearest(0.01);
   }
-  return new Decimal(taxInclusiveAmount).minus(new Decimal(payableAmount)).toNearest(0.01).toFixed(2);
+
+  // Calculate payable rounding amount
+  const payableRoundingAmount = payableAmount.plus(paidAmount).minus(taxInclusiveAmount).toNearest(0.01);
+
+  return {
+    taxExclusiveAmount: taxExclusiveAmount.toNearest(0.01).toFixed(2),
+    taxInclusiveAmount: taxInclusiveAmount.toNearest(0.01).toFixed(2),
+    payableAmount: payableAmount.toNearest(0.01).toFixed(2),
+    paidAmount: paidAmount.toNearest(0.01).toFixed(2),
+    payableRoundingAmount: payableRoundingAmount.toNearest(0.01).toFixed(2),
+  };
+  
 }
 
 export function calculateVat(invoice: Invoice | CreditNote) {

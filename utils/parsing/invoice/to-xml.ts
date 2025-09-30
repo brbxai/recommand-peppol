@@ -2,9 +2,9 @@ import { XMLBuilder } from "fast-xml-parser";
 import type { Invoice } from "./schemas";
 import {
   calculateLineAmount,
-  calculatePrepaidAmount,
   calculateTotals,
   calculateVat,
+  extractTotals,
 } from "./calculations";
 import { parsePeppolAddress } from "../peppol-address";
 
@@ -25,6 +25,8 @@ export function invoiceToUBL(
     ...line,
     netAmount: line.netAmount || calculateLineAmount(line),
   }));
+
+  const extractedTotals = extractTotals(totals);
 
   const sender = parsePeppolAddress(senderAddress);
   const recipient = parsePeppolAddress(recipientAddress);
@@ -213,30 +215,27 @@ export function invoiceToUBL(
       "cac:LegalMonetaryTotal": {
         "cbc:LineExtensionAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.taxExclusiveAmount,
+          "#text": extractedTotals.taxExclusiveAmount,
         },
         "cbc:TaxExclusiveAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.taxExclusiveAmount,
+          "#text": extractedTotals.taxExclusiveAmount,
         },
         "cbc:TaxInclusiveAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.taxInclusiveAmount,
+          "#text": extractedTotals.taxInclusiveAmount,
         },
         "cbc:PrepaidAmount": {
           "@_currencyID": "EUR",
-          "#text": calculatePrepaidAmount(
-            totals.taxInclusiveAmount,
-            totals.payableAmount || totals.taxInclusiveAmount
-          ),
+          "#text": extractedTotals.paidAmount,
         },
         "cbc:PayableRoundingAmount": {
           "@_currencyID": "EUR",
-          "#text": "0.00",
+          "#text": extractedTotals.payableRoundingAmount,
         },
         "cbc:PayableAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.payableAmount || totals.taxInclusiveAmount,
+          "#text": extractedTotals.payableAmount,
         },
       },
       "cac:InvoiceLine": lines.map((item, index) => ({

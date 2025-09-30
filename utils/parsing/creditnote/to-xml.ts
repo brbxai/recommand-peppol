@@ -4,6 +4,7 @@ import {
   calculateLineAmount,
   calculateTotals,
   calculateVat,
+  extractTotals,
 } from "../invoice/calculations";
 import { parsePeppolAddress } from "../peppol-address";
 
@@ -24,6 +25,8 @@ export function creditNoteToUBL(
     ...line,
     netAmount: line.netAmount || calculateLineAmount(line),
   }));
+
+  const extractedTotals = extractTotals(totals);
 
   const sender = parsePeppolAddress(senderAddress);
   const recipient = parsePeppolAddress(recipientAddress);
@@ -211,19 +214,27 @@ export function creditNoteToUBL(
       "cac:LegalMonetaryTotal": {
         "cbc:LineExtensionAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.taxExclusiveAmount,
+          "#text": extractedTotals.taxExclusiveAmount,
         },
         "cbc:TaxExclusiveAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.taxExclusiveAmount,
+          "#text": extractedTotals.taxExclusiveAmount,
         },
         "cbc:TaxInclusiveAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.taxInclusiveAmount,
+          "#text": extractedTotals.taxInclusiveAmount,
+        },
+        "cbc:PrepaidAmount": {
+          "@_currencyID": "EUR",
+          "#text": extractedTotals.paidAmount,
+        },
+        "cbc:PayableRoundingAmount": {
+          "@_currencyID": "EUR",
+          "#text": extractedTotals.payableRoundingAmount,
         },
         "cbc:PayableAmount": {
           "@_currencyID": "EUR",
-          "#text": totals.payableAmount || totals.taxInclusiveAmount,
+          "#text": extractedTotals.payableAmount,
         },
       },
       "cac:CreditNoteLine": lines.map((item, index) => ({

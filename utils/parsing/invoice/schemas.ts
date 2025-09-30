@@ -68,7 +68,8 @@ export const vatSubtotalSchema = z.object({
 export const totalsSchema = z.object({
   taxExclusiveAmount: decimalSchema,
   taxInclusiveAmount: decimalSchema,
-  payableAmount: decimalSchema.nullish(),
+  payableAmount: decimalSchema.nullish().openapi({ description: "The amount to be paid. If not provided, this will be taxInclusiveAmount. Can be used in combination with paidAmount to indicate partial payment or payment rounding. Rounded to 2 decimal places." }),
+  paidAmount: decimalSchema.nullish().openapi({ description: "The amount paid. If not provided, this will be taxInclusiveAmount - payableAmount. Can be used in combination with payableAmount to indicate partial payment or payment rounding. Rounded to 2 decimal places." }),
 }).openapi({ ref: "Totals", description: "If not provided, the totals will be calculated from the document lines." });
 
 export const lineSchema = z.object({
