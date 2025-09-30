@@ -14,7 +14,7 @@ import { Switch } from "@core/components/ui/switch";
 import { Label } from "@core/components/ui/label";
 import { SendDocumentType } from "@peppol/utils/parsing/send-document";
 import type { SendDocument } from "@peppol/utils/parsing/send-document";
-import { Code } from "lucide-react";
+import { useLocalStorageState } from "@peppol/utils/react-hooks";
 
 function getFormType(documentType: string): "invoice" | "creditNote" | "xml" {
   switch (documentType) {
@@ -55,7 +55,7 @@ export default function SendDocumentPage() {
     } as any,
   });
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-  const [showApiPreview, setShowApiPreview] = useState<boolean>(true);
+  const [showApiPreview, setShowApiPreview] = useLocalStorageState<boolean>("peppol.sendDocument.showApiPreview", true);
 
   const handleFormChange = (data: Partial<SendDocument>) => {
     setFormData(data);
@@ -85,19 +85,18 @@ export default function SendDocumentPage() {
     >
       <div className="mb-6 flex justify-end items-center">
         <div className="flex items-center space-x-2">
-          <Code className="h-4 w-4 text-muted-foreground" />
           <Switch
             id="api-preview"
             checked={showApiPreview}
             onCheckedChange={setShowApiPreview}
           />
-          <Label htmlFor="api-preview" className="text-sm">
+          <Label htmlFor="api-preview" className="text-sm flex items-center gap-2">
             API Preview
           </Label>
         </div>
       </div>
       <div
-        className={`grid gap-6 ${showApiPreview ? "lg:grid-cols-2" : "lg:grid-cols-1"}`}
+        className={`grid gap-6 ${showApiPreview ? "lg:grid-cols-2" : "lg:grid-cols-1 max-w-screen-lg mx-auto"}`}
       >
         <div className="space-y-6">
           {/* Document Type Selection */}

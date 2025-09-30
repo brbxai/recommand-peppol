@@ -41,6 +41,7 @@ export function CreditNoteForm({
     seller: false,
     payment: false,
     notes: false,
+    lines: true,
   });
   const activeTeam = useActiveTeam();
 
@@ -113,7 +114,7 @@ export function CreditNoteForm({
             id="issueDate"
             type="date"
             value={creditNote.issueDate || ""}
-            onChange={(e) => handleFieldChange("issueDate", e.target.value)}
+            onChange={(e) => handleFieldChange("issueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
           />
         </div>
 
@@ -168,14 +169,24 @@ export function CreditNoteForm({
         </CollapsibleContent>
       </Collapsible>
 
-      <div>
-        <Label>Credit Note Lines *</Label>
-        <LineItemsEditor
-          lines={creditNote.lines || []}
-          onChange={(lines) => handleFieldChange("lines", lines)}
-          isCreditNote
-        />
-      </div>
+      <Collapsible open={openSections.lines}>
+        <CollapsibleTrigger
+          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+          onClick={() => toggleSection("lines")}
+        >
+          <span>Credit Note Lines *</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${openSections.lines ? "rotate-180" : ""}`}
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <LineItemsEditor
+            lines={creditNote.lines || []}
+            onChange={(lines) => handleFieldChange("lines", lines)}
+            isCreditNote
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       <Collapsible open={openSections.payment}>
         <CollapsibleTrigger

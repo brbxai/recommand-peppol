@@ -45,6 +45,7 @@ export function InvoiceForm({
     seller: false,
     payment: false,
     notes: false,
+    lines: true,
   });
   const activeTeam = useActiveTeam();
 
@@ -116,7 +117,7 @@ export function InvoiceForm({
               id="issueDate"
               type="date"
               value={invoice.issueDate || ""}
-              onChange={(e) => handleFieldChange("issueDate", e.target.value)}
+              onChange={(e) => handleFieldChange("issueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
             />
           </div>
           <div>
@@ -125,7 +126,7 @@ export function InvoiceForm({
               id="dueDate"
               type="date"
               value={invoice.dueDate || ""}
-              onChange={(e) => handleFieldChange("dueDate", e.target.value)}
+              onChange={(e) => handleFieldChange("dueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
             />
           </div>
         </div>
@@ -181,13 +182,23 @@ export function InvoiceForm({
         </CollapsibleContent>
       </Collapsible>
 
-      <div>
-        <Label>Invoice Lines *</Label>
-        <LineItemsEditor
-          lines={invoice.lines || []}
-          onChange={(lines) => handleFieldChange("lines", lines)}
-        />
-      </div>
+      <Collapsible open={openSections.lines}>
+        <CollapsibleTrigger
+          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+          onClick={() => toggleSection("lines")}
+        >
+          <span>Invoice Lines *</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${openSections.lines ? "rotate-180" : ""}`}
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <LineItemsEditor
+            lines={invoice.lines || []}
+            onChange={(lines) => handleFieldChange("lines", lines)}
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       <Collapsible open={openSections.payment}>
         <CollapsibleTrigger

@@ -98,7 +98,7 @@ console.log(data);`;
                   <Copy className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="h-[400px] overflow-auto w-full rounded border">
+              <div className="overflow-auto w-full rounded border">
                 <SyntaxHighlighter
                   code={requestBody}
                   language="json"

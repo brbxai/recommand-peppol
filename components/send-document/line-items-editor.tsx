@@ -246,7 +246,7 @@ export function LineItemsEditor({
           <Card className="p-3">
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground">Total Net:</span>
+                <span className="text-muted-foreground">Net Total:</span>
                 <p className="font-medium">€{totals.totalNet}</p>
               </div>
               <div>

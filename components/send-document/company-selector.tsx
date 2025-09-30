@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Select,
   SelectContent,
@@ -25,6 +25,7 @@ export function CompanySelector({ value, onChange }: CompanySelectorProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const activeTeam = useActiveTeam();
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -68,7 +69,8 @@ export function CompanySelector({ value, onChange }: CompanySelectorProps) {
       onChange(companies[0].id);
       setHasAutoSelected(true);
     }
-  }, [companies, value, hasAutoSelected]);
+  }, [companies, hasAutoSelected, onChange]);
+
   if (isLoading) {
     return (
       <Select disabled>
@@ -90,7 +92,18 @@ export function CompanySelector({ value, onChange }: CompanySelectorProps) {
   }
 
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={(newValue) => {
+      // Skip the initial mount call with empty value
+      if (isInitialMount.current && newValue === "") {
+        isInitialMount.current = false;
+        return;
+      }
+      
+      // Only call onChange if we have a valid value and it's different
+      if (newValue && newValue !== value) {
+        onChange(newValue);
+      }
+    }}>
       <SelectTrigger>
         <SelectValue placeholder="Select a company" />
       </SelectTrigger>
