@@ -58,8 +58,8 @@ export function creditNoteToUBL(
       }),
       ...(!creditNote.buyerReference &&
         !creditNote.purchaseOrderReference && {
-          "cbc:BuyerReference": creditNote.creditNoteNumber,
-        }),
+        "cbc:BuyerReference": creditNote.creditNoteNumber,
+      }),
       ...(creditNote.attachments && {
         "cac:AdditionalDocumentReference": creditNote.attachments.map(
           (attachment) => ({
@@ -112,12 +112,14 @@ export function creditNoteToUBL(
               "cbc:IdentificationCode": creditNote.seller.country,
             },
           },
-          "cac:PartyTaxScheme": {
-            "cbc:CompanyID": creditNote.seller.vatNumber,
-            "cac:TaxScheme": {
-              "cbc:ID": "VAT",
+          ...(creditNote.seller.vatNumber && {
+            "cac:PartyTaxScheme": {
+              "cbc:CompanyID": creditNote.seller.vatNumber,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
             },
-          },
+          }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.seller.name,
           },
@@ -151,12 +153,14 @@ export function creditNoteToUBL(
               "cbc:IdentificationCode": creditNote.buyer.country,
             },
           },
-          "cac:PartyTaxScheme": {
-            "cbc:CompanyID": creditNote.buyer.vatNumber,
-            "cac:TaxScheme": {
-              "cbc:ID": "VAT",
+          ...(creditNote.buyer.vatNumber && {
+            "cac:PartyTaxScheme": {
+              "cbc:CompanyID": creditNote.buyer.vatNumber,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
             },
-          },
+          }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.buyer.name,
           },

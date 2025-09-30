@@ -59,8 +59,8 @@ export function invoiceToUBL(
       }),
       ...(!invoice.buyerReference &&
         !invoice.purchaseOrderReference && {
-          "cbc:BuyerReference": invoice.invoiceNumber,
-        }),
+        "cbc:BuyerReference": invoice.invoiceNumber,
+      }),
       ...(invoice.attachments && {
         "cac:AdditionalDocumentReference": invoice.attachments.map(
           (attachment) => ({
@@ -113,12 +113,14 @@ export function invoiceToUBL(
               "cbc:IdentificationCode": invoice.seller.country,
             },
           },
-          "cac:PartyTaxScheme": {
-            "cbc:CompanyID": invoice.seller.vatNumber,
-            "cac:TaxScheme": {
-              "cbc:ID": "VAT",
+          ...(invoice.seller.vatNumber && {
+            "cac:PartyTaxScheme": {
+              "cbc:CompanyID": invoice.seller.vatNumber,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
             },
-          },
+          }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.seller.name,
           },
@@ -152,12 +154,14 @@ export function invoiceToUBL(
               "cbc:IdentificationCode": invoice.buyer.country,
             },
           },
-          "cac:PartyTaxScheme": {
-            "cbc:CompanyID": invoice.buyer.vatNumber,
-            "cac:TaxScheme": {
-              "cbc:ID": "VAT",
+          ...(invoice.buyer.vatNumber && {
+            "cac:PartyTaxScheme": {
+              "cbc:CompanyID": invoice.buyer.vatNumber,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
             },
-          },
+          }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.buyer.name,
           },

@@ -52,7 +52,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     city: getTextContent(sellerParty.PostalAddress?.CityName),
     postalZone: getTextContent(sellerParty.PostalAddress?.PostalZone),
     country: getTextContent(sellerParty.PostalAddress?.Country?.IdentificationCode),
-    vatNumber: getTextContent(sellerParty.PartyTaxScheme?.CompanyID),
+    vatNumber: sellerParty.PartyTaxScheme?.CompanyID ? getTextContent(sellerParty.PartyTaxScheme?.CompanyID) : null,
   };
 
   // Extract buyer information
@@ -68,7 +68,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     city: getTextContent(buyerParty.PostalAddress?.CityName),
     postalZone: getTextContent(buyerParty.PostalAddress?.PostalZone),
     country: getTextContent(buyerParty.PostalAddress?.Country?.IdentificationCode),
-    vatNumber: getTextContent(buyerParty.PartyTaxScheme?.CompanyID),
+    vatNumber: buyerParty.PartyTaxScheme?.CompanyID ? getTextContent(buyerParty.PartyTaxScheme?.CompanyID) : null,
   };
 
   // Extract payment means

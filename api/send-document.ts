@@ -116,7 +116,7 @@ const _sendDocument = server.post(
 
         if (!invoice.seller) {
           invoice.seller = {
-            vatNumber: c.var.company.vatNumber ?? "",
+            vatNumber: c.var.company.vatNumber,
             name: c.var.company.name,
             street: c.var.company.address,
             city: c.var.company.city,
@@ -156,7 +156,7 @@ const _sendDocument = server.post(
 
         if (!creditNote.seller) {
           creditNote.seller = {
-            vatNumber: c.var.company.vatNumber ?? "",
+            vatNumber: c.var.company.vatNumber,
             name: c.var.company.name,
             street: c.var.company.address,
             city: c.var.company.city,

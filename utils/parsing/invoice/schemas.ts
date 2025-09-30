@@ -30,7 +30,7 @@ export const unlimitedDecimalSchema = z.union([z.number(), z.string()])
   .openapi({ type: 'string', example: "21.00", description: "Decimal number as a string with flexible precision" });
 
 export const partySchema = z.object({
-  vatNumber: z.string().openapi({ example: "BE0123456789" }),
+  vatNumber: z.string().nullish().openapi({ example: "BE0123456789" }),
   name: z.string().openapi({ example: "Example Company" }),
   street: z.string().openapi({ example: "Example Street 1" }),
   street2: z.string().nullish().openapi({ example: "Suite 100" }),
