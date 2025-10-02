@@ -13,6 +13,7 @@ import { CompanySelector } from "./company-selector";
 import { EmailOptions } from "./email-options";
 import { Loader2, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { stringifyActionFailure } from "@recommand/lib/utils";
 
 const client = rc<SendDocumentAPI>("peppol");
 
@@ -79,13 +80,7 @@ export function DocumentForm({
       const json = await response.json();
 
       if (!json.success) {
-        const errorMessage =
-          typeof json.errors === "string"
-            ? json.errors
-            : Array.isArray(json.errors)
-              ? json.errors.join(", ")
-              : "Failed to send document";
-        toast.error(errorMessage);
+        toast.error(stringifyActionFailure(json.errors));
       } else {
         toast.success(
           <div className="flex flex-col gap-1">
