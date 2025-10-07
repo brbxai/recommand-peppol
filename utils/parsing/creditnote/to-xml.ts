@@ -19,6 +19,11 @@ export function creditNoteToUBL(
   senderAddress: string,
   recipientAddress: string
 ): string {
+  const ublCreditNote = prebuildCreditNoteUBL(creditNote, senderAddress, recipientAddress);
+  return builder.build(ublCreditNote);
+}
+
+export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: string, recipientAddress: string) {
   const totals = creditNote.totals || calculateTotals(creditNote);
   const vat = creditNote.vat || calculateVat(creditNote);
   const lines = creditNote.lines.map((line) => ({
@@ -30,7 +35,7 @@ export function creditNoteToUBL(
 
   const sender = parsePeppolAddress(senderAddress);
   const recipient = parsePeppolAddress(recipientAddress);
-  const ublCreditNote = {
+  return {
     CreditNote: {
       "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
       "@_xmlns:cac":
@@ -283,5 +288,4 @@ export function creditNoteToUBL(
     },
   };
 
-  return builder.build(ublCreditNote);
 }

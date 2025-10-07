@@ -1,6 +1,8 @@
 import { Decimal } from "decimal.js";
 import type { Invoice, DocumentLine, VatCategory, Totals } from "./schemas";
 import type { CreditNote } from "../creditnote/schemas";
+import type { SelfBillingInvoice } from "../self-billing-invoice/schemas";
+import type { SelfBillingCreditNote } from "../self-billing-creditnote/schemas";
 
 export function calculateLineAmount(line: DocumentLine | DocumentLine) {
   return new Decimal(line.quantity).mul(line.netPriceAmount).toNearest(0.01).toFixed(2);
@@ -13,7 +15,7 @@ function getNetAmount(line: DocumentLine | DocumentLine) {
   return new Decimal(line.quantity).mul(line.netPriceAmount).toNearest(0.01).toFixed(2);
 }
 
-export function calculateTotals(invoice: Invoice | CreditNote) {
+export function calculateTotals(invoice: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote) {
   const taxExclusiveAmount = invoice.lines.reduce(
     (sum, line) => sum.plus(getNetAmount(line)),
     new Decimal(0)

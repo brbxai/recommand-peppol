@@ -1,6 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { invoiceSchema, type Invoice } from "./schemas";
 import { getTextContent, getNumberContent, getPercentage } from "../xml-helpers";
+import type { SelfBillingInvoice } from "../self-billing-invoice/schemas";
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -15,7 +16,7 @@ const parser = new XMLParser({
   removeNSPrefix: true,
 });
 
-export function parseInvoiceFromXML(xml: string): Invoice {
+export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   const parsed = parser.parse(xml);
   const invoice = parsed.Invoice;
 

@@ -100,7 +100,7 @@ export const attachmentSchema = z.object({
   url: z.string().nullish().openapi({ example: "https://example.com/contract.pdf" }),
 }).openapi({ ref: "Attachment" });
 
-export const invoiceSchema = z.object({
+export const _invoiceSchema = z.object({
   invoiceNumber: z.string().openapi({ example: "INV-2024-001" }),
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
   dueDate: z.string().date().openapi({ example: "2024-04-20" }),
@@ -117,13 +117,17 @@ export const invoiceSchema = z.object({
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
   attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the invoice" }),
-}).openapi({ ref: "Invoice" });
+})
 
-export const sendInvoiceSchema = invoiceSchema.extend({
+export const invoiceSchema = _invoiceSchema.openapi({ ref: "Invoice" });
+
+export const _sendInvoiceSchema = invoiceSchema.extend({
   issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "If not provided, the issue date will be the current date." }),
   dueDate: z.string().date().nullish().openapi({ example: "2024-04-20", description: "If not provided, the due date will be 1 month from the issue date." }),
   seller: partySchema.nullish().openapi({ description: "If not provided, the seller will be the company that is sending the invoice." }),
-}).openapi({ ref: "SendInvoice", title: "Invoice to send", description: "Invoice to send to a recipient" });
+})
+
+export const sendInvoiceSchema = _sendInvoiceSchema.openapi({ ref: "SendInvoice", title: "Invoice to send", description: "Invoice to send to a recipient" });
 
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type DocumentLine = z.infer<typeof lineSchema>;

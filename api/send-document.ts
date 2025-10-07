@@ -33,6 +33,10 @@ import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
 import { getSendingCompanyIdentifier } from "@peppol/data/company-identifiers";
 import { parseDocument } from "@peppol/utils/parsing/parse-document";
 import { sendDocumentEmail } from "@peppol/data/email/send-email";
+import { sendSelfBillingInvoiceSchema, type SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
+import { selfBillingInvoiceToUBL } from "@peppol/utils/parsing/self-billing-invoice/to-xml";
+import { sendSelfBillingCreditNoteSchema, type SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import { selfBillingCreditNoteToUBL } from "@peppol/utils/parsing/self-billing-creditnote/to-xml";
 
 const server = new Server();
 
@@ -83,8 +87,8 @@ const _sendDocument = server.post(
       const isPlayground = c.get("team").isPlayground;
 
       let xmlDocument: string | null = null;
-      let type: "invoice" | "creditNote" | "unknown" = "unknown";
-      let parsedDocument: Invoice | CreditNote | null = null;
+      let type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown" = "unknown";
+      let parsedDocument: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | null = null;
       let doctypeId: string =
         "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
 
@@ -179,6 +183,85 @@ const _sendDocument = server.post(
         doctypeId =
           "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
         parsedDocument = creditNote;
+      } else if (jsonBody.documentType === SendDocumentType.SELF_BILLING_INVOICE) {
+        const invoice = document as SelfBillingInvoice;
+
+        // Check the invoice corresponds to the required zod schema
+        const parsedInvoice = sendSelfBillingInvoiceSchema.safeParse(invoice);
+        if (!parsedInvoice.success) {
+          return c.json(
+            actionFailure(
+              "Invalid self billing invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+            )
+          );
+        }
+
+        if (!invoice.seller) {
+          invoice.seller = {
+            vatNumber: c.var.company.vatNumber,
+            name: c.var.company.name,
+            street: c.var.company.address,
+            city: c.var.company.city,
+            postalZone: c.var.company.postalCode,
+            country: c.var.company.country,
+          };
+        }
+        if (!invoice.issueDate) {
+          invoice.issueDate = formatISO(new Date(), { representation: "date" });
+        }
+        if (!invoice.dueDate) {
+          invoice.dueDate = formatISO(
+            addMonths(new Date(invoice.issueDate), 1),
+            { representation: "date" }
+          );
+        }
+        const ublInvoice = selfBillingInvoiceToUBL(
+          invoice,
+          senderAddress,
+          recipientAddress
+        );
+        xmlDocument = ublInvoice;
+        type = "selfBillingInvoice";
+        doctypeId = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
+        parsedDocument = invoice;
+      } else if (jsonBody.documentType === SendDocumentType.SELF_BILLING_CREDIT_NOTE) {
+        const selfBillingCreditNote = document as SelfBillingCreditNote;
+
+        // Check the credit note corresponds to the required zod schema
+        const parsedCreditNote = sendSelfBillingCreditNoteSchema.safeParse(selfBillingCreditNote);
+        if (!parsedCreditNote.success) {
+          return c.json(
+            actionFailure(
+              "Invalid self billing credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+            )
+          );
+        }
+
+        if (!selfBillingCreditNote.seller) {
+          selfBillingCreditNote.seller = {
+            vatNumber: c.var.company.vatNumber,
+            name: c.var.company.name,
+            street: c.var.company.address,
+            city: c.var.company.city,
+            postalZone: c.var.company.postalCode,
+            country: c.var.company.country,
+          };
+        }
+        if (!selfBillingCreditNote.issueDate) {
+          selfBillingCreditNote.issueDate = formatISO(new Date(), {
+            representation: "date",
+          });
+        }
+        const ublSelfBillingCreditNote = selfBillingCreditNoteToUBL(
+          selfBillingCreditNote,
+          senderAddress,
+          recipientAddress
+        );
+        xmlDocument = ublSelfBillingCreditNote;
+        type = "selfBillingCreditNote";
+        doctypeId =
+          "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
+        parsedDocument = selfBillingCreditNote;
       } else if (jsonBody.documentType === SendDocumentType.XML) {
         xmlDocument = document as string;
         if (jsonBody.doctypeId) {

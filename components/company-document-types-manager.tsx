@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "@core/components/ui/button";
-import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
@@ -24,6 +23,16 @@ const DOCUMENT_TYPE_PRESETS = [
         docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
         processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
     },
+    {
+        title: "Self Billing Invoice",
+        docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1",
+        processId: "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0"
+    },
+    {
+        title: "Self Billing Credit Note",
+        docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1",
+        processId: "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0"
+    }
 ]
 
 const client = rc<CompanyDocumentTypes>("peppol");

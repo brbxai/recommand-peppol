@@ -2,10 +2,13 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { sendInvoiceSchema } from "./invoice/schemas";
 import { sendCreditNoteSchema } from "./creditnote/schemas";
+import { sendSelfBillingInvoiceSchema } from "./self-billing-invoice/schemas";
 
 export const SendDocumentType = {
   INVOICE: "invoice",
   CREDIT_NOTE: "creditNote",
+  SELF_BILLING_INVOICE: "selfBillingInvoice",
+  SELF_BILLING_CREDIT_NOTE: "selfBillingCreditNote",
   XML: "xml",
 } as const;
 
@@ -50,12 +53,12 @@ export const sendDocumentSchema = z.object({
   //   description: "Generate a PDF of the document. Each generated PDF is counted towards your document quota. PDF generation is only available for invoices and credit notes.",
   // }),
   documentType: z
-    .enum([SendDocumentType.INVOICE, SendDocumentType.CREDIT_NOTE, SendDocumentType.XML])
+    .enum([SendDocumentType.INVOICE, SendDocumentType.CREDIT_NOTE, SendDocumentType.SELF_BILLING_INVOICE, SendDocumentType.SELF_BILLING_CREDIT_NOTE, SendDocumentType.XML])
     .openapi({
       description: "The type of document to send.",
       example: SendDocumentType.INVOICE,
     }),
-  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
+  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, sendSelfBillingInvoiceSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
   doctypeId: z.string().optional().openapi({
     description:
       "The document type identifier. Not required, only used when documentType is \"xml\".",

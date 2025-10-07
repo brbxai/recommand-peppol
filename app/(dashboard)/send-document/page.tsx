@@ -19,8 +19,10 @@ import { useLocalStorageState } from "@peppol/utils/react-hooks";
 function getFormType(documentType: string): "invoice" | "creditNote" | "xml" {
   switch (documentType) {
     case SendDocumentType.INVOICE:
+    case SendDocumentType.SELF_BILLING_INVOICE:
       return "invoice";
     case SendDocumentType.CREDIT_NOTE:
+    case SendDocumentType.SELF_BILLING_CREDIT_NOTE:
       return "creditNote";
     case SendDocumentType.XML:
       return "xml";
@@ -72,7 +74,7 @@ export default function SendDocumentPage() {
       document:
         newDocumentType === SendDocumentType.XML
           ? ""
-          : newDocumentType === SendDocumentType.CREDIT_NOTE
+          : (newDocumentType === SendDocumentType.CREDIT_NOTE || newDocumentType === SendDocumentType.SELF_BILLING_CREDIT_NOTE)
             ? ({ creditNoteNumber: "", lines: [] } as any)
             : ({ invoiceNumber: "", lines: [] } as any),
     });
@@ -129,6 +131,22 @@ export default function SendDocumentPage() {
                       <span className="font-medium">Credit Note</span>
                       <span className="text-xs text-muted-foreground">
                         Refund or adjustment document
+                      </span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={SendDocumentType.SELF_BILLING_INVOICE}>
+                    <div className="flex flex-col py-1">
+                      <span className="font-medium">Self Billing Invoice</span>
+                      <span className="text-xs text-muted-foreground">
+                        Self billing invoice
+                      </span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value={SendDocumentType.SELF_BILLING_CREDIT_NOTE}>
+                    <div className="flex flex-col py-1">
+                      <span className="font-medium">Self Billing Credit Note</span>
+                      <span className="text-xs text-muted-foreground">
+                        Self billing credit note
                       </span>
                     </div>
                   </SelectItem>

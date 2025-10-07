@@ -19,6 +19,11 @@ export function invoiceToUBL(
   senderAddress: string,
   recipientAddress: string
 ): string {
+  const ublInvoice = prebuildInvoiceUBL(invoice, senderAddress, recipientAddress);
+  return builder.build(ublInvoice);
+}
+
+export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, recipientAddress: string) {
   const totals = invoice.totals || calculateTotals(invoice);
   const vat = invoice.vat || calculateVat(invoice);
   const lines = invoice.lines.map((line) => ({
@@ -30,7 +35,7 @@ export function invoiceToUBL(
 
   const sender = parsePeppolAddress(senderAddress);
   const recipient = parsePeppolAddress(recipientAddress);
-  const ublInvoice = {
+  return {
     Invoice: {
       "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
       "@_xmlns:cac":
@@ -276,5 +281,4 @@ export function invoiceToUBL(
     },
   };
 
-  return builder.build(ublInvoice);
 }

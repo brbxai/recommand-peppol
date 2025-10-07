@@ -7,7 +7,7 @@ const creditNoteInvoiceReferenceSchema = z.object({
   issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "The issue date of the invoice that is being credited" }),
 });
 
-export const creditNoteSchema = z.object({
+export const _creditNoteSchema = z.object({
   creditNoteNumber: z.string().openapi({ example: "CN-2024-001" }),
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
   note: z.string().nullish().openapi({ example: "Thank you for your business" }),
@@ -24,12 +24,16 @@ export const creditNoteSchema = z.object({
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
   attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the credit note" }),
-}).openapi({ ref: "CreditNote" });
+})
 
-export const sendCreditNoteSchema = creditNoteSchema.extend({
+export const creditNoteSchema = _creditNoteSchema.openapi({ ref: "CreditNote" });
+
+export const _sendCreditNoteSchema = creditNoteSchema.extend({
   issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "If not provided, the issue date will be the current date." }),
   dueDate: z.string().date().nullish().openapi({ example: "2024-04-20", description: "If not provided, the due date will be 1 month from the issue date." }),
   seller: partySchema.nullish().openapi({ description: "If not provided, the seller will be the company that is sending the credit note." }),
-}).openapi({ ref: "SendCreditNote", title: "Credit Note to send", description: "Credit note to send to a recipient" });
+})
+
+export const sendCreditNoteSchema = _sendCreditNoteSchema.openapi({ ref: "SendCreditNote", title: "Credit Note to send", description: "Credit note to send to a recipient" });
 
 export type CreditNote = z.infer<typeof creditNoteSchema>;
