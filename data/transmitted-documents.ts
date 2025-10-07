@@ -5,8 +5,8 @@ import { eq, and, sql, desc, isNull, inArray, or, ilike, SQL } from "drizzle-orm
 export type TransmittedDocument = typeof transmittedDocuments.$inferSelect;
 export type InsertTransmittedDocument = typeof transmittedDocuments.$inferInsert;
 
-// Create a type that excludes the body field
-export type TransmittedDocumentWithoutBody = Omit<TransmittedDocument, "xml" | "parsed">;
+// Create a type that excludes the body field but includes parsed data
+export type TransmittedDocumentWithoutBody = Omit<TransmittedDocument, "xml">;
 
 export async function getTransmittedDocuments(
   teamId: string,
@@ -72,6 +72,7 @@ export async function getTransmittedDocuments(
       sentOverPeppol: transmittedDocuments.sentOverPeppol,
       sentOverEmail: transmittedDocuments.sentOverEmail,
       emailRecipients: transmittedDocuments.emailRecipients,
+      parsed: transmittedDocuments.parsed,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
@@ -124,6 +125,7 @@ export async function getInbox(
       sentOverPeppol: transmittedDocuments.sentOverPeppol,
       sentOverEmail: transmittedDocuments.sentOverEmail,
       emailRecipients: transmittedDocuments.emailRecipients,
+      parsed: transmittedDocuments.parsed,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))

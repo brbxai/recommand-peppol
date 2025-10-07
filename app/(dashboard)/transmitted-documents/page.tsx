@@ -13,7 +13,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Mail, CloudAlert } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -25,7 +25,8 @@ import {
   DataTableToolbar,
   type FilterConfig,
 } from "@core/components/data-table/toolbar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@core/components/ui/tooltip";
+import { PartyInfoTooltip } from "@peppol/components/party-info-tooltip";
+import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -239,49 +240,85 @@ export default function Page() {
     {
       accessorKey: "senderId",
       header: ({ column }) => <ColumnHeader column={column} title="Sender" />,
+      cell: ({ row }) => {
+        const document = row.original;
+        const senderId = row.getValue("senderId") as string;
+        const documentType = document.type;
+        const direction = document.direction;
+        
+        // Check if document type is recognized and has parsed data
+        const isRecognizedType = ["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote"].includes(documentType);
+        
+        if (isRecognizedType && document.parsed) {
+          // For incoming documents, sender is the seller
+          // For outgoing documents, sender is the buyer
+          const senderInfo = direction === "incoming" 
+            ? (document.parsed as any)?.seller 
+            : (document.parsed as any)?.buyer;
+          
+          if (senderInfo?.name) {
+            return (
+              <div className="flex items-center gap-2">
+                <span>{senderInfo.name}</span>
+                <PartyInfoTooltip partyInfo={senderInfo} peppolAddress={senderId} />
+              </div>
+            );
+          }
+        }
+        
+        // Fallback to showing senderId for unrecognized types or missing parsed data
+        return <span>{senderId}</span>;
+      },
       enableGlobalFilter: true,
     },
     {
       accessorKey: "receiverId",
       header: ({ column }) => <ColumnHeader column={column} title="Receiver" />,
       cell: ({ row }) => {
+        const document = row.original;
         const receiverId = row.getValue("receiverId") as string;
-        const sentOverPeppol = row.original.sentOverPeppol;
-        const sentOverEmail = row.original.sentOverEmail;
-        const emailRecipients = row.original.emailRecipients;
+        const documentType = document.type;
+        const direction = document.direction;
+        const sentOverPeppol = document.sentOverPeppol;
+        const sentOverEmail = document.sentOverEmail;
+        const emailRecipients = document.emailRecipients;
         
+        // Check if document type is recognized and has parsed data
+        const isRecognizedType = ["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote"].includes(documentType);
+        
+        if (isRecognizedType && document.parsed) {
+          // For incoming documents, receiver is the buyer
+          // For outgoing documents, receiver is the seller
+          const receiverInfo = direction === "incoming" 
+            ? (document.parsed as any)?.buyer 
+            : (document.parsed as any)?.seller;
+          
+          if (receiverInfo?.name) {
+            return (
+              <div className="flex items-center gap-2">
+                <span>{receiverInfo.name}</span>
+                <div className="flex items-center gap-1">
+                  <PartyInfoTooltip partyInfo={receiverInfo} peppolAddress={receiverId} />
+                  <TransmissionStatusIcons 
+                    sentOverPeppol={sentOverPeppol}
+                    sentOverEmail={sentOverEmail}
+                    emailRecipients={emailRecipients || undefined}
+                  />
+                </div>
+              </div>
+            );
+          }
+        }
+        
+        // Fallback to showing receiverId for unrecognized types or missing parsed data
         return (
           <div className="flex items-center gap-2">
             <span>{receiverId}</span>
-            <div className="flex items-center gap-1">
-              {!sentOverPeppol && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <CloudAlert className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Not sent over Peppol network</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              {sentOverEmail && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div>
-                      <p className="font-medium">Sent via email to:</p>
-                      <ul className="mt-1 space-y-1">
-                        {emailRecipients?.map((email, index) => (
-                          <li key={index} className="text-xs">{email}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
+            <TransmissionStatusIcons 
+              sentOverPeppol={sentOverPeppol}
+              sentOverEmail={sentOverEmail}
+              emailRecipients={emailRecipients || undefined}
+            />
           </div>
         );
       },
