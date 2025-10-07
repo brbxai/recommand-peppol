@@ -4,7 +4,7 @@ import { sendInvoiceSchema } from "./invoice/schemas";
 import { sendCreditNoteSchema } from "./creditnote/schemas";
 import { sendSelfBillingInvoiceSchema } from "./self-billing-invoice/schemas";
 
-export const SendDocumentType = {
+export const DocumentType = {
   INVOICE: "invoice",
   CREDIT_NOTE: "creditNote",
   SELF_BILLING_INVOICE: "selfBillingInvoice",
@@ -12,8 +12,14 @@ export const SendDocumentType = {
   XML: "xml",
 } as const;
 
+export const documentTypeSchema = z.enum([DocumentType.INVOICE, DocumentType.CREDIT_NOTE, DocumentType.SELF_BILLING_INVOICE, DocumentType.SELF_BILLING_CREDIT_NOTE, DocumentType.XML])
+.openapi({
+  description: "The type of document.",
+  example: DocumentType.INVOICE,
+});
+
 export type DocumentType =
-  (typeof SendDocumentType)[keyof typeof SendDocumentType];
+  (typeof DocumentType)[keyof typeof DocumentType];
 
 export const sendDocumentSchema = z.object({
   recipient: z.string().openapi({
@@ -52,12 +58,7 @@ export const sendDocumentSchema = z.object({
   //   ref: "PDFGeneration",
   //   description: "Generate a PDF of the document. Each generated PDF is counted towards your document quota. PDF generation is only available for invoices and credit notes.",
   // }),
-  documentType: z
-    .enum([SendDocumentType.INVOICE, SendDocumentType.CREDIT_NOTE, SendDocumentType.SELF_BILLING_INVOICE, SendDocumentType.SELF_BILLING_CREDIT_NOTE, SendDocumentType.XML])
-    .openapi({
-      description: "The type of document to send.",
-      example: SendDocumentType.INVOICE,
-    }),
+  documentType: documentTypeSchema,
   document: z.union([sendInvoiceSchema, sendCreditNoteSchema, sendSelfBillingInvoiceSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
   doctypeId: z.string().optional().openapi({
     description:

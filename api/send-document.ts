@@ -5,7 +5,7 @@ import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { invoiceToUBL } from "@peppol/utils/parsing/invoice/to-xml";
 import {
   sendDocumentSchema,
-  SendDocumentType,
+  DocumentType,
 } from "utils/parsing/send-document";
 import {
   sendInvoiceSchema,
@@ -105,7 +105,7 @@ const _sendDocument = server.post(
         recipientAddress = "0208:" + numberOnlyRecipient;
       }
 
-      if (jsonBody.documentType === SendDocumentType.INVOICE) {
+      if (jsonBody.documentType === DocumentType.INVOICE) {
         const invoice = document as Invoice;
 
         // Check the invoice corresponds to the required zod schema
@@ -145,7 +145,7 @@ const _sendDocument = server.post(
         xmlDocument = ublInvoice;
         type = "invoice";
         parsedDocument = invoice;
-      } else if (jsonBody.documentType === SendDocumentType.CREDIT_NOTE) {
+      } else if (jsonBody.documentType === DocumentType.CREDIT_NOTE) {
         const creditNote = document as CreditNote;
 
         // Check the credit note corresponds to the required zod schema
@@ -183,7 +183,7 @@ const _sendDocument = server.post(
         doctypeId =
           "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
         parsedDocument = creditNote;
-      } else if (jsonBody.documentType === SendDocumentType.SELF_BILLING_INVOICE) {
+      } else if (jsonBody.documentType === DocumentType.SELF_BILLING_INVOICE) {
         const invoice = document as SelfBillingInvoice;
 
         // Check the invoice corresponds to the required zod schema
@@ -224,7 +224,7 @@ const _sendDocument = server.post(
         type = "selfBillingInvoice";
         doctypeId = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
         parsedDocument = invoice;
-      } else if (jsonBody.documentType === SendDocumentType.SELF_BILLING_CREDIT_NOTE) {
+      } else if (jsonBody.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE) {
         const selfBillingCreditNote = document as SelfBillingCreditNote;
 
         // Check the credit note corresponds to the required zod schema
@@ -262,7 +262,7 @@ const _sendDocument = server.post(
         doctypeId =
           "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
         parsedDocument = selfBillingCreditNote;
-      } else if (jsonBody.documentType === SendDocumentType.XML) {
+      } else if (jsonBody.documentType === DocumentType.XML) {
         xmlDocument = document as string;
         if (jsonBody.doctypeId) {
           doctypeId = jsonBody.doctypeId;

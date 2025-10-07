@@ -15,38 +15,36 @@ import {
 import {
   describeErrorResponse,
   describeSuccessResponse,
+  describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
 import JSZip from "jszip";
 import { supportedDocumentTypeEnum } from "@peppol/db/schema";
+import { invoiceSchema } from "@peppol/utils/parsing/invoice/schemas";
+import { selfBillingCreditNoteSchema } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import { selfBillingInvoiceSchema } from "@peppol/utils/parsing/self-billing-invoice/schemas";
+import { creditNoteSchema } from "@peppol/utils/parsing/creditnote/schemas";
+import { documentTypeSchema } from "@peppol/utils/parsing/send-document";
 
-const describeTransmittedDocumentResponse = {
-  document: {
-    type: "object",
-    properties: {
-      id: { type: "string" },
-      teamId: { type: "string" },
-      companyId: { type: "string" },
-      direction: {
-        type: "string",
-        enum: ["incoming", "outgoing"],
-      },
-      senderId: { type: "string" },
-      receiverId: { type: "string" },
-      docTypeId: { type: "string" },
-      processId: { type: "string" },
-      countryC1: { type: "string" },
-      type: { type: "string" },
-      readAt: { type: "string", format: "date-time" },
-      createdAt: { type: "string", format: "date-time" },
-      updatedAt: { type: "string", format: "date-time" },
-      xml: { type: "string" },
-      parsed: { type: "object" },
-      sentOverPeppol: { type: "boolean" },
-      sentOverEmail: { type: "boolean" },
-      emailRecipients: { type: "array", items: { type: "string" } },
-    },
-  },
-};
+const transmittedDocumentResponse = z.object({
+  id: z.string(),
+  teamId: z.string(),
+  companyId: z.string(),
+  direction: z.enum(["incoming", "outgoing"]),
+  senderId: z.string(),
+  receiverId: z.string(),
+  docTypeId: z.string(),
+  processId: z.string(),
+  countryC1: z.string(),
+  type: documentTypeSchema,
+  readAt: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  xml: z.string(),
+  parsed: z.union([invoiceSchema, creditNoteSchema, selfBillingInvoiceSchema, selfBillingCreditNoteSchema, z.null()]),
+  sentOverPeppol: z.boolean(),
+  sentOverEmail: z.boolean(),
+  emailRecipients: z.array(z.string()),
+});
 
 const server = new Server();
 
@@ -60,24 +58,15 @@ const _transmittedDocuments = server.get(
     summary: "List Documents",
     tags: ["Documents"],
     responses: {
-      ...describeSuccessResponse(
-        "Successfully retrieved transmitted documents",
-        {
-          documents: {
-            type: "array",
-            items: describeTransmittedDocumentResponse.document,
-          },
-          pagination: {
-            type: "object",
-            properties: {
-              total: { type: "number" },
-              page: { type: "number" },
-              limit: { type: "number" },
-              totalPages: { type: "number" },
-            },
-          },
-        }
-      ),
+      ...describeSuccessResponseWithZod("Successfully retrieved transmitted documents", z.object({
+        documents: z.array(transmittedDocumentResponse),
+        pagination: z.object({
+          total: z.number(),
+          page: z.number(),
+          limit: z.number(),
+          totalPages: z.number(),
+        }),
+      })),
       ...describeErrorResponse(500, "Failed to fetch transmitted documents"),
     },
   }),
@@ -313,7 +302,7 @@ const _getTransmittedDocument = server.get(
     summary: "Get Document",
     tags: ["Documents"],
     responses: {
-      ...describeSuccessResponse("Successfully retrieved the document", describeTransmittedDocumentResponse),
+      ...describeSuccessResponseWithZod("Successfully retrieved the document", transmittedDocumentResponse),
       ...describeErrorResponse(404, "Document not found"),
       ...describeErrorResponse(500, "Failed to fetch document"),
     },

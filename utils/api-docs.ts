@@ -1,4 +1,6 @@
+import { zodResolver } from "@recommand/lib/zod-validator";
 import type { OpenAPIV3 } from "openapi-types";
+import z from "zod";
 
 export function describeSuccessResponse<T>(
   description: string,
@@ -18,6 +20,28 @@ export function describeSuccessResponse<T>(
               ...bodySchema,
             },
           },
+        },
+      },
+    },
+  };
+}
+
+export function describeSuccessResponseWithZod(
+  description: string,
+  bodySchema: z.ZodObject<any>
+) {
+  return {
+    200: {
+      description: description,
+      content: {
+        "application/json": {
+          schema: zodResolver(
+            z
+              .object({
+                success: z.literal(true),
+              })
+              .extend(bodySchema.shape)
+          ),
         },
       },
     },

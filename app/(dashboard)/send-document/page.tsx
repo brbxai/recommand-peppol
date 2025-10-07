@@ -12,19 +12,19 @@ import { ApiPreview } from "../../../components/send-document/api-preview";
 import { Card } from "@core/components/ui/card";
 import { Switch } from "@core/components/ui/switch";
 import { Label } from "@core/components/ui/label";
-import { SendDocumentType } from "@peppol/utils/parsing/send-document";
+import { DocumentType } from "@peppol/utils/parsing/send-document";
 import type { SendDocument } from "@peppol/utils/parsing/send-document";
 import { useLocalStorageState } from "@peppol/utils/react-hooks";
 
 function getFormType(documentType: string): "invoice" | "creditNote" | "xml" {
   switch (documentType) {
-    case SendDocumentType.INVOICE:
-    case SendDocumentType.SELF_BILLING_INVOICE:
+    case DocumentType.INVOICE:
+    case DocumentType.SELF_BILLING_INVOICE:
       return "invoice";
-    case SendDocumentType.CREDIT_NOTE:
-    case SendDocumentType.SELF_BILLING_CREDIT_NOTE:
+    case DocumentType.CREDIT_NOTE:
+    case DocumentType.SELF_BILLING_CREDIT_NOTE:
       return "creditNote";
-    case SendDocumentType.XML:
+    case DocumentType.XML:
       return "xml";
     default:
       return "invoice";
@@ -33,11 +33,11 @@ function getFormType(documentType: string): "invoice" | "creditNote" | "xml" {
 
 function getDocumentDescription(documentType: string): string {
   switch (documentType) {
-    case SendDocumentType.INVOICE:
+    case DocumentType.INVOICE:
       return "Fill in the invoice details including buyer information, line items, and payment terms.";
-    case SendDocumentType.CREDIT_NOTE:
+    case DocumentType.CREDIT_NOTE:
       return "Create a credit note for refunds, adjustments, or corrections to previous invoices.";
-    case SendDocumentType.XML:
+    case DocumentType.XML:
       return "Upload or paste a raw UBL XML document that complies with Peppol standards.";
     default:
       return "Complete the form below to create your document.";
@@ -46,10 +46,10 @@ function getDocumentDescription(documentType: string): string {
 
 export default function SendDocumentPage() {
   const [documentType, setDocumentType] = useState<string>(
-    SendDocumentType.INVOICE
+    DocumentType.INVOICE
   );
   const [formData, setFormData] = useState<Partial<SendDocument>>({
-    documentType: SendDocumentType.INVOICE,
+    documentType: DocumentType.INVOICE,
     recipient: "",
     document: {
       invoiceNumber: "",
@@ -66,15 +66,15 @@ export default function SendDocumentPage() {
   const handleDocumentTypeChange = (value: string) => {
     setDocumentType(value);
     const newDocumentType =
-      value as (typeof SendDocumentType)[keyof typeof SendDocumentType];
+      value as (typeof DocumentType)[keyof typeof DocumentType];
 
     setFormData({
       ...formData,
       documentType: newDocumentType,
       document:
-        newDocumentType === SendDocumentType.XML
+        newDocumentType === DocumentType.XML
           ? ""
-          : (newDocumentType === SendDocumentType.CREDIT_NOTE || newDocumentType === SendDocumentType.SELF_BILLING_CREDIT_NOTE)
+          : (newDocumentType === DocumentType.CREDIT_NOTE || newDocumentType === DocumentType.SELF_BILLING_CREDIT_NOTE)
             ? ({ creditNoteNumber: "", lines: [] } as any)
             : ({ invoiceNumber: "", lines: [] } as any),
     });
@@ -118,7 +118,7 @@ export default function SendDocumentPage() {
                   <SelectValue placeholder="Select document type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={SendDocumentType.INVOICE}>
+                  <SelectItem value={DocumentType.INVOICE}>
                     <div className="flex flex-col py-1">
                       <span className="font-medium">Invoice</span>
                       <span className="text-xs text-muted-foreground">
@@ -126,7 +126,7 @@ export default function SendDocumentPage() {
                       </span>
                     </div>
                   </SelectItem>
-                  <SelectItem value={SendDocumentType.CREDIT_NOTE}>
+                  <SelectItem value={DocumentType.CREDIT_NOTE}>
                     <div className="flex flex-col py-1">
                       <span className="font-medium">Credit Note</span>
                       <span className="text-xs text-muted-foreground">
@@ -134,7 +134,7 @@ export default function SendDocumentPage() {
                       </span>
                     </div>
                   </SelectItem>
-                  <SelectItem value={SendDocumentType.SELF_BILLING_INVOICE}>
+                  <SelectItem value={DocumentType.SELF_BILLING_INVOICE}>
                     <div className="flex flex-col py-1">
                       <span className="font-medium">Self Billing Invoice</span>
                       <span className="text-xs text-muted-foreground">
@@ -142,7 +142,7 @@ export default function SendDocumentPage() {
                       </span>
                     </div>
                   </SelectItem>
-                  <SelectItem value={SendDocumentType.SELF_BILLING_CREDIT_NOTE}>
+                  <SelectItem value={DocumentType.SELF_BILLING_CREDIT_NOTE}>
                     <div className="flex flex-col py-1">
                       <span className="font-medium">Self Billing Credit Note</span>
                       <span className="text-xs text-muted-foreground">
@@ -150,7 +150,7 @@ export default function SendDocumentPage() {
                       </span>
                     </div>
                   </SelectItem>
-                  <SelectItem value={SendDocumentType.XML}>
+                  <SelectItem value={DocumentType.XML}>
                     <div className="flex flex-col py-1">
                       <span className="font-medium">Raw XML</span>
                       <span className="text-xs text-muted-foreground">
