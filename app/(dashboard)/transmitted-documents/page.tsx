@@ -418,6 +418,9 @@ export default function Page() {
       title: "Type",
       options: [
         { label: "Invoice", value: "invoice" },
+        { label: "Credit Note", value: "creditNote" },
+        { label: "Self Billing Invoice", value: "selfBillingInvoice" },
+        { label: "Self Billing Credit Note", value: "selfBillingCreditNote" },
         { label: "Unknown", value: "unknown" },
       ],
     },

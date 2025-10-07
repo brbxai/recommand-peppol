@@ -10,7 +10,8 @@ const parser = new XMLParser({
            name === "PaymentMeans" || 
            name === "TaxSubtotal" ||
            name === "PartyIdentification" ||
-           name === "AdditionalDocumentReference";
+           name === "AdditionalDocumentReference" ||
+           name === "BillingReference";
   },
   removeNSPrefix: true,
 });
