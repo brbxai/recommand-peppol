@@ -14,7 +14,7 @@ export const creditNoteSchema = z.object({
   paymentTerms: z.object({
     note: z.string().openapi({ example: "Net 30" }),
   }).nullish(),
-  lines: z.array(lineSchema),
+  lines: z.array(lineSchema).min(1),
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
   attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the credit note" }),
