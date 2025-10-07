@@ -28,6 +28,10 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   const issueDate = getTextContent(creditNote.IssueDate);
   const note = getTextContent(creditNote.Note);
   const buyerReference = getTextContent(creditNote.BuyerReference);
+  const invoiceReferences = (creditNote.BillingReference || []).map((reference: any) => ({
+    id: getTextContent(reference.InvoiceDocumentReference?.ID),
+    issueDate: reference.InvoiceDocumentReference?.IssueDate ? getTextContent(reference.InvoiceDocumentReference?.IssueDate) : null,
+  }));
 
   // Extract attachments
   const attachments = (creditNote.AdditionalDocumentReference || []).map((ref: any) => ({
@@ -132,6 +136,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     issueDate,
     note,
     buyerReference,
+    invoiceReferences,
     attachments: attachments.length > 0 ? attachments : [],
     seller,
     buyer,

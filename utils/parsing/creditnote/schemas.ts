@@ -2,11 +2,17 @@ import { z } from 'zod';
 import "zod-openapi/extend";
 import { attachmentSchema, lineSchema, partySchema, paymentMeansSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
 
+const creditNoteInvoiceReferenceSchema = z.object({
+  id: z.string().min(1).openapi({ example: "INV-2024-001", description: "The reference to the invoice that is being credited" }),
+  issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "The issue date of the invoice that is being credited" }),
+});
+
 export const creditNoteSchema = z.object({
-  creditNoteNumber: z.string().openapi({ example: "INV-2024-001" }),
+  creditNoteNumber: z.string().openapi({ example: "CN-2024-001" }),
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
   note: z.string().nullish().openapi({ example: "Thank you for your business" }),
   buyerReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
+  invoiceReferences: z.array(creditNoteInvoiceReferenceSchema).default([]).openapi({ description: "References to one or more invoices that are being credited" }),
   purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
   seller: partySchema,
   buyer: partySchema,

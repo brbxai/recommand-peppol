@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
+import { Button } from "@core/components/ui/button";
 import { LineItemsEditor } from "./line-items-editor";
 import { PartyForm } from "./party-form";
 import { PaymentMeansForm } from "./payment-means-form";
@@ -10,7 +11,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@core/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import { format } from "date-fns";
 import { rc } from "@recommand/lib/client";
@@ -34,6 +35,7 @@ export function CreditNoteForm({
     creditNoteNumber: "",
     issueDate: format(new Date(), "yyyy-MM-dd"),
     lines: [],
+    invoiceReferences: [],
     ...document,
   });
   const [openSections, setOpenSections] = useState({
@@ -42,6 +44,7 @@ export function CreditNoteForm({
     payment: false,
     notes: false,
     lines: true,
+    creditedInvoices: false,
   });
   const activeTeam = useActiveTeam();
 
@@ -126,10 +129,79 @@ export function CreditNoteForm({
             onChange={(e) =>
               handleFieldChange("buyerReference", e.target.value)
             }
-            placeholder="Original invoice reference"
+            placeholder="An identifier assigned by the buyer for internal routing purposes."
           />
         </div>
       </div>
+
+      <Collapsible open={openSections.creditedInvoices}>
+        <CollapsibleTrigger
+          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+          onClick={() => toggleSection("creditedInvoices")}
+        >
+          <span>Credited Invoices</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${openSections.creditedInvoices ? "rotate-180" : ""}`}
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <div className="space-y-4">
+            {(creditNote.invoiceReferences || []).map((ref, index) => (
+              <div key={index} className="flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label htmlFor={`invoiceRef-${index}-id`}>Invoice ID *</Label>
+                  <Input
+                    id={`invoiceRef-${index}-id`}
+                    value={ref.id || ""}
+                    onChange={(e) => {
+                      const newRefs = [...(creditNote.invoiceReferences || [])];
+                      newRefs[index] = { ...ref, id: e.target.value };
+                      handleFieldChange("invoiceReferences", newRefs);
+                    }}
+                    placeholder="INV-2024-001"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor={`invoiceRef-${index}-date`}>Issue Date</Label>
+                  <Input
+                    id={`invoiceRef-${index}-date`}
+                    type="date"
+                    value={ref.issueDate || ""}
+                    onChange={(e) => {
+                      const newRefs = [...(creditNote.invoiceReferences || [])];
+                      newRefs[index] = { ...ref, issueDate: e.target.value.length > 0 ? e.target.value.trim() : null };
+                      handleFieldChange("invoiceReferences", newRefs);
+                    }}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const newRefs = (creditNote.invoiceReferences || []).filter((_, i) => i !== index);
+                    handleFieldChange("invoiceReferences", newRefs);
+                  }}
+                  className="ml-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const newRefs = [...(creditNote.invoiceReferences || []), { id: "", issueDate: null }];
+                handleFieldChange("invoiceReferences", newRefs);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Invoice Reference
+            </Button>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       <Collapsible open={openSections.buyer}>
         <CollapsibleTrigger

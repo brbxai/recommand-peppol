@@ -60,6 +60,14 @@ export function creditNoteToUBL(
         !creditNote.purchaseOrderReference && {
         "cbc:BuyerReference": creditNote.creditNoteNumber,
       }),
+      ...(creditNote.invoiceReferences && {
+        "cac:BillingReference": creditNote.invoiceReferences.map((reference) => ({
+          "cac:InvoiceDocumentReference": {
+            "cbc:ID": reference.id,
+            ...(reference.issueDate && { "cbc:IssueDate": reference.issueDate }),
+          }
+        })),
+      }),
       ...(creditNote.attachments && {
         "cac:AdditionalDocumentReference": creditNote.attachments.map(
           (attachment) => ({

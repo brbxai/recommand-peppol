@@ -119,7 +119,7 @@ export function DocumentForm({
         </div>
 
         <div>
-          <Label htmlFor="recipient">Recipient Peppol ID</Label>
+          <Label htmlFor="recipient">Recipient Peppol ID *</Label>
           <RecipientSelector
             value={formData.recipient || ""}
             onChange={handleRecipientChange}
