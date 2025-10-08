@@ -4,7 +4,7 @@ import { getCompanyByPeppolId } from "@peppol/data/companies";
 import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
 import { UserFacingError } from "@peppol/utils/util";
 import { parseDocument } from "@peppol/utils/parsing/parse-document";
-import { DOCUMENT_SCHEME } from "./phoss-smp/service-metadata";
+import { DOCUMENT_SCHEME, PROCESS_SCHEME } from "./phoss-smp/service-metadata";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -37,6 +37,13 @@ export async function receiveDocument(options: {
     cleanDocTypeId = options.docTypeId.substring(documentSchemePrefix.length);
   }
 
+  // Remove process identifier scheme from the processId if present
+  let cleanProcessId = options.processId;
+  const processSchemePrefix = PROCESS_SCHEME + "::";
+  if(options.processId.startsWith(processSchemePrefix)) {
+    cleanProcessId = options.processId.substring(processSchemePrefix.length);
+  }
+
   // Parse the XML document
   const { parsedDocument, type } = parseDocument(cleanDocTypeId, options.body, company, senderId);
 
@@ -50,7 +57,7 @@ export async function receiveDocument(options: {
       senderId: senderId,
       receiverId: receiverId,
       docTypeId: cleanDocTypeId,
-      processId: options.processId,
+      processId: cleanProcessId,
       countryC1: options.countryC1,
       xml: options.body,
       type,
