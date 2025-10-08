@@ -4,6 +4,7 @@ import { getCompanyByPeppolId } from "@peppol/data/companies";
 import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
 import { UserFacingError } from "@peppol/utils/util";
 import { parseDocument } from "@peppol/utils/parsing/parse-document";
+import { DOCUMENT_SCHEME } from "./phoss-smp/service-metadata";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -29,8 +30,14 @@ export async function receiveDocument(options: {
     throw new UserFacingError("Company not found");
   }
 
+  // Remove document type identifier scheme from the docTypeId if present
+  let cleanDocTypeId = options.docTypeId;
+  if(options.docTypeId.startsWith(DOCUMENT_SCHEME + "::")) {
+    cleanDocTypeId = options.docTypeId.split("::")[1];
+  }
+
   // Parse the XML document
-  const { parsedDocument, type } = parseDocument(options.docTypeId, options.body, company, senderId);
+  const { parsedDocument, type } = parseDocument(cleanDocTypeId, options.body, company, senderId);
 
   // Create a new transmittedDocument
   const transmittedDocument = await db
@@ -41,7 +48,7 @@ export async function receiveDocument(options: {
       direction: "incoming",
       senderId: senderId,
       receiverId: receiverId,
-      docTypeId: options.docTypeId,
+      docTypeId: cleanDocTypeId,
       processId: options.processId,
       countryC1: options.countryC1,
       xml: options.body,
