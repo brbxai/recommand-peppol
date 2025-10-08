@@ -276,7 +276,6 @@ export default function Page() {
         const document = row.original;
         const receiverId = row.getValue("receiverId") as string;
         const documentType = document.type;
-        const direction = document.direction;
         const sentOverPeppol = document.sentOverPeppol;
         const sentOverEmail = document.sentOverEmail;
         const emailRecipients = document.emailRecipients;
