@@ -244,15 +244,13 @@ export default function Page() {
         const document = row.original;
         const senderId = row.getValue("senderId") as string;
         const documentType = document.type;
-        const direction = document.direction;
         
         // Check if document type is recognized and has parsed data
         const isRecognizedType = ["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote"].includes(documentType);
         
         if (isRecognizedType && document.parsed) {
-          // For incoming documents, sender is the seller
-          // For outgoing documents, sender is the buyer
-          const senderInfo = direction === "incoming" 
+          // For billing documents, sender is the seller, for self-billing documents, sender is the buyer
+          const senderInfo = ["invoice", "creditNote"].includes(documentType)
             ? (document.parsed as any)?.seller 
             : (document.parsed as any)?.buyer;
           
