@@ -32,8 +32,9 @@ export async function receiveDocument(options: {
 
   // Remove document type identifier scheme from the docTypeId if present
   let cleanDocTypeId = options.docTypeId;
-  if(options.docTypeId.startsWith(DOCUMENT_SCHEME + "::")) {
-    cleanDocTypeId = options.docTypeId.split("::")[1];
+  const documentSchemePrefix = DOCUMENT_SCHEME + "::";
+  if(options.docTypeId.startsWith(documentSchemePrefix)) {
+    cleanDocTypeId = options.docTypeId.substring(documentSchemePrefix.length);
   }
 
   // Parse the XML document
