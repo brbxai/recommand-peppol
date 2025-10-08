@@ -3,6 +3,7 @@ import "zod-openapi/extend";
 import { sendInvoiceSchema } from "./invoice/schemas";
 import { sendCreditNoteSchema } from "./creditnote/schemas";
 import { sendSelfBillingInvoiceSchema } from "./self-billing-invoice/schemas";
+import { sendSelfBillingCreditNoteSchema } from "./self-billing-creditnote/schemas";
 
 export const DocumentType = {
   INVOICE: "invoice",
@@ -59,7 +60,7 @@ export const sendDocumentSchema = z.object({
   //   description: "Generate a PDF of the document. Each generated PDF is counted towards your document quota. PDF generation is only available for invoices and credit notes.",
   // }),
   documentType: documentTypeSchema,
-  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, sendSelfBillingInvoiceSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
+  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, sendSelfBillingInvoiceSchema, sendSelfBillingCreditNoteSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
   doctypeId: z.string().optional().openapi({
     description:
       "The document type identifier. Not required, only used when documentType is \"xml\".",
