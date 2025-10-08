@@ -285,9 +285,8 @@ export default function Page() {
         const isRecognizedType = ["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote"].includes(documentType);
         
         if (isRecognizedType && document.parsed) {
-          // For incoming documents, receiver is the buyer
-          // For outgoing documents, receiver is the seller
-          const receiverInfo = direction === "incoming" 
+          // For billing documents, receiver is the buyer, for self-billing documents, receiver is the seller
+          const receiverInfo = ["invoice", "creditNote"].includes(documentType)
             ? (document.parsed as any)?.buyer 
             : (document.parsed as any)?.seller;
           
