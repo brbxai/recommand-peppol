@@ -49,7 +49,7 @@ export const vatCategoryEnum = z.enum(Object.keys(VAT_CATEGORIES) as [VatCategor
   .openapi({
     example: "S",
     description: "VAT category code. When sending regular invoices, you should most often use the `S` category. When sending an invoice to another EU country, use the `AE` category for VAT Reverse Charge. In those cases, it is still recommended to include a note in the invoice explaining that the VAT Reverse Charge applies.",
-    enum: Object.entries(VAT_CATEGORIES).map(([key, value]) => (`${key}: ${value}`))
+    enum: Object.keys(VAT_CATEGORIES)
   });
 
 export const vatSchema = z.object({
