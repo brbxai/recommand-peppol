@@ -18,15 +18,31 @@ export const VAT_CATEGORIES = {
 export type VatCategory = keyof typeof VAT_CATEGORIES;
 
 const toDecimalString = (val: number | string) => new Decimal(val).toFixed(2);
-const unlimitedDecimalString = (val: number | string) => new Decimal(val).toString();
+const toUnlimitedDecimalString = (val: number | string) => new Decimal(val).toString();
 
 // Create a reusable decimal transform schema
 export const decimalSchema = z.union([z.number(), z.string()])
+  .refine((val) => {
+    try {
+      const decimal = new Decimal(val);
+      return decimal.isNaN() === false && decimal.isFinite() === true;
+    } catch (error) {
+      return false;
+    }
+  }, { message: "Invalid decimal" })
   .transform(toDecimalString)
   .openapi({ type: 'string', example: "21.00", description: "Decimal number as a string with 2 decimal places" });
 
 export const unlimitedDecimalSchema = z.union([z.number(), z.string()])
-  .transform(unlimitedDecimalString)
+  .refine((val) => {
+    try {
+      const decimal = new Decimal(val);
+      return decimal.isNaN() === false && decimal.isFinite() === true;
+    } catch (error) {
+      return false;
+    }
+  }, { message: "Invalid decimal" })
+  .transform(toUnlimitedDecimalString)
   .openapi({ type: 'string', example: "21.00", description: "Decimal number as a string with flexible precision" });
 
 export const partySchema = z.object({
@@ -62,7 +78,7 @@ export const vatSubtotalSchema = z.object({
   vatAmount: decimalSchema,
   category: vatCategoryEnum,
   percentage: decimalSchema,
-  exemptionReasonCode: z.string().nullish().openapi({description: "If the invoice is exempt from VAT, this is required. The exemption reason code identifier must belong to the CEF VATEX code list	found [here](https://docs.peppol.eu/poacc/billing/3.0/2024-Q4/codelist/vatex/)."}),
+  exemptionReasonCode: z.string().nullish().openapi({ description: "If the invoice is exempt from VAT, this is required. The exemption reason code identifier must belong to the CEF VATEX code list	found [here](https://docs.peppol.eu/poacc/billing/3.0/2024-Q4/codelist/vatex/)." }),
 }).openapi({ ref: "VATSubtotal" });
 
 export const totalsSchema = z.object({
@@ -90,7 +106,7 @@ export const vatTotalsSchema = z.object({
 
 export const attachmentSchema = z.object({
   id: z.string().openapi({ example: "ATT-001" }),
-  mimeCode: z.string().default("application/pdf").openapi({ 
+  mimeCode: z.string().default("application/pdf").openapi({
     example: "application/pdf",
     description: "MIME type of the document (e.g. application/pdf, text/csv, image/png)"
   }),
