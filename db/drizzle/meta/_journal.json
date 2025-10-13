@@ -225,6 +225,20 @@
       "when": 1759868623778,
       "tag": "20251007202343_deep_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1760370017906,
+      "tag": "20251013154017_noisy_cerebro",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1760370840185,
+      "tag": "20251013155400_white_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

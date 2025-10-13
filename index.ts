@@ -6,6 +6,7 @@ import billingProfileServer from "./api/billing-profile";
 import companiesServer from "./api/companies";
 import companyIdentifiersServer from "./api/company-identifiers";
 import companyDocumentTypesServer from "./api/company-document-types";
+import companyNotificationsServer from "./api/company-notification-emails";
 import sendDocumentServer from "./api/send-document";
 import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/transmitted-documents";
@@ -80,6 +81,10 @@ For additional support or questions, don't hesitate to contact our support team.
           description: "Endpoints for sending documents",
         },
         {
+          name: "Recipients",
+          description: "Interaction with the Peppol directory. For now, this always returns results from the production Peppol directory, even in playground teams.",
+        },
+        {
           name: "Documents",
           description: "Endpoints for managing documents.",
         },
@@ -96,8 +101,8 @@ For additional support or questions, don't hesitate to contact our support team.
           description: "You can manage all Peppol document types for a company. Peppol document types are used to identify the type of document that can be received by a company.",
         },
         {
-          name: "Recipients",
-          description: "Interaction with the Peppol directory. For now, this always returns results from the production Peppol directory, even in playground teams.",
+          name: "Company Notification Email Addresses",
+          description: "You can manage all notification email addresses for a company. Notification email addresses are used to receive notifications when a document is received or sent by a company.",
         },
         {
           name: "Playgrounds",
@@ -115,6 +120,7 @@ server.route("/", billingProfileServer);
 server.route("/", companiesServer);
 server.route("/", companyIdentifiersServer);
 server.route("/", companyDocumentTypesServer);
+server.route("/", companyNotificationsServer);
 server.route("/internal/", receiveDocumentServer);
 server.route("/", transmittedDocumentsServer);
 server.route("/", webhooksServer);

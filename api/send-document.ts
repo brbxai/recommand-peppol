@@ -37,6 +37,7 @@ import { sendSelfBillingInvoiceSchema, type SelfBillingInvoice } from "@peppol/u
 import { selfBillingInvoiceToUBL } from "@peppol/utils/parsing/self-billing-invoice/to-xml";
 import { sendSelfBillingCreditNoteSchema, type SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 import { selfBillingCreditNoteToUBL } from "@peppol/utils/parsing/self-billing-creditnote/to-xml";
+import { sendOutgoingDocumentNotifications } from "@peppol/data/notifications/send-document-notifications";
 
 const server = new Server();
 
@@ -420,6 +421,24 @@ const _sendDocument = server.post(
           });
         }
         await db.insert(transferEvents).values(te);
+      }
+
+      // Send notification emails to configured addresses
+      try {
+        await sendOutgoingDocumentNotifications({
+          companyId: company.id,
+          companyName: company.name,
+          type,
+          parsedDocument,
+          xmlDocument: xmlDocument,
+        });
+      } catch (error) {
+        console.error("Failed to send outgoing document notifications:", error);
+        sendSystemAlert(
+          "Document Notification Sending Failed",
+          `Failed to send outgoing document notification for document ${transmittedDocument.id}.`,
+          "error"
+        );
       }
 
       return c.json(

@@ -5,80 +5,107 @@ import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invo
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 import { Attachment } from "postmark";
 
-export async function sendDocumentEmail(options: {
-    type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown";
-    parsedDocument: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | null;
-    xmlDocument: string;
+export type ParsedDocument = Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote;
+export type DocumentType = "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown";
 
+export function getDocumentTypeLabel(type: DocumentType): string {
+  switch (type) {
+    case "invoice":
+      return "Invoice";
+    case "creditNote":
+      return "Credit Note";
+    case "selfBillingInvoice":
+      return "Self Billing Invoice";
+    case "selfBillingCreditNote":
+      return "Self Billing Credit Note";
+    default:
+      return "Document";
+  }
+}
+
+export function extractDocumentAttachments(parsedDocument: ParsedDocument | null): Attachment[] {
+  const attachments: Attachment[] = [];
+  if (parsedDocument && "attachments" in parsedDocument && parsedDocument.attachments) {
+    for (const attachment of parsedDocument.attachments) {
+      if (attachment.embeddedDocument) {
+        attachments.push({
+          Content: attachment.embeddedDocument,
+          ContentID: null,
+          ContentType: attachment.mimeCode,
+          Name: attachment.filename,
+        });
+      }
+    }
+  }
+  return attachments;
+}
+
+export function getDocumentFilename(type: DocumentType, parsedDocument: ParsedDocument | null): string {
+  if (!parsedDocument) {
+    return "document";
+  }
+
+  if ("invoiceNumber" in parsedDocument) {
+    return type === "selfBillingInvoice"
+      ? `self-billing-invoice-${parsedDocument.invoiceNumber}`
+      : `invoice-${parsedDocument.invoiceNumber}`;
+  } else if ("creditNoteNumber" in parsedDocument) {
+    return type === "selfBillingCreditNote"
+      ? `self-billing-credit-note-${parsedDocument.creditNoteNumber}`
+      : `credit-note-${parsedDocument.creditNoteNumber}`;
+  }
+
+  return "document";
+}
+
+export async function sendDocumentEmail(options: {
+    type: DocumentType;
+    parsedDocument: ParsedDocument | null;
+    xmlDocument: string;
     to: string;
     subject?: string;
     htmlBody?: string;
 }) {
-
     let senderName = "";
-    let name = "document";
+    const filename = getDocumentFilename(options.type, options.parsedDocument);
     let subject = options.subject;
     let htmlBody = options.htmlBody;
 
     if (!subject) {
-        if (options.type === "invoice" && options.parsedDocument && "invoiceNumber" in options.parsedDocument) {
-            subject = `Invoice ${options.parsedDocument?.invoiceNumber}`;
+        const documentTypeLabel = getDocumentTypeLabel(options.type);
+        if (options.parsedDocument && "invoiceNumber" in options.parsedDocument) {
+            subject = `${documentTypeLabel} ${options.parsedDocument.invoiceNumber}`;
             senderName = options.parsedDocument.seller.name;
-            name = `invoice-${options.parsedDocument?.invoiceNumber}`;
-        } else if (options.type === "creditNote" && options.parsedDocument && "creditNoteNumber" in options.parsedDocument) {
-            subject = `Credit Note ${options.parsedDocument?.creditNoteNumber}`;
+        } else if (options.parsedDocument && "creditNoteNumber" in options.parsedDocument) {
+            subject = `${documentTypeLabel} ${options.parsedDocument.creditNoteNumber}`;
             senderName = options.parsedDocument.seller.name;
-            name = `credit-note-${options.parsedDocument?.creditNoteNumber}`;
-        } else if (options.type === "selfBillingInvoice" && options.parsedDocument && "invoiceNumber" in options.parsedDocument) {
-            subject = `Self Billing Invoice ${options.parsedDocument?.invoiceNumber}`;
-            senderName = options.parsedDocument.seller.name;
-            name = `self-billing-invoice-${options.parsedDocument?.invoiceNumber}`;
-        } else if (options.type === "selfBillingCreditNote" && options.parsedDocument && "creditNoteNumber" in options.parsedDocument) {
-            subject = `Self Billing Credit Note ${options.parsedDocument?.creditNoteNumber}`;
-            senderName = options.parsedDocument.seller.name;
-            name = `self-billing-credit-note-${options.parsedDocument?.creditNoteNumber}`;
         } else {
-            subject = `Document`;
-        }
-    }
-    if (!htmlBody) {
-        if (options.type === "invoice" && options.parsedDocument && "invoiceNumber" in options.parsedDocument) {
-            htmlBody = `Dear ${options.parsedDocument.buyer.name}, you can find your invoice attached.`;
-        } else if (options.type === "creditNote" && options.parsedDocument && "creditNoteNumber" in options.parsedDocument) {
-            htmlBody = `Dear ${options.parsedDocument.buyer.name}, you can find your credit note attached.`;
-        } else if (options.type === "selfBillingInvoice" && options.parsedDocument && "invoiceNumber" in options.parsedDocument) {
-            htmlBody = `Dear ${options.parsedDocument.buyer.name}, you can find your self billing invoice attached.`;
-        } else if (options.type === "selfBillingCreditNote" && options.parsedDocument && "creditNoteNumber" in options.parsedDocument) {
-            htmlBody = `Dear ${options.parsedDocument.buyer.name}, you can find your self billing credit note attached.`;
-        } else {
-            htmlBody = `Dear, you can find your document attached.`;
+            subject = documentTypeLabel;
         }
     }
 
-    const attachments: Attachment[] = [];
-    if ((options.type === "invoice" || options.type === "creditNote" || options.type === "selfBillingInvoice" || options.type === "selfBillingCreditNote") && options.parsedDocument && "attachments" in options.parsedDocument && options.parsedDocument.attachments) {
-        for (const attachment of options.parsedDocument.attachments) {
-            if (attachment.embeddedDocument) {
-                attachments.push({
-                    Content: attachment.embeddedDocument,
-                    ContentID: null,
-                    ContentType: attachment.mimeCode,
-                    Name: attachment.filename,
-                });
-            }
+    if (!htmlBody) {
+        const documentTypeLabel = getDocumentTypeLabel(options.type).toLowerCase();
+        if (options.parsedDocument && options.parsedDocument.buyer?.name) {
+            htmlBody = `Dear ${options.parsedDocument.buyer.name}, you can find your ${documentTypeLabel} attached.`;
+        } else {
+            htmlBody = `Dear, you can find your ${documentTypeLabel} attached.`;
         }
     }
+
+    const attachments = extractDocumentAttachments(options.parsedDocument);
+    const xmlAttachment: Attachment = {
+        Content: Buffer.from(options.xmlDocument, 'utf-8').toString('base64'),
+        ContentID: null,
+        ContentType: "application/xml",
+        Name: filename + ".xml",
+    };
 
     await sendEmail({
         from: senderName ? `${senderName} <noreply-documents@recommand.eu>` : "noreply-documents@recommand.eu",
         to: options.to,
         subject: subject,
         email: htmlBody,
-        attachments: [...attachments, {
-            Content: Buffer.from(options.xmlDocument, 'utf-8').toString('base64'),
-            ContentID: null,
-            ContentType: "application/xml",
-            Name: name + ".xml",
-        }],
+        attachments: [...attachments, xmlAttachment],
     });
 }

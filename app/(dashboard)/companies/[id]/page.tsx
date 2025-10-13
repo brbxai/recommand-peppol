@@ -11,6 +11,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { CompanyForm } from "../../../../components/company-form";
 import { CompanyIdentifiersManager } from "../../../../components/company-identifiers-manager";
 import { CompanyDocumentTypesManager } from "../../../../components/company-document-types-manager";
+import { CompanyNotificationsManager } from "../../../../components/company-notifications-manager";
 import type { Company, CompanyFormData } from "../../../../types/company";
 import { defaultCompanyFormData } from "../../../../types/company";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
@@ -211,6 +212,10 @@ export default function CompanyDetailPage() {
               companyId={company.id}
             />
             <CompanyDocumentTypesManager
+              teamId={activeTeam.id}
+              companyId={company.id}
+            />
+            <CompanyNotificationsManager
               teamId={activeTeam.id}
               companyId={company.id}
             />

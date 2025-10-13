@@ -187,6 +187,22 @@ export const companyDocumentTypes = pgTable("peppol_company_document_types", {
   uniqueIndex("peppol_company_document_types_unique").on(table.companyId, table.docTypeId, table.processId),
 ]);
 
+export const companyNotificationEmailAddresses = pgTable("peppol_company_notification_email_addresses", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "cnea_" + ulid()),
+  companyId: text("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  email: text("email").notNull(),
+  notifyIncoming: boolean("notify_incoming").notNull().default(false),
+  notifyOutgoing: boolean("notify_outgoing").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
+}, (table) => [
+  uniqueIndex("peppol_company_notification_email_addresses_unique").on(table.companyId, lower(table.email)),
+]);
+
 export const webhooks = pgTable("peppol_webhooks", {
   id: text("id")
     .primaryKey()

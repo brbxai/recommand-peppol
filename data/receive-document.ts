@@ -5,6 +5,8 @@ import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
 import { UserFacingError } from "@peppol/utils/util";
 import { parseDocument } from "@peppol/utils/parsing/parse-document";
 import { DOCUMENT_SCHEME, PROCESS_SCHEME } from "./phoss-smp/service-metadata";
+import { sendIncomingDocumentNotifications } from "./notifications/send-document-notifications";
+import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -92,5 +94,23 @@ export async function receiveDocument(options: {
       direction: "incoming",
       transmittedDocumentId: transmittedDocument.id,
     });
+  }
+
+  // Send notification emails to configured addresses
+  try {
+    await sendIncomingDocumentNotifications({
+      companyId: company.id,
+      companyName: company.name,
+      type,
+      parsedDocument,
+      xmlDocument: options.body,
+    });
+  } catch (error) {
+    console.error("Failed to send incoming document notifications:", error);
+    sendSystemAlert(
+      "Document Notification Sending Failed",
+      `Failed to send incoming document notification for document ${transmittedDocument.id}.`,
+      "error"
+    );
   }
 }
