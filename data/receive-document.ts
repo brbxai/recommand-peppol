@@ -5,7 +5,7 @@ import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
 import { UserFacingError } from "@peppol/utils/util";
 import { parseDocument } from "@peppol/utils/parsing/parse-document";
 import { DOCUMENT_SCHEME, PROCESS_SCHEME } from "./phoss-smp/service-metadata";
-import { sendIncomingDocumentNotifications } from "./notifications/send-document-notifications";
+import { sendIncomingDocumentNotifications } from "./send-document-notifications";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 
 export async function receiveDocument(options: {
