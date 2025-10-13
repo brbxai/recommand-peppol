@@ -37,7 +37,7 @@ import { sendSelfBillingInvoiceSchema, type SelfBillingInvoice } from "@peppol/u
 import { selfBillingInvoiceToUBL } from "@peppol/utils/parsing/self-billing-invoice/to-xml";
 import { sendSelfBillingCreditNoteSchema, type SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 import { selfBillingCreditNoteToUBL } from "@peppol/utils/parsing/self-billing-creditnote/to-xml";
-import { sendOutgoingDocumentNotifications } from "../data/notifications/send-document-notifications";
+import { sendOutgoingDocumentNotifications } from "@peppol/data/notifications/send-document-notifications";
 
 const server = new Server();
 
