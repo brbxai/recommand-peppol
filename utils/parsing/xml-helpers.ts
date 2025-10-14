@@ -6,6 +6,14 @@ export function getTextContent(value: any): string {
   return "";
 }
 
+export function getNullableTextContent(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return value.toString();
+  if (value["#text"]) return value["#text"].toString();
+  return null;
+}
+
 export function getNumberContent(value: any): string {
   if (!value) return "0";
   if (typeof value === "number") return value.toString();

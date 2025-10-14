@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { invoiceSchema, type Invoice } from "./schemas";
-import { getTextContent, getNumberContent, getPercentage } from "../xml-helpers";
+import { getTextContent, getNumberContent, getPercentage, getNullableTextContent } from "../xml-helpers";
 import type { SelfBillingInvoice } from "../self-billing-invoice/schemas";
 
 const parser = new XMLParser({
@@ -27,7 +27,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   // Extract basic invoice information
   const invoiceNumber = getTextContent(invoice.ID);
   const issueDate = getTextContent(invoice.IssueDate);
-  const dueDate = getTextContent(invoice.DueDate);
+  const dueDate = getNullableTextContent(invoice.DueDate);
   const note = getTextContent(invoice.Note);
   const buyerReference = getTextContent(invoice.BuyerReference);
 

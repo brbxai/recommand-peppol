@@ -119,7 +119,7 @@ export const attachmentSchema = z.object({
 export const _invoiceSchema = z.object({
   invoiceNumber: z.string().openapi({ example: "INV-2024-001" }),
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
-  dueDate: z.string().date().openapi({ example: "2024-04-20" }),
+  dueDate: z.string().date().nullish().openapi({ example: "2024-04-20" }),
   note: z.string().nullish().openapi({ example: "Thank you for your business" }),
   buyerReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
   purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
