@@ -189,7 +189,7 @@ export function CompanyNotificationsManager({ teamId, companyId }: CompanyNotifi
       <Card>
         <CardHeader>
           <CardTitle>Notifications</CardTitle>
-          <CardDescription>Manage email notifications for invoices</CardDescription>
+          <CardDescription>Manage email notifications for documents</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-32">
@@ -207,7 +207,7 @@ export function CompanyNotificationsManager({ teamId, companyId }: CompanyNotifi
           <div>
             <CardTitle>Notifications</CardTitle>
             <CardDescription className="text-balance">
-              Configure email addresses to receive notifications when invoices are sent or received.
+              Configure email addresses to receive notifications when documents are sent or received.
             </CardDescription>
           </div>
           {!isAdding && (
@@ -246,7 +246,7 @@ export function CompanyNotificationsManager({ teamId, companyId }: CompanyNotifi
                     htmlFor="add-incoming"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Incoming invoices
+                    Incoming documents
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -261,7 +261,7 @@ export function CompanyNotificationsManager({ teamId, companyId }: CompanyNotifi
                     htmlFor="add-outgoing"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Outgoing invoices
+                    Outgoing documents
                   </label>
                 </div>
               </div>
