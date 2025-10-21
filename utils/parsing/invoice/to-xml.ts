@@ -24,7 +24,7 @@ export function invoiceToUBL(
 }
 
 export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, recipientAddress: string) {
-  const totals = invoice.totals || calculateTotals(invoice);
+  const totals = calculateTotals(invoice);
   const vat = invoice.vat || calculateVat(invoice);
   const lines = invoice.lines.map((line) => ({
     ...line,
@@ -70,7 +70,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
         "cac:AdditionalDocumentReference": invoice.attachments.map(
           (attachment) => ({
             "cbc:ID": attachment.id,
-            "cbc:DocumentDescription": attachment.description,
+            ...(attachment.description && {"cbc:DocumentDescription": attachment.description}),
             ...((attachment.embeddedDocument || attachment.url) && {
               "cac:Attachment": {
                 ...(attachment.embeddedDocument && {
@@ -195,6 +195,42 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
           "cbc:Note": invoice.paymentTerms.note,
         },
       }),
+      ...((invoice.discounts || invoice.surcharges) && {
+        "cac:AllowanceCharge": [
+          ...(invoice.discounts && invoice.discounts.map((discount) => ({
+            "cbc:ChargeIndicator": "false",
+            ...(discount.reasonCode && { "cbc:AllowanceChargeReasonCode": discount.reasonCode }),
+            ...(discount.reason && { "cbc:AllowanceChargeReason": discount.reason }),
+            "cbc:Amount": {
+              "@_currencyID": "EUR",
+              "#text": discount.amount,
+            },
+            "cac:TaxCategory": {
+              "cbc:ID": discount.vat.category,
+              "cbc:Percent": discount.vat.percentage,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
+            },
+          })) || []),
+          ...(invoice.surcharges && invoice.surcharges.map((surcharge) => ({
+            "cbc:ChargeIndicator": "true",
+            ...(surcharge.reasonCode && { "cbc:AllowanceChargeReasonCode": surcharge.reasonCode }),
+            ...(surcharge.reason && { "cbc:AllowanceChargeReason": surcharge.reason }),
+            "cbc:Amount": {
+              "@_currencyID": "EUR",
+              "#text": surcharge.amount,
+            },
+            "cac:TaxCategory": {
+              "cbc:ID": surcharge.vat.category,
+              "cbc:Percent": surcharge.vat.percentage,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
+            },
+          })) || []),
+        ],
+      }),
       "cac:TaxTotal": {
         "cbc:TaxAmount": {
           "@_currencyID": "EUR",
@@ -224,7 +260,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
       "cac:LegalMonetaryTotal": {
         "cbc:LineExtensionAmount": {
           "@_currencyID": "EUR",
-          "#text": extractedTotals.taxExclusiveAmount,
+          "#text": extractedTotals.linesAmount,
         },
         "cbc:TaxExclusiveAmount": {
           "@_currencyID": "EUR",
@@ -234,6 +270,18 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
           "@_currencyID": "EUR",
           "#text": extractedTotals.taxInclusiveAmount,
         },
+        ...(extractedTotals.discountAmount && {
+          "cbc:AllowanceTotalAmount": {
+          "@_currencyID": "EUR",
+          "#text": extractedTotals.discountAmount,
+        },
+        }),
+        ...(extractedTotals.surchargeAmount && {
+          "cbc:ChargeTotalAmount": {
+            "@_currencyID": "EUR",
+            "#text": extractedTotals.surchargeAmount,
+          },
+        }),
         "cbc:PrepaidAmount": {
           "@_currencyID": "EUR",
           "#text": extractedTotals.paidAmount,

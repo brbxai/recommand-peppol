@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import "zod-openapi/extend";
-import { attachmentSchema, lineSchema, partySchema, paymentMeansSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
+import { attachmentSchema, discountSchema, lineSchema, partySchema, paymentMeansSchema, surchargeSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
 
 const creditNoteInvoiceReferenceSchema = z.object({
   id: z.string().min(1).openapi({ example: "INV-2024-001", description: "The reference to the invoice that is being credited" }),
@@ -21,6 +21,8 @@ export const _creditNoteSchema = z.object({
     note: z.string().openapi({ example: "Net 30" }),
   }).nullish(),
   lines: z.array(lineSchema).min(1),
+  discounts: z.array(discountSchema).nullish().openapi({ description: "Optional global discounts" }),
+  surcharges: z.array(surchargeSchema).nullish().openapi({ description: "Optional global surcharges" }),
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
   attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the credit note" }),

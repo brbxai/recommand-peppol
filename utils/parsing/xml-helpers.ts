@@ -22,6 +22,14 @@ export function getNumberContent(value: any): string {
   return "0";
 }
 
+export function getNullableNumberContent(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === "number") return value.toString();
+  if (typeof value === "string") return value;
+  if (value["#text"]) return value["#text"];
+  return null;
+}
+
 export function getPercentage(value: any): string {
   const percentage = getTextContent(value);
   if (!percentage) return "0";

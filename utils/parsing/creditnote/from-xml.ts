@@ -127,6 +127,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   }
 
   const totals = {
+    linesAmount: getNumberContent(legalMonetaryTotal.LineExtensionAmount),
     taxExclusiveAmount: getNumberContent(legalMonetaryTotal.TaxExclusiveAmount),
     taxInclusiveAmount: getNumberContent(legalMonetaryTotal.TaxInclusiveAmount),
     payableAmount: getNumberContent(legalMonetaryTotal.PayableAmount),

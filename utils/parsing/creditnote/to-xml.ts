@@ -24,7 +24,7 @@ export function creditNoteToUBL(
 }
 
 export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: string, recipientAddress: string) {
-  const totals = creditNote.totals || calculateTotals(creditNote);
+  const totals = calculateTotals(creditNote);
   const vat = creditNote.vat || calculateVat(creditNote);
   const lines = creditNote.lines.map((line) => ({
     ...line,
@@ -77,7 +77,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
         "cac:AdditionalDocumentReference": creditNote.attachments.map(
           (attachment) => ({
             "cbc:ID": attachment.id,
-            "cbc:DocumentDescription": attachment.description,
+            ...(attachment.description && {"cbc:DocumentDescription": attachment.description}),
             ...((attachment.embeddedDocument || attachment.url) && {
               "cac:Attachment": {
                 ...(attachment.embeddedDocument && {
@@ -202,6 +202,42 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
           "cbc:Note": creditNote.paymentTerms.note,
         },
       }),
+      ...((creditNote.discounts || creditNote.surcharges) && {
+        "cac:AllowanceCharge": [
+          ...(creditNote.discounts && creditNote.discounts.map((discount) => ({
+            "cbc:ChargeIndicator": "false",
+            ...(discount.reasonCode && { "cbc:AllowanceChargeReasonCode": discount.reasonCode }),
+            ...(discount.reason && { "cbc:AllowanceChargeReason": discount.reason }),
+            "cbc:Amount": {
+              "@_currencyID": "EUR",
+              "#text": discount.amount,
+            },
+            "cac:TaxCategory": {
+              "cbc:ID": discount.vat.category,
+              "cbc:Percent": discount.vat.percentage,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
+            },
+          })) || []),
+          ...(creditNote.surcharges && creditNote.surcharges.map((surcharge) => ({
+            "cbc:ChargeIndicator": "true",
+            ...(surcharge.reasonCode && { "cbc:AllowanceChargeReasonCode": surcharge.reasonCode }),
+            ...(surcharge.reason && { "cbc:AllowanceChargeReason": surcharge.reason }),
+            "cbc:Amount": {
+              "@_currencyID": "EUR",
+              "#text": surcharge.amount,
+            },
+            "cac:TaxCategory": {
+              "cbc:ID": surcharge.vat.category,
+              "cbc:Percent": surcharge.vat.percentage,
+              "cac:TaxScheme": {
+                "cbc:ID": "VAT",
+              },
+            },
+          })) || []),
+        ],
+      }),
       "cac:TaxTotal": {
         "cbc:TaxAmount": {
           "@_currencyID": "EUR",
@@ -231,7 +267,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
       "cac:LegalMonetaryTotal": {
         "cbc:LineExtensionAmount": {
           "@_currencyID": "EUR",
-          "#text": extractedTotals.taxExclusiveAmount,
+          "#text": extractedTotals.linesAmount,
         },
         "cbc:TaxExclusiveAmount": {
           "@_currencyID": "EUR",
@@ -241,6 +277,18 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
           "@_currencyID": "EUR",
           "#text": extractedTotals.taxInclusiveAmount,
         },
+        ...(extractedTotals.discountAmount && {
+          "cbc:AllowanceTotalAmount": {
+          "@_currencyID": "EUR",
+          "#text": extractedTotals.discountAmount,
+        },
+        }),
+        ...(extractedTotals.surchargeAmount && {
+          "cbc:ChargeTotalAmount": {
+            "@_currencyID": "EUR",
+            "#text": extractedTotals.surchargeAmount,
+          },
+        }),
         "cbc:PrepaidAmount": {
           "@_currencyID": "EUR",
           "#text": extractedTotals.paidAmount,

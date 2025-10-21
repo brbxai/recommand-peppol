@@ -82,8 +82,11 @@ export const vatSubtotalSchema = z.object({
 }).openapi({ ref: "VATSubtotal" });
 
 export const totalsSchema = z.object({
-  taxExclusiveAmount: decimalSchema,
-  taxInclusiveAmount: decimalSchema,
+  linesAmount: decimalSchema.nullish().openapi({ description: "The tax exclusive total amount of all lines. Rounded to 2 decimal places." }),
+  discountAmount: decimalSchema.nullish().openapi({ description: "The tax exclusive total amount of all discounts. If not provided, this will be calculated automatically." }),
+  surchargeAmount: decimalSchema.nullish().openapi({ description: "The tax exclusive total amount of all surcharges. If not provided, this will be calculated automatically." }),
+  taxExclusiveAmount: decimalSchema.openapi({ description: "The tax exclusive total amount of all lines, discounts and surcharges. Rounded to 2 decimal places." }),
+  taxInclusiveAmount: decimalSchema.openapi({ description: "The tax inclusive total amount of all lines, discounts and surcharges. Rounded to 2 decimal places." }),
   payableAmount: decimalSchema.nullish().openapi({ description: "The amount to be paid. If not provided, this will be taxInclusiveAmount. Can be used in combination with paidAmount to indicate partial payment or payment rounding. Rounded to 2 decimal places." }),
   paidAmount: decimalSchema.nullish().openapi({ description: "The amount paid. If not provided, this will be taxInclusiveAmount - payableAmount. Can be used in combination with payableAmount to indicate partial payment or payment rounding. Rounded to 2 decimal places." }),
 }).openapi({ ref: "Totals", description: "If not provided, the totals will be calculated from the document lines." });
@@ -116,6 +119,24 @@ export const attachmentSchema = z.object({
   url: z.string().nullish().openapi({ example: "https://example.com/contract.pdf" }),
 }).openapi({ ref: "Attachment" });
 
+export const discountSchema = z.object({
+  reasonCode: z.string().nullish().openapi({ example: "95", description: "The reason code for the discount. This must be one of the codes in the [UNCL5189 subset](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL5189/) code list. For example, `95` for regular discounts. Either reason or reasonCode must be provided." }),
+  reason: z.string().nullish().openapi({ example: "Discount", description: "The reason for the discount. This is a free text field. Either reason or reasonCode must be provided." }),
+  amount: decimalSchema,
+  vat: vatSchema,
+})
+.refine((data) => data.reasonCode || data.reason, { message: "Either reason or reasonCode must be provided." })
+.openapi({ ref: "Discount" });
+
+export const surchargeSchema = z.object({
+  reasonCode: z.string().nullish().openapi({ example: "FC", description: "The reason code for the surcharge. This must be one of the codes in the [UNCL7161 subset](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL7161/) code list. For example, `FC` for freight services. Either reason or reasonCode must be provided." }),
+  reason: z.string().nullish().openapi({ example: "Freight services", description: "The reason for the surcharge. This is a free text field. Either reason or reasonCode must be provided." }),
+  amount: decimalSchema,
+  vat: vatSchema,
+})
+.refine((data) => data.reasonCode || data.reason, { message: "Either reason or reasonCode must be provided." })
+.openapi({ ref: "Surcharge" });
+
 export const _invoiceSchema = z.object({
   invoiceNumber: z.string().openapi({ example: "INV-2024-001" }),
   issueDate: z.string().date().openapi({ example: "2024-03-20" }),
@@ -130,6 +151,8 @@ export const _invoiceSchema = z.object({
     note: z.string().openapi({ example: "Net 30" }),
   }).nullish(),
   lines: z.array(lineSchema).min(1),
+  discounts: z.array(discountSchema).nullish().openapi({ description: "Optional global discounts" }),
+  surcharges: z.array(surchargeSchema).nullish().openapi({ description: "Optional global surcharges" }),
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
   attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the invoice" }),

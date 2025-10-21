@@ -1,17 +1,17 @@
 import { XMLParser } from "fast-xml-parser";
 import { invoiceSchema, type Invoice } from "./schemas";
-import { getTextContent, getNumberContent, getPercentage, getNullableTextContent } from "../xml-helpers";
+import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent } from "../xml-helpers";
 import type { SelfBillingInvoice } from "../self-billing-invoice/schemas";
 
 const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
   isArray: (name, jpath) => {
-    return name === "InvoiceLine" || 
-           name === "PaymentMeans" || 
-           name === "TaxSubtotal" ||
-           name === "PartyIdentification" ||
-           name === "AdditionalDocumentReference";
+    return name === "InvoiceLine" ||
+      name === "PaymentMeans" ||
+      name === "TaxSubtotal" ||
+      name === "PartyIdentification" ||
+      name === "AdditionalDocumentReference";
   },
   removeNSPrefix: true,
 });
@@ -124,12 +124,37 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   }
 
   const totals = {
+    linesAmount: getNumberContent(legalMonetaryTotal.LineExtensionAmount),
+    discountAmount: getNullableNumberContent(legalMonetaryTotal.AllowanceTotalAmount),
+    surchargeAmount: getNullableNumberContent(legalMonetaryTotal.ChargeTotalAmount),
     taxExclusiveAmount: getNumberContent(legalMonetaryTotal.TaxExclusiveAmount),
     taxInclusiveAmount: getNumberContent(legalMonetaryTotal.TaxInclusiveAmount),
     payableAmount: getNumberContent(legalMonetaryTotal.PayableAmount),
   };
 
-  const parsedInvoice = {
+  // Extract discounts
+  const discounts = (invoice.AllowanceCharge || []).filter((discount: any) => discount.ChargeIndicator === "false").map((discount: any) => ({
+    reasonCode: getNullableTextContent(discount.AllowanceChargeReasonCode),
+    reason: getNullableTextContent(discount.AllowanceChargeReason),
+    amount: getNumberContent(discount.Amount),
+    vat: {
+      category: getTextContent(discount.TaxCategory?.ID),
+      percentage: getPercentage(discount.TaxCategory?.Percent),
+    },
+  }));
+
+  // Extract surcharges
+  const surcharges = (invoice.AllowanceCharge || []).filter((surcharge: any) => surcharge.ChargeIndicator === "true").map((surcharge: any) => ({
+    reasonCode: getNullableTextContent(surcharge.AllowanceChargeReasonCode),
+    reason: getNullableTextContent(surcharge.AllowanceChargeReason),
+    amount: getNumberContent(surcharge.Amount),
+    vat: {
+      category: getTextContent(surcharge.TaxCategory?.ID),
+      percentage: getPercentage(surcharge.TaxCategory?.Percent),
+    },
+  }));
+
+  const parsedInvoice: Invoice & SelfBillingInvoice = {
     invoiceNumber,
     issueDate,
     dueDate,
@@ -142,6 +167,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     paymentTerms,
     lines,
     vat,
+    discounts,
+    surcharges,
     totals,
   };
 
