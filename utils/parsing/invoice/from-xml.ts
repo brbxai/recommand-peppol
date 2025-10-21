@@ -11,7 +11,8 @@ const parser = new XMLParser({
       name === "PaymentMeans" ||
       name === "TaxSubtotal" ||
       name === "PartyIdentification" ||
-      name === "AdditionalDocumentReference";
+      name === "AdditionalDocumentReference" ||
+      name === "AllowanceCharge";
   },
   parseAttributeValue: false,
   parseTagValue: false,
