@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import "zod-openapi/extend";
-import { attachmentSchema, discountSchema, lineSchema, partySchema, paymentMeansSchema, surchargeSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
+import { attachmentSchema, deliverySchema, discountSchema, lineSchema, partySchema, paymentMeansSchema, surchargeSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
 
 const creditNoteInvoiceReferenceSchema = z.object({
   id: z.string().min(1).openapi({ example: "INV-2024-001", description: "The reference to the invoice that is being credited" }),
@@ -13,9 +13,11 @@ export const _creditNoteSchema = z.object({
   note: z.string().nullish().openapi({ example: "Thank you for your business" }),
   buyerReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
   invoiceReferences: z.array(creditNoteInvoiceReferenceSchema).default([]).openapi({ description: "References to one or more invoices that are being credited" }),
-  purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
+  purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001", description: "A reference to a related purchase order" }),
+  despatchReference: z.string().nullish().openapi({ example: "DE-2024-001", description: "A reference to a related despatch advice document (e.g. packing slip)" }),
   seller: partySchema,
   buyer: partySchema,
+  delivery: deliverySchema.nullish().openapi({ description: "Optional delivery information." }),
   paymentMeans: z.array(paymentMeansSchema).nullish(),
   paymentTerms: z.object({
     note: z.string().openapi({ example: "Net 30" }),

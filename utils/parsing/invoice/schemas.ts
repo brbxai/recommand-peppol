@@ -55,6 +55,22 @@ export const partySchema = z.object({
   country: z.string().length(2, 'Country code must be in ISO 3166-1:Alpha2 format').openapi({ example: "BE" }),
 }).openapi({ ref: "Party" });
 
+export const deliverySchema = z.object({
+  date: z.string().date().nullish().openapi({ example: "2025-03-20", description: "The date of the delivery." }),
+  locationIdentifier: z.object({
+    scheme: z.string().openapi({ example: "0088" }),
+    identifier: z.string().openapi({ example: "123456789" }),
+  }).nullish().openapi({ example: { scheme: "0088", identifier: "123456789" }, description: "The identifier of the delivery location. Schemes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/ICD/)." }),
+  location: z.object({
+    street: z.string().nullish().openapi({ example: "Example Street 1" }),
+    street2: z.string().nullish().openapi({ example: "Suite 100" }),
+    city: z.string().nullish().openapi({ example: "Brussels" }),
+    postalZone: z.string().nullish().openapi({ example: "1000" }),
+    country: z.string().length(2, 'Country code must be in ISO 3166-1:Alpha2 format').openapi({ example: "BE" }),
+  }),
+  recipientName: z.string().openapi({ example: "Company Ltd.", description: "The name of the party to which the goods and services are delivered." }),
+}).partial().openapi({ ref: "Delivery" });
+
 export const paymentMeansSchema = z.object({
   paymentMethod: z.enum(['credit_transfer']).default('credit_transfer').openapi({ example: "credit_transfer" }),
   reference: z.string().default("").openapi({ example: "INV-2026-001" }),
@@ -94,7 +110,13 @@ export const totalsSchema = z.object({
 export const lineSchema = z.object({
   name: z.string().default("").openapi({ example: "Consulting Services" }),
   description: z.string().nullish().openapi({ example: "Professional consulting services" }),
-  sellersId: z.string().nullish().openapi({ example: "CS-001" }),
+  buyersId: z.string().nullish().openapi({ example: "CS-001", description: "The item identifier of the item as defined by the buyer." }),
+  sellersId: z.string().nullish().openapi({ example: "CS-001", description: "The item identifier of the item as defined by the seller. This is typically a product code or SKU." }),
+  standardId: z.object({
+    scheme: z.string().openapi({ example: "0160" }),
+    identifier: z.string().openapi({ example: "10986700" }),
+  }).nullish().openapi({ description: "The standard identifier of the item based on a registered scheme. Schemes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/ICD/)." }),
+  originCountry: z.string().length(2, 'Country code must be in ISO 3166-1:Alpha2 format').nullish().openapi({ example: "BE", description: "The country of origin of the item." }),
   quantity: unlimitedDecimalSchema.default("1.00"),
   unitCode: z.string().default("C62").openapi({ example: "HUR", description: "Recommended unit codes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNECERec20/)." }),
   netPriceAmount: unlimitedDecimalSchema,
@@ -143,9 +165,11 @@ export const _invoiceSchema = z.object({
   dueDate: z.string().date().nullish().openapi({ example: "2024-04-20" }),
   note: z.string().nullish().openapi({ example: "Thank you for your business" }),
   buyerReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
-  purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
+  purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001", description: "A reference to a related purchase order" }),
+  despatchReference: z.string().nullish().openapi({ example: "DE-2024-001", description: "A reference to a related despatch advice document (e.g. packing slip)" }),
   seller: partySchema,
   buyer: partySchema,
+  delivery: deliverySchema.nullish().openapi({ description: "Optional delivery information." }),
   paymentMeans: z.array(paymentMeansSchema).nullish().openapi({ description: "Optional payment information. For most invoices, this should be provided. For prepaid invoices, this could be omitted." }),
   paymentTerms: z.object({
     note: z.string().openapi({ example: "Net 30" }),

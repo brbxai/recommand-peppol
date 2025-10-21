@@ -13,6 +13,8 @@ const parser = new XMLParser({
       name === "PartyIdentification" ||
       name === "AdditionalDocumentReference";
   },
+  parseAttributeValue: false,
+  parseTagValue: false,
   removeNSPrefix: true,
 });
 
@@ -29,7 +31,9 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   const issueDate = getTextContent(invoice.IssueDate);
   const dueDate = getNullableTextContent(invoice.DueDate);
   const note = getTextContent(invoice.Note);
-  const buyerReference = getTextContent(invoice.BuyerReference);
+  const purchaseOrderReference = getNullableTextContent(invoice.OrderReference?.ID);
+  const buyerReference = getNullableTextContent(invoice.BuyerReference);
+  const despatchReference = getNullableTextContent(invoice.DespatchDocumentReference?.ID);
 
   // Extract attachments
   const attachments = (invoice.AdditionalDocumentReference || []).map((ref: any) => ({
@@ -73,6 +77,23 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     vatNumber: buyerParty.PartyTaxScheme?.CompanyID ? getTextContent(buyerParty.PartyTaxScheme?.CompanyID) : null,
   };
 
+  // Extract delivery information
+  const delivery = invoice.Delivery ? {
+    date: getNullableTextContent(invoice.Delivery?.ActualDeliveryDate),
+    locationIdentifier: {
+      scheme: getTextContent(invoice.Delivery?.DeliveryLocation?.ID?.["@_schemeID"]),
+      identifier: getTextContent(invoice.Delivery?.DeliveryLocation?.ID?.["#text"]),
+    },
+    location: {
+      street: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.StreetName),
+      street2: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.AdditionalStreetName),
+      city: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.CityName),
+      postalZone: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.PostalZone),
+      country: getTextContent(invoice.Delivery?.DeliveryLocation?.Address?.Country?.IdentificationCode),
+    },
+    recipientName: getTextContent(invoice.Delivery?.DeliveryParty?.PartyName?.Name),
+  } : undefined;
+
   // Extract payment means
   const paymentMeans = (invoice.PaymentMeans || []).map((payment: any) => ({
     paymentMethod: 'credit_transfer' as const,
@@ -89,7 +110,13 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   const lines = (invoice.InvoiceLine || []).map((line: any) => ({
     name: getTextContent(line.Item?.Name),
     description: getTextContent(line.Item?.Description),
-    sellersId: getTextContent(line.Item?.StandardItemIdentification?.ID),
+    buyersId: getNullableTextContent(line.Item?.BuyersItemIdentification?.ID),
+    sellersId: getNullableTextContent(line.Item?.SellersItemIdentification?.ID),
+    standardId: line.Item?.StandardItemIdentification?.ID ? {
+      scheme: getTextContent(line.Item.StandardItemIdentification.ID["@_schemeID"]),
+      identifier: getTextContent(line.Item.StandardItemIdentification.ID["#text"]),
+    } : null,
+    originCountry: getNullableTextContent(line.Item?.OriginCountry?.IdentificationCode),
     quantity: getNumberContent(line.InvoicedQuantity),
     unitCode: getTextContent(line.InvoicedQuantity?.["@_unitCode"]),
     netAmount: getNumberContent(line.LineExtensionAmount),
@@ -159,10 +186,13 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     issueDate,
     dueDate,
     note,
+    purchaseOrderReference,
     buyerReference,
+    despatchReference,
     attachments: attachments.length > 0 ? attachments : [],
     seller,
     buyer,
+    delivery,
     paymentMeans,
     paymentTerms,
     lines,

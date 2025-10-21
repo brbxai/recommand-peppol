@@ -65,6 +65,11 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
         !creditNote.purchaseOrderReference && {
         "cbc:BuyerReference": creditNote.creditNoteNumber,
       }),
+      ...(creditNote.despatchReference && {
+        "cac:DespatchDocumentReference": {
+          "cbc:ID": creditNote.despatchReference,
+        },
+      }),
       ...(creditNote.invoiceReferences && {
         "cac:BillingReference": creditNote.invoiceReferences.map((reference) => ({
           "cac:InvoiceDocumentReference": {
@@ -179,6 +184,35 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
           },
         },
       },
+      ...(creditNote.delivery && {
+        "cac:Delivery": {
+          ...(creditNote.delivery.date && { "cbc:ActualDeliveryDate": creditNote.delivery.date }),
+          ...(creditNote.delivery.location && {
+            "cac:DeliveryLocation": {
+              ...(creditNote.delivery.locationIdentifier && { "cbc:ID": {
+                "@_schemeID": creditNote.delivery.locationIdentifier.scheme,
+                "#text": creditNote.delivery.locationIdentifier.identifier,
+              }}),
+              ...(creditNote.delivery.location && { "cac:Address": {
+                ...(creditNote.delivery.location.street && { "cbc:StreetName": creditNote.delivery.location.street }),
+                ...(creditNote.delivery.location.street2 && { "cbc:AdditionalStreetName": creditNote.delivery.location.street2 }),
+                ...(creditNote.delivery.location.city && { "cbc:CityName": creditNote.delivery.location.city }),
+                ...(creditNote.delivery.location.postalZone && { "cbc:PostalZone": creditNote.delivery.location.postalZone }),
+                "cac:Country": {
+                  "cbc:IdentificationCode": creditNote.delivery.location.country,
+                },
+              }}),
+            },
+          }),
+          ...(creditNote.delivery.recipientName && {
+            "cac:DeliveryParty": {
+              "cac:PartyName": {
+                "cbc:Name": creditNote.delivery.recipientName,
+              },
+            },
+          }),
+        },
+      }),
       ...(creditNote.paymentMeans && {
         "cac:PaymentMeans": creditNote.paymentMeans.map((payment) => ({
           "cbc:PaymentMeansCode": {
@@ -315,8 +349,24 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
         "cac:Item": {
           ...(item.description && { "cbc:Description": item.description }),
           "cbc:Name": item.name,
+          ...(item.buyersId && {
+            "cac:BuyersItemIdentification": { "cbc:ID": item.buyersId },
+          }),
           ...(item.sellersId && {
             "cac:SellersItemIdentification": { "cbc:ID": item.sellersId },
+          }),
+          ...(item.standardId && {
+            "cac:StandardItemIdentification": {
+              "cbc:ID": {
+                "@_schemeID": item.standardId.scheme,
+                "#text": item.standardId.identifier,
+              },
+            },
+          }),
+          ...(item.originCountry && {
+            "cac:OriginCountry": {
+              "cbc:IdentificationCode": item.originCountry,
+            },
           }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,

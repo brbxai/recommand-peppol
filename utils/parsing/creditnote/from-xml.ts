@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { creditNoteSchema, type CreditNote } from "./schemas";
-import { getTextContent, getNumberContent, getPercentage } from "../xml-helpers";
+import { getTextContent, getNumberContent, getPercentage, getNullableTextContent } from "../xml-helpers";
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -13,6 +13,8 @@ const parser = new XMLParser({
            name === "AdditionalDocumentReference" ||
            name === "BillingReference";
   },
+  parseAttributeValue: false,
+  parseTagValue: false,
   removeNSPrefix: true,
 });
 
@@ -28,7 +30,9 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   const creditNoteNumber = getTextContent(creditNote.ID);
   const issueDate = getTextContent(creditNote.IssueDate);
   const note = getTextContent(creditNote.Note);
-  const buyerReference = getTextContent(creditNote.BuyerReference);
+  const purchaseOrderReference = getNullableTextContent(creditNote.OrderReference?.ID);
+  const buyerReference = getNullableTextContent(creditNote.BuyerReference);
+  const despatchReference = getNullableTextContent(creditNote.DespatchDocumentReference?.ID);
   const invoiceReferences = (creditNote.BillingReference || []).map((reference: any) => ({
     id: getTextContent(reference.InvoiceDocumentReference?.ID),
     issueDate: reference.InvoiceDocumentReference?.IssueDate ? getTextContent(reference.InvoiceDocumentReference?.IssueDate) : null,
@@ -76,6 +80,23 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     vatNumber: buyerParty.PartyTaxScheme?.CompanyID ? getTextContent(buyerParty.PartyTaxScheme?.CompanyID) : null,
   };
 
+  // Extract delivery information
+  const delivery = creditNote.Delivery ? {
+    date: getNullableTextContent(creditNote.Delivery?.ActualDeliveryDate),
+    locationIdentifier: {
+      scheme: getTextContent(creditNote.Delivery?.DeliveryLocation?.ID?.["@_schemeID"]),
+      identifier: getTextContent(creditNote.Delivery?.DeliveryLocation?.ID?.["#text"]),
+    },
+    location: {
+      street: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.StreetName),
+      street2: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.AdditionalStreetName),
+      city: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.CityName),
+      postalZone: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.PostalZone),
+      country: getTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.Country?.IdentificationCode),
+    },
+    recipientName: getTextContent(creditNote.Delivery?.DeliveryParty?.PartyName?.Name),
+  } : undefined;
+
   // Extract payment means
   const paymentMeans = (creditNote.PaymentMeans || []).map((payment: any) => ({
     paymentMethod: 'credit_transfer' as const,
@@ -92,7 +113,13 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   const lines = (creditNote.CreditNoteLine || []).map((line: any) => ({
     name: getTextContent(line.Item?.Name),
     description: getTextContent(line.Item?.Description),
-    sellersId: getTextContent(line.Item?.StandardItemIdentification?.ID),
+    buyersId: getNullableTextContent(line.Item?.BuyersItemIdentification?.ID),
+    sellersId: getNullableTextContent(line.Item?.SellersItemIdentification?.ID),
+    standardId: line.Item?.StandardItemIdentification?.ID ? {
+      scheme: getTextContent(line.Item.StandardItemIdentification.ID["@_schemeID"]),
+      identifier: getTextContent(line.Item.StandardItemIdentification.ID["#text"]),
+    } : null,
+    originCountry: getNullableTextContent(line.Item?.OriginCountry?.IdentificationCode),
     quantity: getNumberContent(line.CreditedQuantity),
     unitCode: getTextContent(line.CreditedQuantity?.["@_unitCode"]),
     netAmount: getNumberContent(line.LineExtensionAmount),
@@ -137,11 +164,14 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     creditNoteNumber,
     issueDate,
     note,
+    purchaseOrderReference,
     buyerReference,
+    despatchReference,
     invoiceReferences,
     attachments: attachments.length > 0 ? attachments : [],
     seller,
     buyer,
+    delivery,
     paymentMeans,
     paymentTerms,
     lines,

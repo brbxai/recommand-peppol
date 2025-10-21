@@ -66,6 +66,11 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
         !invoice.purchaseOrderReference && {
         "cbc:BuyerReference": invoice.invoiceNumber,
       }),
+      ...(invoice.despatchReference && {
+        "cac:DespatchDocumentReference": {
+          "cbc:ID": invoice.despatchReference,
+        },
+      }),
       ...(invoice.attachments && {
         "cac:AdditionalDocumentReference": invoice.attachments.map(
           (attachment) => ({
@@ -172,6 +177,35 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
           },
         },
       },
+      ...(invoice.delivery && {
+        "cac:Delivery": {
+          ...(invoice.delivery.date && { "cbc:ActualDeliveryDate": invoice.delivery.date }),
+          ...(invoice.delivery.location && {
+            "cac:DeliveryLocation": {
+              ...(invoice.delivery.locationIdentifier && { "cbc:ID": {
+                "@_schemeID": invoice.delivery.locationIdentifier.scheme,
+                "#text": invoice.delivery.locationIdentifier.identifier,
+              }}),
+              ...(invoice.delivery.location && { "cac:Address": {
+                ...(invoice.delivery.location.street && { "cbc:StreetName": invoice.delivery.location.street }),
+                ...(invoice.delivery.location.street2 && { "cbc:AdditionalStreetName": invoice.delivery.location.street2 }),
+                ...(invoice.delivery.location.city && { "cbc:CityName": invoice.delivery.location.city }),
+                ...(invoice.delivery.location.postalZone && { "cbc:PostalZone": invoice.delivery.location.postalZone }),
+                "cac:Country": {
+                  "cbc:IdentificationCode": invoice.delivery.location.country,
+                },
+              }}),
+            },
+          }),
+          ...(invoice.delivery.recipientName && {
+            "cac:DeliveryParty": {
+              "cac:PartyName": {
+                "cbc:Name": invoice.delivery.recipientName,
+              },
+            },
+          }),
+        },
+      }),
       ...(invoice.paymentMeans && {
         "cac:PaymentMeans": invoice.paymentMeans.map((payment) => ({
           "cbc:PaymentMeansCode": {
@@ -308,8 +342,24 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
         "cac:Item": {
           ...(item.description && { "cbc:Description": item.description }),
           "cbc:Name": item.name,
+          ...(item.buyersId && {
+            "cac:BuyersItemIdentification": { "cbc:ID": item.buyersId },
+          }),
           ...(item.sellersId && {
             "cac:SellersItemIdentification": { "cbc:ID": item.sellersId },
+          }),
+          ...(item.standardId && {
+            "cac:StandardItemIdentification": {
+              "cbc:ID": {
+                "@_schemeID": item.standardId.scheme,
+                "#text": item.standardId.identifier,
+              },
+            },
+          }),
+          ...(item.originCountry && {
+            "cac:OriginCountry": {
+              "cbc:IdentificationCode": item.originCountry,
+            },
           }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,
