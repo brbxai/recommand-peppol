@@ -84,18 +84,18 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   // Extract delivery information
   const delivery = creditNote.Delivery ? {
     date: getNullableTextContent(creditNote.Delivery?.ActualDeliveryDate),
-    locationIdentifier: {
+    locationIdentifier: creditNote.Delivery?.DeliveryLocation?.ID ? {
       scheme: getTextContent(creditNote.Delivery?.DeliveryLocation?.ID?.["@_schemeID"]),
       identifier: getTextContent(creditNote.Delivery?.DeliveryLocation?.ID?.["#text"]),
-    },
-    location: {
+    } : undefined,
+    location: creditNote.Delivery?.DeliveryLocation?.Address?.Country ? {
       street: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.StreetName),
       street2: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.AdditionalStreetName),
       city: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.CityName),
       postalZone: getNullableTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.PostalZone),
       country: getTextContent(creditNote.Delivery?.DeliveryLocation?.Address?.Country?.IdentificationCode),
-    },
-    recipientName: getTextContent(creditNote.Delivery?.DeliveryParty?.PartyName?.Name),
+    } : undefined,
+    recipientName: creditNote.Delivery?.DeliveryParty?.PartyName ? getTextContent(creditNote.Delivery?.DeliveryParty?.PartyName?.Name) : undefined,
   } : undefined;
 
   // Extract payment means

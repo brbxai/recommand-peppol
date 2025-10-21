@@ -81,18 +81,18 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   // Extract delivery information
   const delivery = invoice.Delivery ? {
     date: getNullableTextContent(invoice.Delivery?.ActualDeliveryDate),
-    locationIdentifier: {
+    locationIdentifier: invoice.Delivery?.DeliveryLocation?.ID ? {
       scheme: getTextContent(invoice.Delivery?.DeliveryLocation?.ID?.["@_schemeID"]),
       identifier: getTextContent(invoice.Delivery?.DeliveryLocation?.ID?.["#text"]),
-    },
-    location: {
+    } : undefined,
+    location: invoice.Delivery?.DeliveryLocation?.Address?.Country ? {
       street: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.StreetName),
       street2: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.AdditionalStreetName),
       city: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.CityName),
       postalZone: getNullableTextContent(invoice.Delivery?.DeliveryLocation?.Address?.PostalZone),
       country: getTextContent(invoice.Delivery?.DeliveryLocation?.Address?.Country?.IdentificationCode),
-    },
-    recipientName: getTextContent(invoice.Delivery?.DeliveryParty?.PartyName?.Name),
+    } : undefined,
+    recipientName: invoice.Delivery?.DeliveryParty?.PartyName ? getTextContent(invoice.Delivery?.DeliveryParty?.PartyName?.Name) : undefined,
   } : undefined;
 
   // Extract payment means
