@@ -278,11 +278,11 @@ const _sendDocument = server.post(
         parsedDocument = parsed.parsedDocument;
         type = parsed.type;
       } else {
-        return c.json(actionFailure("Invalid document type provided."));
+        return c.json(actionFailure("Invalid document type provided."), 400);
       }
 
       if (!xmlDocument) {
-        return c.json(actionFailure("Document could not be parsed."));
+        return c.json(actionFailure("Document could not be parsed."), 400);
       }
 
       let sentPeppol = false;

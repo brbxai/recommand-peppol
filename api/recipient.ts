@@ -169,7 +169,7 @@ const _searchDirectory = server.post(
       const results = await searchPeppolDirectory(query);
       return c.json(actionSuccess({ results }));
     } catch (error) {
-      return c.json(actionFailure("Failed to search directory"));
+      return c.json(actionFailure("Failed to search directory"), 500);
     }
   }
 );
