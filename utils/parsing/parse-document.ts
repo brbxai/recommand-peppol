@@ -9,7 +9,7 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
     // Parse the XML document
     let parsedDocument = null;
     let type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown" = "unknown";
-    if (docTypeId === "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1") {
+    if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0")) {
         try {
             parsedDocument = parseInvoiceFromXML(xml);
             type = "invoice";
@@ -24,7 +24,7 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
                 "error"
             );
         }
-    } else if (docTypeId === "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1") {
+    } else if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0")) {
         try {
             parsedDocument = parseCreditNoteFromXML(xml);
             type = "creditNote";
@@ -39,7 +39,7 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
                 "error"
             );
         }
-    } else if (docTypeId === "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1") {
+    } else if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0")) {
         try {
             parsedDocument = parseSelfBillingInvoiceFromXML(xml);
             type = "selfBillingInvoice";
@@ -54,7 +54,7 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
                 "error"
             );
         }
-    } else if (docTypeId === "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1") {
+    } else if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0")) {
         try {
             parsedDocument = parseSelfBillingCreditNoteFromXML(xml);
             type = "selfBillingCreditNote";
