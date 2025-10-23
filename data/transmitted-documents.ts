@@ -95,7 +95,7 @@ export async function deleteTransmittedDocument(
 export async function getInbox(
   teamId: string,
   companyId?: string
-): Promise<TransmittedDocumentWithoutBody[]> {
+): Promise<Omit<TransmittedDocument, "xml" | "parsed">[]> {
   // Build the where clause
   const whereClause = [
     eq(transmittedDocuments.teamId, teamId),
@@ -125,7 +125,6 @@ export async function getInbox(
       sentOverPeppol: transmittedDocuments.sentOverPeppol,
       sentOverEmail: transmittedDocuments.sentOverEmail,
       emailRecipients: transmittedDocuments.emailRecipients,
-      parsed: transmittedDocuments.parsed,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
