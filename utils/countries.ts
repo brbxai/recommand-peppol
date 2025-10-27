@@ -70,6 +70,12 @@ export const COUNTRIES: CountryInfo[] = [
         flag: "🇮🇹",
     },
     {
+        code: "LU",
+        name: "Luxembourg",
+        flag: "🇱🇺",
+        defaultVatScheme: "9938",
+    },
+    {
         code: "NL",
         name: "Netherlands",
         flag: "🇳🇱",
