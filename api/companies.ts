@@ -194,6 +194,7 @@ const _createCompany = server.post(
       });
       return c.json(actionSuccess({ company }));
     } catch (error) {
+      console.error(error);
       if(error instanceof UserFacingError){
         return c.json(actionFailure(error), 400);
       }
