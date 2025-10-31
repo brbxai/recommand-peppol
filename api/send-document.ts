@@ -331,7 +331,8 @@ const _sendDocument = server.post(
             return c.json(
               actionFailure(
                 `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
-              )
+              ),
+              400
             );
           }
         } else {
@@ -371,7 +372,8 @@ const _sendDocument = server.post(
         return c.json(
           actionFailure(
             `Failed to send document over Peppol network and email. ${additionalPeppolFailureContext} ${additionalEmailFailureContext}`
-          )
+          ),
+          400
         );
       }
 
@@ -469,7 +471,8 @@ const _sendDocument = server.post(
       return c.json(
         actionFailure(
           error instanceof Error ? error.message : "Failed to send document"
-        )
+        ),
+        400
       );
     }
   }
