@@ -94,7 +94,8 @@ export const vatSubtotalSchema = z.object({
   vatAmount: decimalSchema,
   category: vatCategoryEnum,
   percentage: decimalSchema,
-  exemptionReasonCode: z.string().nullish().openapi({ description: "If the invoice is exempt from VAT, this is required. The exemption reason code identifier must belong to the CEF VATEX code list	found [here](https://docs.peppol.eu/poacc/billing/3.0/2024-Q4/codelist/vatex/)." }),
+  exemptionReasonCode: z.string().nullish().openapi({ description: "If the invoice is exempt from VAT, this (or exemptionReason) is required. The exemption reason code identifier must belong to the CEF VATEX code list	found [here](https://docs.peppol.eu/poacc/billing/3.0/2024-Q4/codelist/vatex/)." }),
+  exemptionReason: z.string().nullish().openapi({ description: "If the invoice is exempt from VAT, this (or exemptionReasonCode) is required. The exemption reason must be a textual statement of the reason why the amount is exempt from VAT or why no VAT is charged." }),
 }).openapi({ ref: "VATSubtotal" });
 
 export const totalsSchema = z.object({

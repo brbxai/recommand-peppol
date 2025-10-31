@@ -171,6 +171,7 @@ export function calculateVat(invoice: Invoice | CreditNote) {
     category: subtotal.category,
     percentage: subtotal.percentage,
     exemptionReasonCode: null as string | null,
+    exemptionReason: null as string | null,
   }));
 
   const totalVatAmount = subtotals.reduce(

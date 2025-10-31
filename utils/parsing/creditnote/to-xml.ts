@@ -289,12 +289,15 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
           "cac:TaxCategory": {
             "cbc:ID": subtotal.category,
             "cbc:Percent": subtotal.percentage,
-            "cac:TaxScheme": {
-              "cbc:ID": "VAT",
-            },
             ...(subtotal.exemptionReasonCode && {
               "cbc:TaxExemptionReasonCode": subtotal.exemptionReasonCode,
             }),
+            ...(subtotal.exemptionReason && {
+              "cbc:TaxExemptionReason": subtotal.exemptionReason,
+            }),
+            "cac:TaxScheme": {
+              "cbc:ID": "VAT",
+            },
           },
         })),
       },

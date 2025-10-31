@@ -282,12 +282,15 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
           "cac:TaxCategory": {
             "cbc:ID": subtotal.category,
             "cbc:Percent": subtotal.percentage,
-            "cac:TaxScheme": {
-              "cbc:ID": "VAT",
-            },
             ...(subtotal.exemptionReasonCode && {
               "cbc:TaxExemptionReasonCode": subtotal.exemptionReasonCode,
             }),
+            ...(subtotal.exemptionReason && {
+              "cbc:TaxExemptionReason": subtotal.exemptionReason,
+            }),
+            "cac:TaxScheme": {
+              "cbc:ID": "VAT",
+            },
           },
         })),
       },

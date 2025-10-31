@@ -141,7 +141,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
       vatAmount: getNumberContent(subtotal.TaxAmount),
       category: getTextContent(subtotal.TaxCategory?.ID),
       percentage: getPercentage(subtotal.TaxCategory?.Percent),
-      exemptionReasonCode: getTextContent(subtotal.TaxCategory?.TaxExemptionReasonCode),
+      exemptionReasonCode: getNullableTextContent(subtotal.TaxCategory?.TaxExemptionReasonCode),
+      exemptionReason: getNullableTextContent(subtotal.TaxCategory?.TaxExemptionReason),
     })),
   };
 
