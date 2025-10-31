@@ -75,6 +75,9 @@ export async function deleteWebhook(
 export async function callWebhook(webhook: Webhook, transmittedDocument: { id: string, teamId: string, companyId: string }) {
   const response = await fetch(webhook.url, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       eventType: "document.received",
       documentId: transmittedDocument.id,
