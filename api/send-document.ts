@@ -32,7 +32,7 @@ import { creditNoteToUBL } from "@peppol/utils/parsing/creditnote/to-xml";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { simulateSendAs4 } from "@peppol/data/playground/simulate-ap";
 import { getSendingCompanyIdentifier } from "@peppol/data/company-identifiers";
-import { parseDocument } from "@peppol/utils/parsing/parse-document";
+import { detectDoctypeId, parseDocument } from "@peppol/utils/parsing/parse-document";
 import { sendDocumentEmail } from "@peppol/data/email/send-email";
 import { sendSelfBillingInvoiceSchema, type SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import { selfBillingInvoiceToUBL } from "@peppol/utils/parsing/self-billing-invoice/to-xml";
@@ -80,13 +80,13 @@ const routeDescription = describeRoute({
   },
 });
 
-type SendDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, {in: { json: z.input<typeof sendDocumentSchema> }, out: { json: z.infer<typeof sendDocumentSchema> } }>;
+type SendDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof sendDocumentSchema> }, out: { json: z.infer<typeof sendDocumentSchema> } }>;
 
 const _sendDocument = server.post(
   "/:companyId/sendDocument",
   requireCompanyAccess(),
   requireValidSubscription(),
-  describeRoute({hide: true}),
+  describeRoute({ hide: true }),
   zodValidator("json", sendDocumentSchema),
   _sendDocumentImplementation,
 );
@@ -285,6 +285,11 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       xmlDocument = document as string;
       if (jsonBody.doctypeId) {
         doctypeId = jsonBody.doctypeId;
+      }else{
+        doctypeId = detectDoctypeId(xmlDocument) || "";
+        if(!doctypeId) {
+          return c.json(actionFailure("Document type could not be detected automatically from your XML document. Please provide the doctypeId manually."), 400);
+        }
       }
 
       const parsed = parseDocument(
@@ -293,6 +298,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         company,
         senderAddress
       );
+      
       parsedDocument = parsed.parsedDocument;
       type = parsed.type;
     } else {
@@ -340,6 +346,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           const sendingException = jsonResponse.sendingException;
           additionalPeppolFailureContext = sendingException.message;
         } catch (error) {
+          console.error("Failed to extract sending exception message:", error);
           additionalPeppolFailureContext =
             "No additional context available, please contact support@recommand.eu if you could use our help.";
         }

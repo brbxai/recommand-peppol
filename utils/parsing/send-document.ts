@@ -63,7 +63,7 @@ export const sendDocumentSchema = z.object({
   document: z.union([sendInvoiceSchema, sendCreditNoteSchema, sendSelfBillingInvoiceSchema, sendSelfBillingCreditNoteSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
   doctypeId: z.string().optional().openapi({
     description:
-      "The document type identifier. Not required, only used when documentType is \"xml\".",
+      "The document type identifier. Not required, only used when documentType is \"xml\". For supported document types, the doctypeId can be detected automatically from your XML document, if that's not the case you can provide it manually.",
     example:
       "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
   }),
