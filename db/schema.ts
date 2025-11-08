@@ -9,9 +9,11 @@ import {
   decimal,
   boolean,
   type AnyPgColumn,
+  index,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
-import { SQL, sql } from "drizzle-orm";
+import { isNotNull, SQL, sql } from "drizzle-orm";
 import { uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
@@ -262,12 +264,71 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   updatedAt: autoUpdateTimestamp(),
 });
 
+export const transmittedDocumentLabels = pgTable("peppol_transmitted_document_labels", {
+  transmittedDocumentId: text("transmitted_document_id")
+    .references(() => transmittedDocuments.id, { onDelete: "cascade" })
+    .notNull(),
+  labelId: text("label_id")
+    .references(() => labels.id, { onDelete: "cascade" })
+    .notNull(),
+}, (table) => [
+  primaryKey({ name: "peppol_transmitted_document_labels_pkey", columns: [table.transmittedDocumentId, table.labelId] }),
+]);
+
 export const teamExtensions = pgTable("peppol_team_extensions", {
   id: text("id")
     .primaryKey()
     .references(() => teams.id, { onDelete: "cascade" }),
   isPlayground: boolean("is_playground").notNull().default(false),
 });
+
+export const labels = pgTable("peppol_labels", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "lbl_" + ulid()),
+  teamId: text("team_id")
+    .references(() => teams.id, { onDelete: "cascade" })
+    .notNull(),
+  externalId: text("external_id"),
+  name: text("name").notNull(),
+  colorHex: text("color_hex").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
+}, (table) => [
+  uniqueIndex("peppol_labels_external_id_unique").on(table.teamId, table.externalId).where(isNotNull(table.externalId)),
+]);
+
+export const supportingDataSuppliers = pgTable("supporting_data_suppliers", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "sd_supp_" + ulid()), // Supporting Data Supplier
+  teamId: text("team_id")
+    .references(() => teams.id, { onDelete: "cascade" })
+    .notNull(),
+  companyId: text("company_id")
+    .references(() => companies.id, { onDelete: "cascade" }),
+  externalId: text("external_id"),
+  name: text("name").notNull(),
+  vatNumber: text("vat_number"),
+  peppolAddresses: text("peppol_addresses").notNull().array().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
+}, (table) => [
+  index("supporting_suppliers_team_id_idx").on(table.teamId),
+  index("supporting_suppliers_company_id_idx").on(table.companyId),
+  uniqueIndex("supporting_suppliers_external_id_unique").on(table.teamId, table.companyId, table.externalId).where(isNotNull(table.externalId)),
+]);
+
+export const supportingDataSupplierLabels = pgTable("supporting_data_supplier_labels", {
+  supportingDataSupplierId: text("supporting_data_supplier_id")
+    .references(() => supportingDataSuppliers.id, { onDelete: "cascade" })
+    .notNull(),
+  labelId: text("label_id")
+    .references(() => labels.id, { onDelete: "cascade" })
+    .notNull(),
+}, (table) => [
+  primaryKey({ name: "supporting_data_supplier_labels_pkey", columns: [table.supportingDataSupplierId, table.labelId] }),
+]);
 
 export function lower(email: AnyPgColumn): SQL {
   return sql`lower(${email})`;

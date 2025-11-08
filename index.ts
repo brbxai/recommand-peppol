@@ -4,6 +4,7 @@ import { Logger } from "@recommand/lib/logger";
 import subscriptionServer from "./api/subscription";
 import billingProfileServer from "./api/billing-profile";
 import companiesServer from "./api/companies";
+import labelsServer from "./api/labels";
 import sendDocumentServer from "./api/send-document";
 import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/documents";
@@ -105,6 +106,10 @@ For additional support or questions, don't hesitate to contact our support team.
           name: "Playgrounds",
           description: "Endpoints for working with playgrounds. Playgrounds are used to test the Recommand API without affecting production data or communicating over the Peppol network. A new playground can be created via the Recommand dashboard by clicking the team switcher in the top left, or via the API outlined below. Usage of the playground is free.",
         },
+        {
+          name: "Labels",
+          description: "You can manage all labels for a team. Labels are used to organize and categorize your data.",
+        },
       ],
     },
   })
@@ -115,6 +120,7 @@ server.route("/", sendDocumentServer);
 server.route("/", subscriptionServer);
 server.route("/", billingProfileServer);
 server.route("/", companiesServer);
+server.route("/", labelsServer);
 server.route("/internal/", receiveDocumentServer);
 server.route("/", transmittedDocumentsServer);
 server.route("/", webhooksServer);
