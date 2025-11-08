@@ -8,11 +8,11 @@ export type InsertTransmittedDocument = typeof transmittedDocuments.$inferInsert
 
 // Create a type that excludes the body field but includes parsed data
 export type TransmittedDocumentWithoutBody = Omit<TransmittedDocument, "xml"> & {
-  labels?: Omit<Label, "createdAt" | "updatedAt">[];
+  labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[];
 };
 
-async function getLabelsForDocuments(documentIds: string[]): Promise<Map<string, Omit<Label, "createdAt" | "updatedAt">[]>> {
-  const documentLabelsMap = new Map<string, Omit<Label, "createdAt" | "updatedAt">[]>();
+async function getLabelsForDocuments(documentIds: string[]): Promise<Map<string, Omit<Label, "teamId" | "createdAt" | "updatedAt">[]>> {
+  const documentLabelsMap = new Map<string, Omit<Label, "teamId" | "createdAt" | "updatedAt">[]>();
 
   if (documentIds.length === 0) {
     return documentLabelsMap;
@@ -22,7 +22,6 @@ async function getLabelsForDocuments(documentIds: string[]): Promise<Map<string,
     .select({
       documentId: transmittedDocumentLabels.transmittedDocumentId,
       id: labels.id,
-      teamId: labels.teamId,
       externalId: labels.externalId,
       name: labels.name,
       colorHex: labels.colorHex,
@@ -37,7 +36,6 @@ async function getLabelsForDocuments(documentIds: string[]): Promise<Map<string,
       ...existing,
       {
         id: label.id,
-        teamId: label.teamId,
         externalId: label.externalId,
         name: label.name,
         colorHex: label.colorHex,
@@ -143,7 +141,7 @@ export async function deleteTransmittedDocument(
 export async function getInbox(
   teamId: string,
   companyId?: string
-): Promise<(Omit<TransmittedDocument, "xml" | "parsed"> & { labels?: Omit<Label, "createdAt" | "updatedAt">[] })[]> {
+): Promise<(Omit<TransmittedDocument, "xml" | "parsed"> & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] })[]> {
   // Build the where clause
   const whereClause = [
     eq(transmittedDocuments.teamId, teamId),
@@ -223,7 +221,7 @@ export async function markAsRead(teamId: string, documentId: string, read: boole
 export async function getTransmittedDocument(
   teamId: string,
   documentId: string
-): Promise<(TransmittedDocument & { labels?: Omit<Label, "createdAt" | "updatedAt">[] }) | null> {
+): Promise<(TransmittedDocument & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] }) | null> {
   const document = await db
     .select()
     .from(transmittedDocuments)

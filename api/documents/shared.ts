@@ -26,5 +26,5 @@ export const transmittedDocumentResponse = z.object({
     sentOverPeppol: z.boolean(),
     sentOverEmail: z.boolean(),
     emailRecipients: z.array(z.string()),
-    labels: z.array(labelResponse.omit({ createdAt: true, updatedAt: true })),
+    labels: z.array(labelResponse.omit({ teamId: true, createdAt: true, updatedAt: true })),
 });

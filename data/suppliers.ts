@@ -8,11 +8,11 @@ export type Supplier = typeof supportingDataSuppliers.$inferSelect;
 export type InsertSupplier = typeof supportingDataSuppliers.$inferInsert;
 
 export type SupplierWithLabels = Supplier & {
-  labels?: Omit<Label, "createdAt" | "updatedAt">[];
+  labels?: Omit<Label,  "teamId" | "createdAt" | "updatedAt">[];
 };
 
-export async function getLabelsForSuppliers(supplierIds: string[]): Promise<Map<string, Omit<Label, "createdAt" | "updatedAt">[]>> {
-  const supplierLabelsMap = new Map<string, Omit<Label, "createdAt" | "updatedAt">[]>();
+export async function getLabelsForSuppliers(supplierIds: string[]): Promise<Map<string, Omit<Label, "teamId" | "createdAt" | "updatedAt">[]>> {
+  const supplierLabelsMap = new Map<string, Omit<Label, "teamId" | "createdAt" | "updatedAt">[]>();
 
   if (supplierIds.length === 0) {
     return supplierLabelsMap;
@@ -37,7 +37,6 @@ export async function getLabelsForSuppliers(supplierIds: string[]): Promise<Map<
       ...existing,
       {
         id: label.id,
-        teamId: label.teamId,
         externalId: label.externalId,
         name: label.name,
         colorHex: label.colorHex,

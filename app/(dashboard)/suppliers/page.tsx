@@ -65,7 +65,7 @@ type Supplier = {
   peppolAddresses: string[];
   createdAt: string;
   updatedAt: string;
-  labels?: Omit<LabelType, "createdAt" | "updatedAt">[];
+  labels?: Omit<LabelType, "teamId" | "createdAt" | "updatedAt">[];
 };
 
 type SupplierFormData = {
