@@ -1,0 +1,74 @@
+import { Server, type Context } from "@recommand/lib/api";
+import { z } from "zod";
+import "zod-openapi/extend";
+import { zodValidator } from "@recommand/lib/zod-validator";
+import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { describeRoute } from "hono-openapi";
+import {
+    deleteTransmittedDocument,
+} from "@peppol/data/transmitted-documents";
+import {
+    describeErrorResponse,
+    describeSuccessResponse,
+} from "@peppol/utils/api-docs";
+import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
+
+const server = new Server();
+
+const deleteTransmittedDocumentRouteDescription = describeRoute({
+    operationId: "deleteDocument",
+    description: "Delete a transmitted document",
+    summary: "Delete Document",
+    tags: ["Documents"],
+    responses: {
+        ...describeSuccessResponse("Successfully deleted the document"),
+        ...describeErrorResponse(404, "Document not found"),
+        ...describeErrorResponse(500, "Failed to delete document"),
+    },
+});
+
+const deleteTransmittedDocumentQuerySchema = z.object({
+    documentId: z.string().openapi({
+        description: "The ID of the document to delete",
+    }),
+});
+
+type DeleteTransmittedDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteTransmittedDocumentQuerySchema> }, out: { param: z.infer<typeof deleteTransmittedDocumentQuerySchema> } }>;
+
+const _deleteTransmittedDocumentMinimal = server.delete(
+    "/documents/:documentId",
+    requireTeamAccess(),
+    deleteTransmittedDocumentRouteDescription,
+    zodValidator("param", deleteTransmittedDocumentQuerySchema),
+    _deleteTransmittedDocumentImplementation,
+);
+
+const _deleteTransmittedDocument = server.delete(
+    "/:teamId/documents/:documentId",
+    requireTeamAccess(),
+    describeRoute({hide: true}),
+    zodValidator("param", deleteTransmittedDocumentQuerySchema.extend({
+        teamId: z.string().openapi({
+            description: "The ID of the team",
+        })
+    })),
+    _deleteTransmittedDocumentImplementation,
+);
+
+async function _deleteTransmittedDocumentImplementation(c: DeleteTransmittedDocumentContext) {
+    try {
+        const { documentId } = c.req.valid("param");
+        await deleteTransmittedDocument(c.var.team.id, documentId);
+        return c.json(actionSuccess());
+    } catch (error) {
+        if (error instanceof Error && error.message === "Document not found") {
+            return c.json(actionFailure("Document not found"), 404);
+        }
+        return c.json(actionFailure("Failed to delete document"), 500);
+    }
+}
+
+export type DeleteTransmittedDocument = typeof _deleteTransmittedDocument | typeof _deleteTransmittedDocumentMinimal;
+
+export default server;

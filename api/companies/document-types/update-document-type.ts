@@ -1,0 +1,86 @@
+import { Server, type Context } from "@recommand/lib/api";
+import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { z } from "zod";
+import "zod-openapi/extend";
+import { zodValidator } from "@recommand/lib/zod-validator";
+import { describeRoute } from "hono-openapi";
+import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
+import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { companyDocumentTypeResponse } from "./shared";
+import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
+import { updateCompanyDocumentType } from "@peppol/data/company-document-types";
+import { UserFacingError } from "@peppol/utils/util";
+
+const server = new Server();
+
+const updateDocumentTypeRouteDescription = describeRoute({
+    operationId: "updateCompanyDocumentType",
+    description: "Update an existing company document type",
+    summary: "Update Company Document Type",
+    tags: ["Company Document Types"],
+    responses: {
+        ...describeSuccessResponseWithZod("Successfully updated company document type", z.object({ documentType: companyDocumentTypeResponse })),
+        ...describeErrorResponse(400, "Invalid request data"),
+        ...describeErrorResponse(404, "Company document type not found"),
+        ...describeErrorResponse(500, "Failed to update company document type"),
+    },
+});
+
+const updateDocumentTypeParamSchema = z.object({
+    companyId: z.string().openapi({
+        description: "The ID of the company to update a document type for",
+    }),
+    documentTypeId: z.string().openapi({
+        description: "The ID of the document type to update",
+    }),
+});
+
+const updateDocumentTypeJsonBodySchema = z.object({
+    docTypeId: z.string().min(1, "Document type ID is required").openapi({
+        description: "The ID of the document type to update",
+    }),
+    processId: z.string().min(1, "Process ID is required").openapi({
+        description: "The ID of the process to update",
+    }),
+});
+
+type UpdateDocumentTypeContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateDocumentTypeParamSchema>, json: z.input<typeof updateDocumentTypeJsonBodySchema> }, out: { param: z.infer<typeof updateDocumentTypeParamSchema>, json: z.infer<typeof updateDocumentTypeJsonBodySchema> } }>;
+
+const _updateDocumentTypeMinimal = server.put(
+    "/companies/:companyId/document-types/:documentTypeId",
+    requireCompanyAccess(),
+    updateDocumentTypeRouteDescription,
+    zodValidator("param", updateDocumentTypeParamSchema),
+    zodValidator("json", updateDocumentTypeJsonBodySchema),
+    _updateDocumentTypeImplementation,
+);
+
+const _updateDocumentType = server.put(
+    "/:teamId/companies/:companyId/documentTypes/:documentTypeId",
+    requireCompanyAccess(),
+    describeRoute({hide: true}),
+    zodValidator("param", updateDocumentTypeParamSchema.extend({ teamId: z.string() })),
+    zodValidator("json", updateDocumentTypeJsonBodySchema),
+    _updateDocumentTypeImplementation,
+);
+
+async function _updateDocumentTypeImplementation(c: UpdateDocumentTypeContext) {
+    try {
+        const documentType = await updateCompanyDocumentType({
+            ...c.req.valid("json"),
+            companyId: c.req.valid("param").companyId,
+            id: c.req.valid("param").documentTypeId,
+        }, c.var.team.isPlayground || !c.var.company.isSmpRecipient); // Skip SMP registration for playground teams
+
+        return c.json(actionSuccess({ documentType }));
+    } catch (error) {
+        if (error instanceof UserFacingError) {
+            return c.json(actionFailure(error.message), 404);
+        }
+        return c.json(actionFailure("Could not update company document type"), 500);
+    }
+}
+
+export type UpdateDocumentType = typeof _updateDocumentType | typeof _updateDocumentTypeMinimal;
+
+export default server;

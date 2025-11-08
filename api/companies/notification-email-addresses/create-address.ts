@@ -1,0 +1,88 @@
+import { Server, type Context } from "@recommand/lib/api";
+import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { z } from "zod";
+import "zod-openapi/extend";
+import { zodValidator } from "@recommand/lib/zod-validator";
+import { describeRoute } from "hono-openapi";
+import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
+import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { companyNotificationEmailAddressResponse } from "./shared";
+import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
+import { createCompanyNotificationEmailAddress } from "@peppol/data/company-notification-emails";
+import { UserFacingError } from "@peppol/utils/util";
+
+const server = new Server();
+
+const createAddressRouteDescription = describeRoute({
+    operationId: "createCompanyNotificationEmailAddress",
+    description: "Create a new company notification email address",
+    summary: "Create Company Notification Email Address",
+    tags: ["Company Notification Email Addresses"],
+    responses: {
+        ...describeSuccessResponseWithZod("Successfully created company notification email address", z.object({ notificationEmailAddress: companyNotificationEmailAddressResponse })),
+        ...describeErrorResponse(400, "Invalid request data"),
+        ...describeErrorResponse(404, "Company not found"),
+        ...describeErrorResponse(500, "Failed to create company notification email address"),
+    },
+});
+
+const createAddressParamSchema = z.object({
+    companyId: z.string().openapi({
+        description: "The ID of the company to create a notification email address for",
+    }),
+});
+
+const createAddressJsonBodySchema = z.object({
+    email: z.string().email("Valid email is required").openapi({
+        description: "The email address to create",
+    }),
+    notifyIncoming: z.boolean().openapi({
+        description: "Whether to notify on incoming documents",
+    }),
+    notifyOutgoing: z.boolean().openapi({
+        description: "Whether to notify on outgoing documents",
+    }),
+});
+
+type CreateAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createAddressParamSchema>, json: z.input<typeof createAddressJsonBodySchema> }, out: { param: z.infer<typeof createAddressParamSchema>, json: z.infer<typeof createAddressJsonBodySchema> } }>;
+
+const _createAddressMinimal = server.post(
+    "/companies/:companyId/notification-email-addresses",
+    requireCompanyAccess(),
+    createAddressRouteDescription,
+    zodValidator("param", createAddressParamSchema),
+    zodValidator("json", createAddressJsonBodySchema),
+    _createAddressImplementation,
+);
+
+const _createAddress = server.post(
+    "/:teamId/companies/:companyId/notification-email-addresses",
+    requireCompanyAccess(),
+    describeRoute({hide: true}),
+    zodValidator("param", createAddressParamSchema.extend({ teamId: z.string() })),
+    zodValidator("json", createAddressJsonBodySchema),
+    _createAddressImplementation,
+);
+
+async function _createAddressImplementation(c: CreateAddressContext) {
+    try {
+        const json = c.req.valid("json");
+        const notificationEmailAddress = await createCompanyNotificationEmailAddress({
+            email: json.email,
+            notifyIncoming: json.notifyIncoming,
+            notifyOutgoing: json.notifyOutgoing,
+            companyId: c.var.company.id,
+        });
+
+        return c.json(actionSuccess({ notificationEmailAddress }));
+    } catch (error) {
+        if (error instanceof UserFacingError) {
+            return c.json(actionFailure(error.message), 400);
+        }
+        return c.json(actionFailure("Could not create company notification email address"), 500);
+    }
+}
+
+export type CreateAddress = typeof _createAddress | typeof _createAddressMinimal;
+
+export default server;

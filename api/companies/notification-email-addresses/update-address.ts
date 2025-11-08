@@ -1,0 +1,92 @@
+import { Server, type Context } from "@recommand/lib/api";
+import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { z } from "zod";
+import "zod-openapi/extend";
+import { zodValidator } from "@recommand/lib/zod-validator";
+import { describeRoute } from "hono-openapi";
+import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
+import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { companyNotificationEmailAddressResponse } from "./shared";
+import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
+import { updateCompanyNotificationEmailAddress } from "@peppol/data/company-notification-emails";
+import { UserFacingError } from "@peppol/utils/util";
+
+const server = new Server();
+
+const updateAddressRouteDescription = describeRoute({
+    operationId: "updateCompanyNotificationEmailAddress",
+    description: "Update an existing company notification email address",
+    summary: "Update Company Notification Email Address",
+    tags: ["Company Notification Email Addresses"],
+    responses: {
+        ...describeSuccessResponseWithZod("Successfully updated company notification email address", z.object({ notificationEmailAddress: companyNotificationEmailAddressResponse })),
+        ...describeErrorResponse(400, "Invalid request data"),
+        ...describeErrorResponse(404, "Company notification email address not found"),
+        ...describeErrorResponse(500, "Failed to update company notification email address"),
+    },
+});
+
+const updateAddressParamSchema = z.object({
+    companyId: z.string().openapi({
+        description: "The ID of the company to update a notification email address for",
+    }),
+    notificationEmailAddressId: z.string().openapi({
+        description: "The ID of the notification email address to update",
+    }),
+});
+
+const updateAddressJsonBodySchema = z.object({
+    email: z.string().email("Valid email is required").openapi({
+        description: "The email address to update",
+    }),
+    notifyIncoming: z.boolean().openapi({
+        description: "Whether to notify on incoming documents",
+    }),
+    notifyOutgoing: z.boolean().openapi({
+        description: "Whether to notify on outgoing documents",
+    }),
+});
+
+type UpdateAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateAddressParamSchema>, json: z.input<typeof updateAddressJsonBodySchema> }, out: { param: z.infer<typeof updateAddressParamSchema>, json: z.infer<typeof updateAddressJsonBodySchema> } }>;
+
+const _updateAddressMinimal = server.put(
+    "/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
+    requireCompanyAccess(),
+    updateAddressRouteDescription,
+    zodValidator("param", updateAddressParamSchema),
+    zodValidator("json", updateAddressJsonBodySchema),
+    _updateAddressImplementation,
+);
+
+const _updateAddress = server.put(
+    "/:teamId/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
+    requireCompanyAccess(),
+    describeRoute({hide: true}),
+    zodValidator("param", updateAddressParamSchema.extend({ teamId: z.string() })),
+    zodValidator("json", updateAddressJsonBodySchema),
+    _updateAddressImplementation,
+);
+
+async function _updateAddressImplementation(c: UpdateAddressContext) {
+    try {
+        const json = c.req.valid("json");
+        const notificationEmailAddress = await updateCompanyNotificationEmailAddress({
+            email: json.email,
+            notifyIncoming: json.notifyIncoming,
+            notifyOutgoing: json.notifyOutgoing,
+            companyId: c.var.company.id,
+            id: c.req.valid("param").notificationEmailAddressId,
+        });
+
+        return c.json(actionSuccess({ notificationEmailAddress }));
+    } catch (error) {
+        if (error instanceof UserFacingError) {
+            return c.json(actionFailure(error.message), 404);
+        }
+        return c.json(actionFailure("Could not update company notification email address"), 500);
+    }
+}
+
+export type UpdateAddress = typeof _updateAddress | typeof _updateAddressMinimal;
+
+export default server;

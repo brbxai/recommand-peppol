@@ -1,0 +1,61 @@
+import { Server, type Context } from "@recommand/lib/api";
+import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { z } from "zod";
+import "zod-openapi/extend";
+import { zodValidator } from "@recommand/lib/zod-validator";
+import { describeRoute } from "hono-openapi";
+import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
+import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { companyDocumentTypeResponse } from "./shared";
+import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
+import { getCompanyDocumentTypes } from "@peppol/data/company-document-types";
+
+const server = new Server();
+
+const getDocumentTypesRouteDescription = describeRoute({
+    operationId: "getCompanyDocumentTypes",
+    description: "Get a list of all document types for a specific company",
+    summary: "List Company Document Types",
+    tags: ["Company Document Types"],
+    responses: {
+        ...describeSuccessResponseWithZod("Successfully retrieved company document types", z.object({ documentTypes: z.array(companyDocumentTypeResponse) })),
+        ...describeErrorResponse(500, "Failed to fetch company document types"),
+    },
+});
+
+const getDocumentTypesParamSchema = z.object({
+    companyId: z.string().openapi({
+        description: "The ID of the company to get document types for",
+    }),
+});
+
+type GetDocumentTypesContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getDocumentTypesParamSchema> }, out: { param: z.infer<typeof getDocumentTypesParamSchema> } }>;
+
+const _getDocumentTypesMinimal = server.get(
+    "/companies/:companyId/document-types",
+    requireCompanyAccess(),
+    getDocumentTypesRouteDescription,
+    zodValidator("param", getDocumentTypesParamSchema),
+    _getDocumentTypesImplementation,
+);
+
+const _getDocumentTypes = server.get(
+    "/:teamId/companies/:companyId/documentTypes",
+    requireCompanyAccess(),
+    describeRoute({hide: true}),
+    zodValidator("param", getDocumentTypesParamSchema.extend({ teamId: z.string() })),
+    _getDocumentTypesImplementation,
+);
+
+async function _getDocumentTypesImplementation(c: GetDocumentTypesContext) {
+    try {
+        const documentTypes = await getCompanyDocumentTypes(c.var.company.id);
+        return c.json(actionSuccess({ documentTypes }));
+    } catch (error) {
+        return c.json(actionFailure("Could not fetch company document types"), 500);
+    }
+}
+
+export type GetDocumentTypes = typeof _getDocumentTypes | typeof _getDocumentTypesMinimal;
+
+export default server;

@@ -11,6 +11,7 @@ import { endBillingCycle, getCurrentUsage } from "@peppol/data/billing";
 import { endOfMonth, subMonths } from "date-fns";
 import { requireAdmin, requireTeamAccess } from "@core/lib/auth-middleware";
 import { zodValidCountryCodes } from "@peppol/db/schema";
+import { describeRoute } from "hono-openapi";
 
 const server = new Server();
 
@@ -32,6 +33,7 @@ export type BillingProfileData = {
 const _getBillingProfile = server.get(
   "/:teamId/billing-profile",
   requireTeamAccess(),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {
@@ -49,6 +51,7 @@ const _getBillingProfile = server.get(
 const _upsertBillingProfile = server.put(
   "/:teamId/billing-profile",
   requireTeamAccess(),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
   zodValidator(
     "json",
@@ -93,6 +96,7 @@ const _upsertBillingProfile = server.put(
 const _endBillingCycle = server.post(
   "/:teamId/billing-profile/end-billing-cycle",
   requireAdmin(),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     const endOfPreviousMonth = endOfMonth(subMonths(new Date(), 1));
@@ -104,6 +108,7 @@ const _endBillingCycle = server.post(
 const _getCurrentUsage = server.get(
   "/:teamId/billing-profile/current-usage",
   requireTeamAccess(),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {

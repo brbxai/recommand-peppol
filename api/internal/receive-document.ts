@@ -5,6 +5,7 @@ import { requireInternalToken } from "@peppol/utils/auth-middleware";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { receiveDocument } from "@peppol/data/receive-document";
 import { UserFacingError } from "@peppol/utils/util";
+import { describeRoute } from "hono-openapi";
 
 export const receiveDocumentSchema = z.object({
   senderId: z.string(),
@@ -20,6 +21,7 @@ const server = new Server();
 server.post(
   "/receiveDocument",
   requireInternalToken(),
+  describeRoute({hide: true}),
   zodValidator("json", receiveDocumentSchema),
   async (c) => {
     const jsonBody = c.req.valid("json");

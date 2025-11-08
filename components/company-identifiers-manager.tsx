@@ -7,7 +7,7 @@ import { AsyncButton } from "@core/components/async-button";
 import { toast } from "@core/components/ui/sonner";
 import { Plus, Edit, Trash2, X, Check } from "lucide-react";
 import { rc } from "@recommand/lib/client";
-import type { CompanyIdentifiers } from "@peppol/api/company-identifiers";
+import type { CompanyIdentifiers } from "@peppol/api/company-identifiersold";
 import type { CompanyIdentifier } from "@peppol/data/company-identifiers";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 

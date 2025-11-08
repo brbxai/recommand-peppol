@@ -9,12 +9,14 @@ import {
 import { availablePlans } from "@peppol/data/plans";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { requireTeamAccess } from "@core/lib/auth-middleware";
+import { describeRoute } from "hono-openapi";
 
 const server = new Server();
 
 const _getActiveSubscription = server.get(
   "/:teamId/subscription",
   requireTeamAccess(),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     const subscription = await getActiveSubscription(c.var.team.id);
@@ -25,6 +27,7 @@ const _getActiveSubscription = server.get(
 const _startSubscription = server.post(
   "/:teamId/subscription",
   requireTeamAccess(),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
   zodValidator(
     "json",
@@ -55,6 +58,7 @@ const _startSubscription = server.post(
 const _cancelSubscription = server.post(
   "/:teamId/subscription/cancel",
   requireTeamAccess(),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     await cancelSubscription(c.var.team.id);

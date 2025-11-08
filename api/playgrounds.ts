@@ -1,12 +1,13 @@
-import { requireAuth, requireTeamAccess } from "@core/lib/auth-middleware";
+import { requireAuth, requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { getPlayground, createPlayground } from "@peppol/data/playground/playgrounds";
-import { Server } from "@recommand/lib/api";
+import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { describeRoute } from "hono-openapi";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { z } from "zod";
 import "zod-openapi/extend";
 import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
+import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 
 const server = new Server();
 
@@ -22,76 +23,102 @@ const playgroundOpenapiSchema = {
   },
 };
 
+const getPlaygroundRouteDescription = describeRoute({
+  operationId: "getPlayground",
+  description: "Get the playground information for a team (if it is a playground).",
+  summary: "Get Playground",
+  tags: ["Playgrounds"],
+  responses: {
+    ...describeSuccessResponse("Successfully retrieved playground", {
+      playground: playgroundOpenapiSchema,
+    }),
+    ...describeErrorResponse(404, "Playground not found for this team"),
+    ...describeErrorResponse(500, "Failed to fetch playground"),
+  },
+});
+
+type GetPlaygroundContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string>;
+
+const _getPlaygroundMinimal = server.get(
+  "/playground",
+  requireTeamAccess(),
+  getPlaygroundRouteDescription,
+ _getPlaygroundImplementation,
+);
+
 const _getPlayground = server.get(
   "/:teamId/playground",
   requireTeamAccess(),
-  describeRoute({
-    operationId: "getPlayground",
-    description: "Get the playground information for a team (if it is a playground).",
-    summary: "Get Playground",
-    tags: ["Playgrounds"],
-    responses: {
-      ...describeSuccessResponse("Successfully retrieved playground", {
-        playground: playgroundOpenapiSchema,
-      }),
-      ...describeErrorResponse(404, "Playground not found for this team"),
-      ...describeErrorResponse(500, "Failed to fetch playground"),
-    },
-  }),
+  describeRoute({hide: true}),
   zodValidator("param", z.object({ teamId: z.string() })),
-  async (c) => {
-    try {
-      const playground = await getPlayground(c.var.team.id);
-      if (!playground) {
-        return c.json(actionFailure("Playground not found for this team"), 404);
-      }
-      return c.json(actionSuccess({ playground }));
-    } catch (error) {
-      return c.json(actionFailure("Could not fetch playground"), 500);
+ _getPlaygroundImplementation,
+);
+
+async function _getPlaygroundImplementation(c: GetPlaygroundContext) {
+  try {
+    const playground = await getPlayground(c.var.team.id);
+    if (!playground) {
+      return c.json(actionFailure("Playground not found for this team"), 404);
     }
+    return c.json(actionSuccess({ playground }));
+  } catch (error) {
+    return c.json(actionFailure("Could not fetch playground"), 500);
   }
+}
+
+const createPlaygroundRouteDescription = describeRoute({
+  operationId: "createPlayground",
+  description: "Create a new playground team and add the current user as a member.",
+  summary: "Create Playground",
+  tags: ["Playgrounds"],
+  responses: {
+    ...describeSuccessResponse("Successfully created playground", {
+      playground: playgroundOpenapiSchema,
+    }),
+    ...describeErrorResponse(400, "Invalid request data"),
+    ...describeErrorResponse(401, "Unauthorized"),
+    ...describeErrorResponse(500, "Failed to create playground"),
+  },
+});
+
+const createPlaygroundJsonBodySchema = z.object({
+  name: z.string().min(1).openapi({ description: "Playground name" }),
+});
+
+type CreatePlaygroundContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof createPlaygroundJsonBodySchema> }, out: { json: z.infer<typeof createPlaygroundJsonBodySchema> } }>;
+
+const _createPlaygroundMinimal = server.post(
+  "/playground",
+  requireAuth(),
+  createPlaygroundRouteDescription,
+  zodValidator("json", createPlaygroundJsonBodySchema),
+  _createPlaygroundImplementation,
 );
 
 const _createPlayground = server.post(
   "/playgrounds",
   requireAuth(),
-  describeRoute({
-    operationId: "createPlayground",
-    description: "Create a new playground team and add the current user as a member.",
-    summary: "Create Playground",
-    tags: ["Playgrounds"],
-    responses: {
-      ...describeSuccessResponse("Successfully created playground", {
-        playground: playgroundOpenapiSchema,
-      }),
-      ...describeErrorResponse(400, "Invalid request data"),
-      ...describeErrorResponse(401, "Unauthorized"),
-      ...describeErrorResponse(500, "Failed to create playground"),
-    },
-  }),
-  zodValidator(
-    "json",
-    z.object({
-      name: z.string().min(1).openapi({ description: "Playground name" }),
-    })
-  ),
-  async (c) => {
-    try {
-      const user = c.get("user");
-      if (!user?.id) {
-        return c.json(actionFailure("Unauthorized"), 401);
-      }
-      const { name } = c.req.valid("json");
-      const playground = await createPlayground(user.id, name);
-      return c.json(actionSuccess({ playground }));
-    } catch (error) {
-      console.error(error);
-      return c.json(actionFailure("Could not create playground"), 500);
-    }
-  }
+  describeRoute({hide: true}),
+  zodValidator("json", createPlaygroundJsonBodySchema),
+  _createPlaygroundImplementation,
 );
 
-export type Playgrounds = typeof _getPlayground | typeof _createPlayground;
+async function _createPlaygroundImplementation(c: CreatePlaygroundContext) {
+  try {
+    const user = c.get("user");
+    if (!user?.id) {
+      return c.json(actionFailure("Unauthorized"), 401);
+    }
+    const { name } = c.req.valid("json");
+    const playground = await createPlayground(user.id, name);
+    return c.json(actionSuccess({ playground }));
+  } catch (error) {
+    console.error(error);
+    return c.json(actionFailure("Could not create playground"), 500);
+  }
+}
+
+export type Playgrounds = typeof _getPlayground | typeof _getPlaygroundMinimal | typeof _createPlayground | typeof _createPlaygroundMinimal;
 
 export default server;
 

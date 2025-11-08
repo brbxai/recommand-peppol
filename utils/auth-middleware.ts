@@ -27,7 +27,7 @@ export function requireInternalToken() {
   });
 }
 
-type CompanyAccessContext = {
+export type CompanyAccessContext = {
   Variables: {
     company: Company;
     team: ExtendedTeam;
