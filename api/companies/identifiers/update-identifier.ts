@@ -36,6 +36,8 @@ const updateIdentifierParamSchema = z.object({
     }),
 });
 
+const updateIdentifierParamSchemaWithTeamId = updateIdentifierParamSchema.extend({ teamId: z.string() });
+
 const updateIdentifierJsonBodySchema = z.object({
     scheme: z.string().min(1, "Scheme is required").openapi({
         description: "The scheme of the identifier",
@@ -45,7 +47,7 @@ const updateIdentifierJsonBodySchema = z.object({
     }),
 });
 
-type UpdateIdentifierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateIdentifierParamSchema>, json: z.input<typeof updateIdentifierJsonBodySchema> }, out: { param: z.infer<typeof updateIdentifierParamSchema>, json: z.infer<typeof updateIdentifierJsonBodySchema> } }>;
+type UpdateIdentifierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateIdentifierParamSchemaWithTeamId>, json: z.input<typeof updateIdentifierJsonBodySchema> }, out: { param: z.infer<typeof updateIdentifierParamSchemaWithTeamId>, json: z.infer<typeof updateIdentifierJsonBodySchema> } }>;
 
 const _updateIdentifierMinimal = server.put(
     "/companies/:companyId/identifiers/:identifierId",
@@ -60,7 +62,7 @@ const _updateIdentifier = server.put(
     "/:teamId/companies/:companyId/identifiers/:identifierId",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", updateIdentifierParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", updateIdentifierParamSchemaWithTeamId),
     zodValidator("json", updateIdentifierJsonBodySchema),
     _updateIdentifierImplementation,
 );

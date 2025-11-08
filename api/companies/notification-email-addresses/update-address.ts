@@ -35,6 +35,8 @@ const updateAddressParamSchema = z.object({
     }),
 });
 
+const updateAddressParamSchemaWithTeamId = updateAddressParamSchema.extend({ teamId: z.string() });
+
 const updateAddressJsonBodySchema = z.object({
     email: z.string().email("Valid email is required").openapi({
         description: "The email address to update",
@@ -47,7 +49,7 @@ const updateAddressJsonBodySchema = z.object({
     }),
 });
 
-type UpdateAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateAddressParamSchema>, json: z.input<typeof updateAddressJsonBodySchema> }, out: { param: z.infer<typeof updateAddressParamSchema>, json: z.infer<typeof updateAddressJsonBodySchema> } }>;
+type UpdateAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateAddressParamSchemaWithTeamId>, json: z.input<typeof updateAddressJsonBodySchema> }, out: { param: z.infer<typeof updateAddressParamSchemaWithTeamId>, json: z.infer<typeof updateAddressJsonBodySchema> } }>;
 
 const _updateAddressMinimal = server.put(
     "/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
@@ -62,7 +64,7 @@ const _updateAddress = server.put(
     "/:teamId/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", updateAddressParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", updateAddressParamSchemaWithTeamId),
     zodValidator("json", updateAddressJsonBodySchema),
     _updateAddressImplementation,
 );

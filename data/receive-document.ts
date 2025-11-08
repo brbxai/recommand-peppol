@@ -7,6 +7,8 @@ import { parseDocument } from "@peppol/utils/parsing/parse-document";
 import { DOCUMENT_SCHEME, PROCESS_SCHEME } from "./phoss-smp/service-metadata";
 import { sendIncomingDocumentNotifications } from "./send-document-notifications";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
+import { findSupplierByVatAndPeppolId } from "./suppliers";
+import { assignSupplierLabelsToDocument } from "./document-labels";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -94,6 +96,29 @@ export async function receiveDocument(options: {
       direction: "incoming",
       transmittedDocumentId: transmittedDocument.id,
     });
+  }
+
+  // Try to match supplier and assign labels
+  if (parsedDocument && (type === "invoice" || type === "creditNote")) {
+    try {
+      const vatNumber = parsedDocument.seller?.vatNumber || null;
+      const supplier = await findSupplierByVatAndPeppolId(
+        company.teamId,
+        company.id,
+        vatNumber,
+        senderId
+      );
+
+      if (supplier) {
+        await assignSupplierLabelsToDocument(
+          company.teamId,
+          transmittedDocument.id,
+          supplier.id
+        );
+      }
+    } catch (error) {
+      console.error("Failed to match supplier or assign labels:", error);
+    }
   }
 
   // Send notification emails to configured addresses

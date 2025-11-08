@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { CreditCard, Building, History, Webhook, Send, Tag } from "lucide-react";
+import { CreditCard, Building, History, Webhook, Send, Tag, Database, Truck } from "lucide-react";
 import { useMenuItemActions } from "@core/lib/menu-store";
 import { useOnboardingActions } from "@core/lib/onboarding-store";
 import BillingOnboarding from "@peppol/components/onboarding/billing";
@@ -38,6 +38,19 @@ export default function Main({ children }: { children: React.ReactNode }) {
       title: "Labels",
       icon: Tag,
       href: "/labels",
+    });
+
+    registerMenuItem({
+      id: "main.supporting-data",
+      title: "Supporting data",
+      icon: Database,
+    });
+
+    registerMenuItem({
+      id: "main.supporting-data.suppliers",
+      title: "Suppliers",
+      icon: Truck,
+      href: "/suppliers",
     });
 
     registerMenuItem({

@@ -40,7 +40,9 @@ const createDocumentTypeJsonBodySchema = z.object({
     }),
 });
 
-type CreateDocumentTypeContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createDocumentTypeParamSchema>, json: z.input<typeof createDocumentTypeJsonBodySchema> }, out: { param: z.infer<typeof createDocumentTypeParamSchema>, json: z.infer<typeof createDocumentTypeJsonBodySchema> } }>;
+const createDocumentTypeParamSchemaWithTeamId = createDocumentTypeParamSchema.extend({ teamId: z.string() });
+
+type CreateDocumentTypeContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createDocumentTypeParamSchemaWithTeamId>, json: z.input<typeof createDocumentTypeJsonBodySchema> }, out: { param: z.infer<typeof createDocumentTypeParamSchemaWithTeamId>, json: z.infer<typeof createDocumentTypeJsonBodySchema> } }>;
 
 const _createDocumentTypeMinimal = server.post(
     "/companies/:companyId/document-types",
@@ -55,7 +57,7 @@ const _createDocumentType = server.post(
     "/:teamId/companies/:companyId/documentTypes",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", createDocumentTypeParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", createDocumentTypeParamSchemaWithTeamId),
     zodValidator("json", createDocumentTypeJsonBodySchema),
     _createDocumentTypeImplementation,
 );

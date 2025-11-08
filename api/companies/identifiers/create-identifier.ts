@@ -42,7 +42,9 @@ const createIdentifierJsonBodySchema = z.object({
     }),
 });
 
-type CreateIdentifierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createIdentifierParamSchema>, json: z.input<typeof createIdentifierJsonBodySchema> }, out: { param: z.infer<typeof createIdentifierParamSchema>, json: z.infer<typeof createIdentifierJsonBodySchema> } }>;
+const createIdentifierParamSchemaWithTeamId = createIdentifierParamSchema.extend({ teamId: z.string() });
+
+type CreateIdentifierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createIdentifierParamSchemaWithTeamId>, json: z.input<typeof createIdentifierJsonBodySchema> }, out: { param: z.infer<typeof createIdentifierParamSchemaWithTeamId>, json: z.infer<typeof createIdentifierJsonBodySchema> } }>;
 
 const _createIdentifierMinimal = server.post(
     "/companies/:companyId/identifiers",
@@ -57,7 +59,7 @@ const _createIdentifier = server.post(
     "/:teamId/companies/:companyId/identifiers",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", createIdentifierParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", createIdentifierParamSchemaWithTeamId),
     zodValidator("json", createIdentifierJsonBodySchema),
     _createIdentifierImplementation,
 );

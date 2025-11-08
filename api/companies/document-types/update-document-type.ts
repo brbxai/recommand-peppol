@@ -44,7 +44,9 @@ const updateDocumentTypeJsonBodySchema = z.object({
     }),
 });
 
-type UpdateDocumentTypeContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateDocumentTypeParamSchema>, json: z.input<typeof updateDocumentTypeJsonBodySchema> }, out: { param: z.infer<typeof updateDocumentTypeParamSchema>, json: z.infer<typeof updateDocumentTypeJsonBodySchema> } }>;
+const updateDocumentTypeParamSchemaWithTeamId = updateDocumentTypeParamSchema.extend({ teamId: z.string() });
+
+type UpdateDocumentTypeContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateDocumentTypeParamSchemaWithTeamId>, json: z.input<typeof updateDocumentTypeJsonBodySchema> }, out: { param: z.infer<typeof updateDocumentTypeParamSchemaWithTeamId>, json: z.infer<typeof updateDocumentTypeJsonBodySchema> } }>;
 
 const _updateDocumentTypeMinimal = server.put(
     "/companies/:companyId/document-types/:documentTypeId",
@@ -59,7 +61,7 @@ const _updateDocumentType = server.put(
     "/:teamId/companies/:companyId/documentTypes/:documentTypeId",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", updateDocumentTypeParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", updateDocumentTypeParamSchemaWithTeamId),
     zodValidator("json", updateDocumentTypeJsonBodySchema),
     _updateDocumentTypeImplementation,
 );

@@ -33,7 +33,9 @@ const deleteAddressParamSchema = z.object({
     }),
 });
 
-type DeleteAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteAddressParamSchema> }, out: { param: z.infer<typeof deleteAddressParamSchema> } }>;
+const deleteAddressParamSchemaWithTeamId = deleteAddressParamSchema.extend({ teamId: z.string() });
+
+type DeleteAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteAddressParamSchemaWithTeamId> }, out: { param: z.infer<typeof deleteAddressParamSchemaWithTeamId> } }>;
 
 const _deleteAddressMinimal = server.delete(
     "/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
@@ -47,7 +49,7 @@ const _deleteAddress = server.delete(
     "/:teamId/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", deleteAddressParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", deleteAddressParamSchemaWithTeamId),
     _deleteAddressImplementation,
 );
 

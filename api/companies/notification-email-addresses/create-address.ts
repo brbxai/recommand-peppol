@@ -32,6 +32,8 @@ const createAddressParamSchema = z.object({
     }),
 });
 
+const createAddressParamSchemaWithTeamId = createAddressParamSchema.extend({ teamId: z.string() });
+
 const createAddressJsonBodySchema = z.object({
     email: z.string().email("Valid email is required").openapi({
         description: "The email address to create",
@@ -44,7 +46,7 @@ const createAddressJsonBodySchema = z.object({
     }),
 });
 
-type CreateAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createAddressParamSchema>, json: z.input<typeof createAddressJsonBodySchema> }, out: { param: z.infer<typeof createAddressParamSchema>, json: z.infer<typeof createAddressJsonBodySchema> } }>;
+type CreateAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createAddressParamSchemaWithTeamId>, json: z.input<typeof createAddressJsonBodySchema> }, out: { param: z.infer<typeof createAddressParamSchemaWithTeamId>, json: z.infer<typeof createAddressJsonBodySchema> } }>;
 
 const _createAddressMinimal = server.post(
     "/companies/:companyId/notification-email-addresses",
@@ -59,7 +61,7 @@ const _createAddress = server.post(
     "/:teamId/companies/:companyId/notification-email-addresses",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", createAddressParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", createAddressParamSchemaWithTeamId),
     zodValidator("json", createAddressJsonBodySchema),
     _createAddressImplementation,
 );

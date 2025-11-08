@@ -3,6 +3,7 @@ import { db } from "@recommand/db";
 import { eq, and } from "drizzle-orm";
 import { UserFacingError } from "@peppol/utils/util";
 import { getWebhooksByCompany, callWebhook } from "@peppol/data/webhooks";
+import { getLabelsForSuppliers } from "./suppliers";
 
 export async function assignLabelToDocument(
   teamId: string,
@@ -146,5 +147,31 @@ export async function getDocumentLabels(
     .from(transmittedDocumentLabels)
     .innerJoin(labels, eq(transmittedDocumentLabels.labelId, labels.id))
     .where(eq(transmittedDocumentLabels.transmittedDocumentId, documentId));
+}
+
+export async function assignSupplierLabelsToDocument(
+  teamId: string,
+  documentId: string,
+  supplierId: string
+): Promise<number> {
+  const supplierLabelsMap = await getLabelsForSuppliers([supplierId]);
+  const supplierLabels = supplierLabelsMap.get(supplierId) || [];
+
+  if (supplierLabels.length === 0) {
+    return 0;
+  }
+
+  let assignedCount = 0;
+
+  for (const label of supplierLabels) {
+    try {
+      await assignLabelToDocument(teamId, documentId, label.id);
+      assignedCount++;
+    } catch (error) {
+      console.error(`Failed to assign label ${label.id} to document ${documentId}:`, error);
+    }
+  }
+
+  return assignedCount;
 }
 

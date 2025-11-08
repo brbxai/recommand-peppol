@@ -29,7 +29,9 @@ const getDocumentTypesParamSchema = z.object({
     }),
 });
 
-type GetDocumentTypesContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getDocumentTypesParamSchema> }, out: { param: z.infer<typeof getDocumentTypesParamSchema> } }>;
+const getDocumentTypesParamSchemaWithTeamId = getDocumentTypesParamSchema.extend({ teamId: z.string() });
+
+type GetDocumentTypesContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getDocumentTypesParamSchemaWithTeamId> }, out: { param: z.infer<typeof getDocumentTypesParamSchemaWithTeamId> } }>;
 
 const _getDocumentTypesMinimal = server.get(
     "/companies/:companyId/document-types",
@@ -43,7 +45,7 @@ const _getDocumentTypes = server.get(
     "/:teamId/companies/:companyId/documentTypes",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", getDocumentTypesParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", getDocumentTypesParamSchemaWithTeamId),
     _getDocumentTypesImplementation,
 );
 

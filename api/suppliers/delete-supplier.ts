@@ -1,0 +1,71 @@
+import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import {
+  deleteSupplier,
+} from "@peppol/data/suppliers";
+import { Server, type Context } from "@recommand/lib/api";
+import { actionFailure, actionSuccess } from "@recommand/lib/utils";
+import { z } from "zod";
+import "zod-openapi/extend";
+import { zodValidator } from "@recommand/lib/zod-validator";
+import { describeRoute } from "hono-openapi";
+import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
+import { UserFacingError } from "@peppol/utils/util";
+import { supplierIdParamSchema, companyIdQuerySchema } from "./shared";
+
+const server = new Server();
+
+const deleteSupplierRouteDescription = describeRoute({
+  operationId: "deleteSupplier",
+  description: "Delete a supplier",
+  summary: "Delete Supplier",
+  tags: ["Suppliers"],
+  responses: {
+    ...describeSuccessResponse("Successfully deleted supplier"),
+    ...describeErrorResponse(400, "Invalid request data"),
+    ...describeErrorResponse(500, "Failed to delete supplier"),
+  },
+});
+
+const deleteSupplierParamSchemaWithTeamId = supplierIdParamSchema.extend({
+  teamId: z.string(),
+});
+
+type DeleteSupplierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof deleteSupplierParamSchemaWithTeamId>, query: z.input<typeof companyIdQuerySchema> }, out: { param: z.infer<typeof deleteSupplierParamSchemaWithTeamId>, query: z.infer<typeof companyIdQuerySchema> } }>;
+
+const _deleteSupplierMinimal = server.delete(
+  "/suppliers/:supplierId",
+  requireTeamAccess(),
+  deleteSupplierRouteDescription,
+  zodValidator("param", supplierIdParamSchema),
+  zodValidator("query", companyIdQuerySchema),
+  _deleteSupplierImplementation,
+);
+
+const _deleteSupplier = server.delete(
+  "/:teamId/suppliers/:supplierId",
+  requireTeamAccess(),
+  describeRoute({hide: true}),
+  zodValidator("param", deleteSupplierParamSchemaWithTeamId),
+  zodValidator("query", companyIdQuerySchema),
+  _deleteSupplierImplementation,
+);
+
+async function _deleteSupplierImplementation(c: DeleteSupplierContext) {
+  try {
+    const { supplierId } = c.req.valid("param");
+    const { companyId } = c.req.valid("query");
+    await deleteSupplier(c.var.team.id, supplierId, companyId);
+    return c.json(actionSuccess());
+  } catch (error) {
+    console.error(error);
+    if (error instanceof UserFacingError) {
+      return c.json(actionFailure(error), 400);
+    }
+    return c.json(actionFailure("Could not delete supplier"), 500);
+  }
+}
+
+export type DeleteSupplier = typeof _deleteSupplier | typeof _deleteSupplierMinimal;
+
+export default server;
+

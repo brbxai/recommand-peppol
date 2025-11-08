@@ -8,7 +8,7 @@ import { AsyncButton } from "@core/components/async-button";
 import { toast } from "@core/components/ui/sonner";
 import { Plus, Edit, Trash2, X, Check, Mail } from "lucide-react";
 import { rc } from "@recommand/lib/client";
-import type { CompanyNotificationEmailAddresses } from "@peppol/api/company-notification-emailsold";
+import type { CompanyNotificationEmailAddresses } from "@peppol/api/companies/notification-email-addresses";
 import type { CompanyNotificationEmailAddress } from "@peppol/data/company-notification-emails";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 

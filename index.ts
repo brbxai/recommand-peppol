@@ -12,6 +12,7 @@ import { openAPISpecs } from "hono-openapi";
 import webhooksServer from "./api/webhooks";
 import recipientServer from "./api/recipients";
 import playgroundsServer from "./api/playgrounds";
+import suppliersServer from "./api/suppliers";
 
 export let logger: Logger;
 
@@ -110,6 +111,10 @@ For additional support or questions, don't hesitate to contact our support team.
           name: "Labels",
           description: "You can manage all labels for a team. Labels are used to organize and categorize your data.",
         },
+        {
+          name: "Suppliers",
+          description: "You can manage all suppliers (supporting data) for a team. Suppliers are used to organize and categorize your supporting data.",
+        },
       ],
     },
   })
@@ -126,5 +131,6 @@ server.route("/", transmittedDocumentsServer);
 server.route("/", webhooksServer);
 server.route("/", recipientServer);
 server.route("/", playgroundsServer);
+server.route("/", suppliersServer);
 
 export default server;

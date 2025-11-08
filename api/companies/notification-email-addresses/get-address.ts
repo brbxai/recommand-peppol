@@ -33,7 +33,9 @@ const getAddressParamSchema = z.object({
     }),
 });
 
-type GetAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getAddressParamSchema> }, out: { param: z.infer<typeof getAddressParamSchema> } }>;
+const getAddressParamSchemaWithTeamId = getAddressParamSchema.extend({ teamId: z.string() });
+
+type GetAddressContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getAddressParamSchemaWithTeamId> }, out: { param: z.infer<typeof getAddressParamSchemaWithTeamId> } }>;
 
 const _getAddressMinimal = server.get(
     "/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
@@ -47,7 +49,7 @@ const _getAddress = server.get(
     "/:teamId/companies/:companyId/notification-email-addresses/:notificationEmailAddressId",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", getAddressParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", getAddressParamSchemaWithTeamId),
     _getAddressImplementation,
 );
 

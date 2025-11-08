@@ -57,7 +57,7 @@ export async function getCompanyByPeppolId(
     peppolId = peppolId.split("::")[1];
   }
 
-  // The peppolId is in the format of 0208:0659689080 (e.g. 0208 for enterprise number, 9925 for vat number)
+  // The peppolId is in the format of 0208:1012081766 (e.g. 0208 for enterprise number, 9925 for vat number)
   const scheme = peppolId.split(":")[0];
   const identifier = peppolId.split(":")[1];
   if (!scheme || !identifier) {

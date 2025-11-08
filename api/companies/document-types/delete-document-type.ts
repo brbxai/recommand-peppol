@@ -33,7 +33,9 @@ const deleteDocumentTypeParamSchema = z.object({
     }),
 });
 
-type DeleteDocumentTypeContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteDocumentTypeParamSchema> }, out: { param: z.infer<typeof deleteDocumentTypeParamSchema> } }>;
+const deleteDocumentTypeParamSchemaWithTeamId = deleteDocumentTypeParamSchema.extend({ teamId: z.string() });
+
+type DeleteDocumentTypeContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteDocumentTypeParamSchemaWithTeamId> }, out: { param: z.infer<typeof deleteDocumentTypeParamSchemaWithTeamId> } }>;
 
 const _deleteDocumentTypeMinimal = server.delete(
     "/companies/:companyId/document-types/:documentTypeId",
@@ -47,7 +49,7 @@ const _deleteDocumentType = server.delete(
     "/:teamId/companies/:companyId/documentTypes/:documentTypeId",
     requireCompanyAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", deleteDocumentTypeParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", deleteDocumentTypeParamSchemaWithTeamId),
     _deleteDocumentTypeImplementation,
 );
 

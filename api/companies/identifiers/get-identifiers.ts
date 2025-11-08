@@ -31,7 +31,9 @@ const getIdentifiersParamSchema = z.object({
   }),
 });
 
-type GetIdentifiersContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getIdentifiersParamSchema> }, out: { param: z.infer<typeof getIdentifiersParamSchema> } }>;
+const getIdentifiersParamSchemaWithTeamId = getIdentifiersParamSchema.extend({ teamId: z.string() });
+
+type GetIdentifiersContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getIdentifiersParamSchemaWithTeamId> }, out: { param: z.infer<typeof getIdentifiersParamSchemaWithTeamId> } }>;
 
 const _getIdentifiersMinimal = server.get(
   "/companies/:companyId/identifiers",
@@ -45,9 +47,7 @@ const _getIdentifiers = server.get(
   "/:teamId/companies/:companyId/identifiers",
   requireCompanyAccess(),
   describeRoute({hide: true}),
-  zodValidator("param", getIdentifiersParamSchema.extend({
-    teamId: z.string(),
-  })),
+  zodValidator("param", getIdentifiersParamSchemaWithTeamId),
   _getIdentifiersImplementation,
 );
 

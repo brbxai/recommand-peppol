@@ -7,7 +7,7 @@ import { AsyncButton } from "@core/components/async-button";
 import { toast } from "@core/components/ui/sonner";
 import { Plus, Edit, Trash2, X, Check } from "lucide-react";
 import { rc } from "@recommand/lib/client";
-import type { CompanyIdentifiers } from "@peppol/api/company-identifiersold";
+import type { CompanyIdentifiers } from "@peppol/api/companies/identifiers";
 import type { CompanyIdentifier } from "@peppol/data/company-identifiers";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 
@@ -221,7 +221,7 @@ export function CompanyIdentifiersManager({ teamId, companyId }: CompanyIdentifi
                                 <Label htmlFor="add-identifier">Identifier</Label>
                                 <Input
                                     id="add-identifier"
-                                    placeholder="e.g., 0659689080"
+                                    placeholder="e.g., 1012081766"
                                     value={formData.identifier}
                                     onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                                 />

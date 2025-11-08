@@ -245,8 +245,8 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
     .notNull(),
   direction: transferEventDirectionEnum("direction").notNull(),
 
-  senderId: text("sender_id").notNull(), // e.g. 0208:0659689080
-  receiverId: text("receiver_id").notNull(), // e.g. 0208:0659689080
+  senderId: text("sender_id").notNull(), // e.g. 0208:1012081766
+  receiverId: text("receiver_id").notNull(), // e.g. 0208:1012081766
   docTypeId: text("doc_type_id").notNull(), // e.g. urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1
   processId: text("process_id").notNull(), // e.g. urn:fdc:peppol.eu:2017:poacc:billing:01:1.0
   countryC1: text("country_c1").notNull(), // e.g. BE
