@@ -44,7 +44,11 @@ const downloadPackageParamSchema = z.object({
     }),
 });
 
-type DownloadPackageContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof downloadPackageParamSchema> }, out: { param: z.infer<typeof downloadPackageParamSchema> } }>;
+const downloadPackageParamSchemaWithTeamId = downloadPackageParamSchema.extend({
+    teamId: z.string(),
+});
+
+type DownloadPackageContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof downloadPackageParamSchemaWithTeamId> }, out: { param: z.infer<typeof downloadPackageParamSchemaWithTeamId> } }>;
 
 const _downloadPackageMinimal = server.get(
     "/documents/:documentId/download-package",
@@ -58,11 +62,7 @@ const _downloadPackage = server.get(
     "/:teamId/documents/:documentId/downloadPackage",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", downloadPackageParamSchema.extend({
-        teamId: z.string().openapi({
-            description: "The ID of the team",
-        })
-    })),
+    zodValidator("param", downloadPackageParamSchemaWithTeamId),
     _downloadPackageImplementation,
 );
 

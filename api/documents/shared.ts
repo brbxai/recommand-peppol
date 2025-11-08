@@ -5,6 +5,7 @@ import { selfBillingCreditNoteSchema } from "@peppol/utils/parsing/self-billing-
 import { selfBillingInvoiceSchema } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import { creditNoteSchema } from "@peppol/utils/parsing/creditnote/schemas";
 import { documentTypeSchema } from "@peppol/utils/parsing/send-document";
+import { labelResponse } from "@peppol/api/labels/shared";
 
 export const transmittedDocumentResponse = z.object({
     id: z.string(),
@@ -25,4 +26,5 @@ export const transmittedDocumentResponse = z.object({
     sentOverPeppol: z.boolean(),
     sentOverEmail: z.boolean(),
     emailRecipients: z.array(z.string()),
+    labels: z.array(labelResponse.omit({ createdAt: true, updatedAt: true })),
 });

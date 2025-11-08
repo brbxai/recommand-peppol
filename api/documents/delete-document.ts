@@ -28,19 +28,23 @@ const deleteTransmittedDocumentRouteDescription = describeRoute({
     },
 });
 
-const deleteTransmittedDocumentQuerySchema = z.object({
+const deleteTransmittedDocumentParamSchema = z.object({
     documentId: z.string().openapi({
         description: "The ID of the document to delete",
     }),
 });
 
-type DeleteTransmittedDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteTransmittedDocumentQuerySchema> }, out: { param: z.infer<typeof deleteTransmittedDocumentQuerySchema> } }>;
+const deleteTransmittedDocumentParamSchemaWithTeamId = deleteTransmittedDocumentParamSchema.extend({
+    teamId: z.string(),
+});
+
+type DeleteTransmittedDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteTransmittedDocumentParamSchemaWithTeamId> }, out: { param: z.infer<typeof deleteTransmittedDocumentParamSchemaWithTeamId> } }>;
 
 const _deleteTransmittedDocumentMinimal = server.delete(
     "/documents/:documentId",
     requireTeamAccess(),
     deleteTransmittedDocumentRouteDescription,
-    zodValidator("param", deleteTransmittedDocumentQuerySchema),
+    zodValidator("param", deleteTransmittedDocumentParamSchema),
     _deleteTransmittedDocumentImplementation,
 );
 
@@ -48,11 +52,7 @@ const _deleteTransmittedDocument = server.delete(
     "/:teamId/documents/:documentId",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", deleteTransmittedDocumentQuerySchema.extend({
-        teamId: z.string().openapi({
-            description: "The ID of the team",
-        })
-    })),
+    zodValidator("param", deleteTransmittedDocumentParamSchemaWithTeamId),
     _deleteTransmittedDocumentImplementation,
 );
 

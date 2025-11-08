@@ -6,8 +6,10 @@ import deleteDocumentServer, { type DeleteTransmittedDocument } from "./delete-d
 import getInboxServer, { type GetInbox } from "./get-inbox";
 import markAsReadServer, { type MarkAsRead } from "./mark-as-read";
 import downloadPackageServer, { type DownloadPackage } from "./download-package";
+import assignLabelServer, { type AssignLabel } from "./assign-label";
+import unassignLabelServer, { type UnassignLabel } from "./unassign-label";
 
-export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | GetInbox | MarkAsRead | DownloadPackage;
+export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | GetInbox | MarkAsRead | DownloadPackage | AssignLabel | UnassignLabel;
 
 const server = new Server();
 server.route("/", listDocumentsServer);
@@ -16,4 +18,6 @@ server.route("/", deleteDocumentServer);
 server.route("/", getInboxServer);
 server.route("/", markAsReadServer);
 server.route("/", downloadPackageServer);
+server.route("/", assignLabelServer);
+server.route("/", unassignLabelServer);
 export default server;

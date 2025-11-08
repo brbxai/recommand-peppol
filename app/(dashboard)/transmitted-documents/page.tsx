@@ -13,13 +13,14 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import type { TransmittedDocumentWithoutBody } from "@peppol/data/transmitted-documents";
-import type { TransmittedDocuments } from "@peppol/api/transmitted-documents";
+import type { TransmittedDocuments } from "@peppol/api/documents";
 import type { Companies } from "@peppol/api/companies";
+import type { Labels } from "@peppol/api/labels";
 import { DataTablePagination } from "@core/components/data-table/pagination";
 import {
   DataTableToolbar,
@@ -27,9 +28,17 @@ import {
 } from "@core/components/data-table/toolbar";
 import { PartyInfoTooltip } from "@peppol/components/party-info-tooltip";
 import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
+import { Badge } from "@core/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@core/components/ui/popover";
+import type { Label } from "@peppol/types/label";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
+const labelsClient = rc<Labels>("peppol");
 
 export default function Page() {
   const [documents, setDocuments] = useState<TransmittedDocumentWithoutBody[]>(
@@ -43,6 +52,7 @@ export default function Page() {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [labels, setLabels] = useState<Label[]>([]);
   const activeTeam = useActiveTeam();
 
   const fetchCompanies = useCallback(async () => {
@@ -94,12 +104,12 @@ export default function Page() {
       const response = await client[":teamId"]["documents"].$get({
         param: { teamId: activeTeam.id },
         query: {
-          page: page.toString(),
-          limit: limit.toString(),
+          page: page,
+          limit: limit,
           companyId: filteredCompanyIds,
-          direction: (filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0], // When no or all options are selected, don't filter on direction
+          direction: ((filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0]) as "incoming" | "outgoing", // When no or all options are selected, don't filter on direction
           search: globalFilter || undefined, // Add the global search term to the query
-          type: (filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0], // When no or all options are selected, don't filter on type
+          type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as "unknown" | "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote", // When no or all options are selected, don't filter on type
         },
       });
       const json = await response.json();
@@ -115,6 +125,7 @@ export default function Page() {
             readAt: doc.readAt ? new Date(doc.readAt) : null,
             createdAt: new Date(doc.createdAt),
             updatedAt: new Date(doc.updatedAt),
+            labels: doc.labels || [],
           }))
         );
         setTotal(json.pagination.total);
@@ -128,9 +139,38 @@ export default function Page() {
     }
   }, [activeTeam?.id, page, limit, columnFilters, globalFilter]);
 
+  const fetchLabels = useCallback(async () => {
+    if (!activeTeam?.id) {
+      setLabels([]);
+      return;
+    }
+
+    try {
+      const response = await labelsClient[":teamId"]["labels"].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const json = await response.json();
+
+      if (!json.success || !Array.isArray(json.labels)) {
+        toast.error("Failed to load labels");
+        setLabels([]);
+      } else {
+        setLabels(json.labels);
+      }
+    } catch (error) {
+      console.error("Error fetching labels:", error);
+      toast.error("Failed to load labels");
+      setLabels([]);
+    }
+  }, [activeTeam?.id]);
+
   useEffect(() => {
     fetchCompanies();
   }, [fetchCompanies]);
+
+  useEffect(() => {
+    fetchLabels();
+  }, [fetchLabels]);
 
   useEffect(() => {
     fetchDocuments();
@@ -172,26 +212,125 @@ export default function Page() {
 
       // Create a blob from the response
       const blob = await response.blob();
-      
+
       // Create a URL for the blob
       const url = window.URL.createObjectURL(blob);
-      
+
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = url;
       link.download = `${id}.zip`;
-      
+
       // Append to body, click, and remove
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Clean up the URL
       window.URL.revokeObjectURL(url);
-      
+
       toast.success("Document downloaded successfully");
     } catch (error) {
       toast.error("Failed to download document");
+    }
+  };
+
+  const handleAssignLabel = async (documentId: string, labelId: string) => {
+    if (!activeTeam?.id) return;
+
+    const document = documents.find((d) => d.id === documentId);
+    if (!document) return;
+
+    const label = labels.find((l) => l.id === labelId);
+    if (!label) return;
+
+    const isAlreadyAssigned = document.labels?.some((l) => l.id === labelId);
+    if (isAlreadyAssigned) return;
+
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === documentId
+          ? {
+            ...doc,
+            labels: [
+              ...(doc.labels || []), label
+            ]
+          }
+          : doc
+      )
+    );
+
+    try {
+      const response = await client[":teamId"]["documents"][":documentId"]["labels"][":labelId"].$post({
+        param: {
+          teamId: activeTeam.id,
+          documentId,
+          labelId,
+        },
+      });
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+    } catch (error) {
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === documentId
+            ? { ...doc, labels: doc.labels?.filter((l) => l.id !== labelId) || [] }
+            : doc
+        )
+      );
+      toast.error("Failed to assign label");
+    }
+  };
+
+  const handleUnassignLabel = async (documentId: string, labelId: string) => {
+    if (!activeTeam?.id) return;
+
+    const document = documents.find((d) => d.id === documentId);
+    if (!document) return;
+
+    const isAssigned = document.labels?.some((l) => l.id === labelId);
+    if (!isAssigned) return;
+
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === documentId
+          ? { ...doc, labels: doc.labels?.filter((l) => l.id !== labelId) || [] }
+          : doc
+      )
+    );
+
+    try {
+      const response = await client[":teamId"]["documents"][":documentId"]["labels"][":labelId"].$delete({
+        param: {
+          teamId: activeTeam.id,
+          documentId,
+          labelId,
+        },
+      });
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+    } catch (error) {
+      const label = labels.find((l) => l.id === labelId);
+      if (label) {
+        setDocuments((prev) =>
+          prev.map((doc) =>
+            doc.id === documentId
+              ? {
+                ...doc,
+                labels: [
+                  ...(doc.labels || []),
+                  label
+                ]
+              }
+              : doc
+          )
+        );
+      }
+      toast.error("Failed to unassign label");
     }
   };
 
@@ -244,16 +383,16 @@ export default function Page() {
         const document = row.original;
         const senderId = row.getValue("senderId") as string;
         const documentType = document.type;
-        
+
         // Check if document type is recognized and has parsed data
         const isRecognizedType = ["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote"].includes(documentType);
-        
+
         if (isRecognizedType && document.parsed) {
           // For billing documents, sender is the seller, for self-billing documents, sender is the buyer
           const senderInfo = ["invoice", "creditNote"].includes(documentType)
-            ? (document.parsed as any)?.seller 
+            ? (document.parsed as any)?.seller
             : (document.parsed as any)?.buyer;
-          
+
           if (senderInfo?.name) {
             return (
               <div className="flex items-center gap-2">
@@ -263,7 +402,7 @@ export default function Page() {
             );
           }
         }
-        
+
         // Fallback to showing senderId for unrecognized types or missing parsed data
         return <span>{senderId}</span>;
       },
@@ -279,23 +418,23 @@ export default function Page() {
         const sentOverPeppol = document.sentOverPeppol;
         const sentOverEmail = document.sentOverEmail;
         const emailRecipients = document.emailRecipients;
-        
+
         // Check if document type is recognized and has parsed data
         const isRecognizedType = ["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote"].includes(documentType);
-        
+
         if (isRecognizedType && document.parsed) {
           // For billing documents, receiver is the buyer, for self-billing documents, receiver is the seller
           const receiverInfo = ["invoice", "creditNote"].includes(documentType)
-            ? (document.parsed as any)?.buyer 
+            ? (document.parsed as any)?.buyer
             : (document.parsed as any)?.seller;
-          
+
           if (receiverInfo?.name) {
             return (
               <div className="flex items-center gap-2">
                 <span>{receiverInfo.name}</span>
                 <div className="flex items-center gap-1">
                   <PartyInfoTooltip partyInfo={receiverInfo} peppolAddress={receiverId} />
-                  <TransmissionStatusIcons 
+                  <TransmissionStatusIcons
                     sentOverPeppol={sentOverPeppol}
                     sentOverEmail={sentOverEmail}
                     emailRecipients={emailRecipients || undefined}
@@ -305,12 +444,12 @@ export default function Page() {
             );
           }
         }
-        
+
         // Fallback to showing receiverId for unrecognized types or missing parsed data
         return (
           <div className="flex items-center gap-2">
             <span>{receiverId}</span>
-            <TransmissionStatusIcons 
+            <TransmissionStatusIcons
               sentOverPeppol={sentOverPeppol}
               sentOverEmail={sentOverEmail}
               emailRecipients={emailRecipients || undefined}
@@ -361,6 +500,79 @@ export default function Page() {
           format(new Date(date), "PPpp")
         ) : (
           <p className="text-muted-foreground">-</p>
+        );
+      },
+      enableGlobalFilter: true,
+    },
+    {
+      accessorKey: "labels",
+      header: ({ column }) => <ColumnHeader column={column} title="Labels" />,
+      cell: ({ row }) => {
+        const documentLabels = row.original.labels || [];
+        const documentId = row.original.id;
+
+        return (
+          <div className="flex items-center gap-2 flex-wrap">
+            {documentLabels.map((label) => (
+              <Badge
+                key={label.id}
+                variant="outline"
+                className="flex items-center justify-center gap-1 border-none"
+                style={{ color: label.colorHex }}
+              >
+                <div
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: label.colorHex }}
+                />
+                <span className="leading-none pt-0.5">{label.name}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUnassignLabel(documentId, label.id);
+                  }}
+                  className="ml-1 hover:bg-muted rounded p-0.5 flex items-center justify-center shrink-0"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" title="Add label">
+                  <Tag className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="start">
+                <div className="p-2">
+                  <div className="text-sm font-medium mb-2">Assign Labels</div>
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {labels
+                      .filter((label) => !documentLabels.some((l) => l.id === label.id))
+                      .map((label) => (
+                        <button
+                          key={label.id}
+                          onClick={() => {
+                            handleAssignLabel(documentId, label.id);
+                          }}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded-md text-left"
+                        >
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: label.colorHex }}
+                          />
+                          <span className="flex-1">{label.name}</span>
+                        </button>
+                      ))}
+                    {labels.filter((label) => !documentLabels.some((l) => l.id === label.id)).length === 0 && (
+                      <div className="text-sm text-muted-foreground px-2 py-1.5">
+                        No available labels
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         );
       },
       enableGlobalFilter: true,

@@ -77,7 +77,7 @@ export async function receiveDocument(options: {
           id: transmittedDocument.id,
           teamId: company.teamId,
           companyId: company.id,
-        });
+        }, "document.received");
       } catch (error) {
         console.error("Failed to call webhook:", error);
       }

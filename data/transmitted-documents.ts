@@ -1,12 +1,52 @@
-import { supportedDocumentTypeEnum, transmittedDocuments } from "@peppol/db/schema";
+import { supportedDocumentTypeEnum, transmittedDocuments, transmittedDocumentLabels, labels } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq, and, sql, desc, isNull, inArray, or, ilike, SQL } from "drizzle-orm";
+import type { Label } from "./labels";
 
 export type TransmittedDocument = typeof transmittedDocuments.$inferSelect;
 export type InsertTransmittedDocument = typeof transmittedDocuments.$inferInsert;
 
 // Create a type that excludes the body field but includes parsed data
-export type TransmittedDocumentWithoutBody = Omit<TransmittedDocument, "xml">;
+export type TransmittedDocumentWithoutBody = Omit<TransmittedDocument, "xml"> & {
+  labels?: Omit<Label, "createdAt" | "updatedAt">[];
+};
+
+async function getLabelsForDocuments(documentIds: string[]): Promise<Map<string, Omit<Label, "createdAt" | "updatedAt">[]>> {
+  const documentLabelsMap = new Map<string, Omit<Label, "createdAt" | "updatedAt">[]>();
+
+  if (documentIds.length === 0) {
+    return documentLabelsMap;
+  }
+
+  const documentLabels = await db
+    .select({
+      documentId: transmittedDocumentLabels.transmittedDocumentId,
+      id: labels.id,
+      teamId: labels.teamId,
+      externalId: labels.externalId,
+      name: labels.name,
+      colorHex: labels.colorHex,
+    })
+    .from(transmittedDocumentLabels)
+    .innerJoin(labels, eq(transmittedDocumentLabels.labelId, labels.id))
+    .where(inArray(transmittedDocumentLabels.transmittedDocumentId, documentIds));
+
+  for (const label of documentLabels) {
+    const existing = documentLabelsMap.get(label.documentId) || [];
+    documentLabelsMap.set(label.documentId, [
+      ...existing,
+      {
+        id: label.id,
+        teamId: label.teamId,
+        externalId: label.externalId,
+        name: label.name,
+        colorHex: label.colorHex,
+      },
+    ]);
+  }
+
+  return documentLabelsMap;
+}
 
 export async function getTransmittedDocuments(
   teamId: string,
@@ -80,7 +120,15 @@ export async function getTransmittedDocuments(
     .limit(limit)
     .offset(offset);
 
-  return { documents, total };
+  const documentIds = documents.map((doc) => doc.id);
+  const documentLabelsMap = await getLabelsForDocuments(documentIds);
+
+  const documentsWithLabels = documents.map((doc) => ({
+    ...doc,
+    labels: documentLabelsMap.get(doc.id) || [],
+  }));
+
+  return { documents: documentsWithLabels, total };
 }
 
 export async function deleteTransmittedDocument(
@@ -95,7 +143,7 @@ export async function deleteTransmittedDocument(
 export async function getInbox(
   teamId: string,
   companyId?: string
-): Promise<Omit<TransmittedDocument, "xml" | "parsed">[]> {
+): Promise<(Omit<TransmittedDocument, "xml" | "parsed"> & { labels?: Omit<Label, "createdAt" | "updatedAt">[] })[]> {
   // Build the where clause
   const whereClause = [
     eq(transmittedDocuments.teamId, teamId),
@@ -130,7 +178,15 @@ export async function getInbox(
     .where(and(...whereClause))
     .orderBy(desc(transmittedDocuments.createdAt));
 
-  return documents;
+  const documentIds = documents.map((doc) => doc.id);
+  const documentLabelsMap = await getLabelsForDocuments(documentIds);
+
+  const documentsWithLabels = documents.map((doc) => ({
+    ...doc,
+    labels: documentLabelsMap.get(doc.id) || [],
+  }));
+
+  return documentsWithLabels;
 }
 
 export async function markAsRead(teamId: string, documentId: string, read: boolean = true): Promise<void> {
@@ -167,7 +223,7 @@ export async function markAsRead(teamId: string, documentId: string, read: boole
 export async function getTransmittedDocument(
   teamId: string,
   documentId: string
-): Promise<TransmittedDocument | null> {
+): Promise<(TransmittedDocument & { labels?: Omit<Label, "createdAt" | "updatedAt">[] }) | null> {
   const document = await db
     .select()
     .from(transmittedDocuments)
@@ -179,5 +235,14 @@ export async function getTransmittedDocument(
     )
     .limit(1);
 
-  return document[0] || null;
+  if (!document[0]) {
+    return null;
+  }
+
+  const documentLabelsMap = await getLabelsForDocuments([documentId]);
+
+  return {
+    ...document[0],
+    labels: documentLabelsMap.get(documentId) || [],
+  };
 }

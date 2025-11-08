@@ -35,7 +35,11 @@ const getTransmittedDocumentParamSchema = z.object({
     }),
 });
 
-type GetTransmittedDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, {in: { param: z.input<typeof getTransmittedDocumentParamSchema> }, out: { param: z.infer<typeof getTransmittedDocumentParamSchema> } }>;
+const getTransmittedDocumentParamSchemaWithTeamId = getTransmittedDocumentParamSchema.extend({
+    teamId: z.string(),
+});
+
+type GetTransmittedDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, {in: { param: z.input<typeof getTransmittedDocumentParamSchemaWithTeamId> }, out: { param: z.infer<typeof getTransmittedDocumentParamSchemaWithTeamId> } }>;
 
 const _getTransmittedDocumentMinimal = server.get(
     "/documents/:documentId",
@@ -49,11 +53,7 @@ const _getTransmittedDocument = server.get(
     "/:teamId/documents/:documentId",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", getTransmittedDocumentParamSchema.extend({
-        teamId: z.string().openapi({
-            description: "The ID of the team",
-        })
-    })),
+    zodValidator("param", getTransmittedDocumentParamSchemaWithTeamId),
     _getTransmittedDocumentImplementation,
 );
 
