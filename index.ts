@@ -67,9 +67,14 @@ For additional support or questions, don't hesitate to contact our support team.
             scheme: "basic",
             description: "Basic API key authentication. Create a new API key and secret in the Recommand dashboard.",
           },
+          jwt: {
+            type: "http",
+            scheme: "bearer",
+            description: "JWT authentication. Create a new JWT token in the Recommand dashboard.",
+          },
         },
       },
-      security: [{ httpBasic: [] }],
+      security: [{ httpBasic: [] }, { jwt: [] }],
       tags: [
         {
           name: "Authentication",
