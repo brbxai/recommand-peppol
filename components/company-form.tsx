@@ -92,7 +92,6 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                         value={company.enterpriseNumber || ""}
                         onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value })}
                     />
-                    <p className="text-xs text-pretty text-muted-foreground">Either the VAT number or the enterprise number is required. If no enterprise number is provided, it will be inferred from the VAT number.</p>
                 </div>
             </div>
             <div className="space-y-1">

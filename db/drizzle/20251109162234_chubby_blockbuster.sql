@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_companies" ALTER COLUMN "enterprise_number" DROP NOT NULL;

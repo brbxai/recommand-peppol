@@ -1,6 +1,6 @@
 import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, or, isNull, ne } from "drizzle-orm";
+import { eq, and, or, isNull } from "drizzle-orm";
 import { unregisterCompanyRegistrations, upsertCompanyRegistrations } from "./phoss-smp";
 import {
   cleanEnterpriseNumber,
@@ -87,21 +87,6 @@ export async function getCompanyByPeppolId(
 export async function createCompany(company: InsertCompany): Promise<Company> {
   const isPlaygroundTeam = await isPlayground(company.teamId);
 
-  // Check if there exists a company with the same enterprise number or vat number
-  if (
-    !await canUpsertCompany(
-      company.enterpriseNumber,
-      company.vatNumber,
-      undefined,
-      company.teamId,
-      isPlaygroundTeam
-    )
-  ) {
-    throw new UserFacingError(
-      "Company with this enterprise number or vat number already exists"
-    );
-  }
-
   const createdCompany = await db
     .insert(companies)
     .values(company)
@@ -144,20 +129,29 @@ export async function setupCompanyDefaults(company: Company, isPlayground: boole
   }, isPlayground || !company.isSmpRecipient);
 
   const countryInfo = COUNTRIES.find((country) => country.code === company.country);
-  if (countryInfo?.defaultEnterpriseNumberScheme) {
-    await createCompanyIdentifier({
-      companyId: company.id,
-      scheme: countryInfo.defaultEnterpriseNumberScheme,
-      identifier: cleanEnterpriseNumber(company.enterpriseNumber)!,
-    }, isPlayground || !company.isSmpRecipient);
+  const cleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
+  if (countryInfo?.defaultEnterpriseNumberScheme && cleanedEnterpriseNumber) {
+    try {
+      await createCompanyIdentifier({
+        companyId: company.id,
+        scheme: countryInfo.defaultEnterpriseNumberScheme,
+        identifier: cleanedEnterpriseNumber,
+      }, isPlayground || !company.isSmpRecipient);
+    } catch (error) {
+      console.error(`Failed to create enterprise number identifier for company ${company.id}: ${error}`);
+    }
   }
   const cleanedVatNumber = cleanVatNumber(company.vatNumber);
   if (countryInfo?.defaultVatScheme && cleanedVatNumber) {
-    await createCompanyIdentifier({
-      companyId: company.id,
-      scheme: countryInfo.defaultVatScheme,
-      identifier: cleanedVatNumber,
-    }, isPlayground || !company.isSmpRecipient);
+    try {
+      await createCompanyIdentifier({
+        companyId: company.id,
+        scheme: countryInfo.defaultVatScheme,
+        identifier: cleanedVatNumber,
+      }, isPlayground || !company.isSmpRecipient);
+    } catch (error) {
+      console.error(`Failed to create vat number identifier for company ${company.id}: ${error}`);
+    }
   }
 }
 
@@ -175,25 +169,6 @@ export async function updateCompany(
   const updatedFields = Object.fromEntries(
     Object.entries(company).filter(([_, value]) => value !== undefined)
   );
-  const mergedCompany = {
-    ...oldCompany,
-    ...updatedFields,
-  } as InsertCompany & { id: string };
-
-  // Check if there exists a company with the same enterprise number or vat number
-  if (
-    !await canUpsertCompany(
-      mergedCompany.enterpriseNumber,
-      mergedCompany.vatNumber,
-      company.id,
-      company.teamId,
-      isPlaygroundTeam
-    )
-  ) {
-    throw new UserFacingError(
-      "Company with this enterprise number or vat number already exists"
-    );
-  }
 
   const updatedCompany = await db
     .update(companies)
@@ -248,50 +223,4 @@ export async function deleteCompany(
   await db
     .delete(companies)
     .where(and(eq(companies.teamId, teamId), eq(companies.id, companyId)));
-}
-
-/**
- * Check if a company can be upserted.
- * Whether a company can be upserted depends on whether we're in a playground or production context:
- * - In a playground context, we can upsert a company with an enterprise number or vat number as long as it doesn't already exist on the same playground team.
- * - In a production context, we can upsert a company with an enterprise number or vat number as long as it is not already registered as a production company.
- * @param enterpriseNumber The enterprise number of the company
- * @param vatNumber The vat number of the company
- * @param currentCompanyId The ID of the current company, so we can exclude it from the check in update operations
- * @param teamId The ID of the team
- * @param isPlaygroundTeam Whether the team is a playground team
- * @returns Whether the company can be upserted
- */
-async function canUpsertCompany(
-  enterpriseNumber: string,
-  vatNumber: string | undefined | null,
-  currentCompanyId: string | undefined,
-  teamId: string,
-  isPlaygroundTeam: boolean
-): Promise<boolean> {
-  return await db
-    .select()
-    .from(companies)
-    .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
-    .where(
-      and(
-        currentCompanyId ? ne(companies.id, currentCompanyId) : undefined, // Exclude the current company from the check
-        or(
-          eq(companies.teamId, teamId), // Include all companies on the same team
-          isPlaygroundTeam
-            ? undefined
-            : or(
-              // Include all production companies when not on a playground team
-              isNull(teamExtensions.isPlayground),
-              eq(teamExtensions.isPlayground, false)
-            )
-        ),
-        or(
-          // Check for the enterprise number or vat number
-          eq(companies.enterpriseNumber, enterpriseNumber),
-          vatNumber ? eq(companies.vatNumber, vatNumber) : undefined
-        )
-      )
-    )
-    .then((rows) => rows.length === 0);
 }

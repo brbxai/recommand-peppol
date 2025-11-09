@@ -61,7 +61,7 @@ export async function createCompanyDocumentType(
 
   if (existingDocumentType) {
     throw new UserFacingError(
-      `Company document type with docTypeId '${companyDocumentType.docTypeId}' and processId '${companyDocumentType.processId}' already exists for this company`
+      `Company document type with docTypeId '${companyDocumentType.docTypeId}' and processId '${companyDocumentType.processId}' already exists`
     );
   }
 
@@ -106,7 +106,7 @@ export async function updateCompanyDocumentType(
 
   if (existingDocumentType && existingDocumentType.id !== companyDocumentType.id) {
     throw new UserFacingError(
-      `Company document type with docTypeId '${companyDocumentType.docTypeId}' and processId '${companyDocumentType.processId}' already exists for this company`
+      `Company document type with docTypeId '${companyDocumentType.docTypeId}' and processId '${companyDocumentType.processId}' already exists`
     );
   }
 

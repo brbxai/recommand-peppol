@@ -88,7 +88,7 @@ export async function createCompanyIdentifier(
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, undefined, companyIdentifier.companyId);
   if(!canUpsert){
     throw new UserFacingError(
-      `Company identifier with scheme '${companyIdentifier.scheme}' and value '${companyIdentifier.identifier}' already exists for this company`
+      `Company identifier with scheme '${companyIdentifier.scheme}' and value '${companyIdentifier.identifier}' already exists`
     );
   }
 
@@ -126,7 +126,7 @@ export async function updateCompanyIdentifier(
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, companyIdentifier.id, companyIdentifier.companyId);
   if (!canUpsert) {
     throw new UserFacingError(
-      `Company identifier with scheme '${companyIdentifier.scheme}' and value '${companyIdentifier.identifier}' already exists for this company`
+      `Company identifier with scheme '${companyIdentifier.scheme}' and value '${companyIdentifier.identifier}' already exists`
     );
   }
 

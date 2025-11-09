@@ -63,17 +63,11 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
     if (!enterpriseNumber && c.req.valid("json").vatNumber) {
         enterpriseNumber = cleanEnterpriseNumber(c.req.valid("json").vatNumber!);
     }
-    if (!enterpriseNumber) {
-        return c.json(
-            actionFailure("Enterprise number or VAT number is required"),
-            400
-        );
-    }
+
     try {
         const company = await createCompany({
             ...c.req.valid("json"),
             teamId: c.var.team.id,
-            enterpriseNumber: enterpriseNumber!,
         });
         return c.json(actionSuccess({ company }));
     } catch (error) {
