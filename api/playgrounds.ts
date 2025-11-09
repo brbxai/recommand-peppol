@@ -40,7 +40,7 @@ const getPlaygroundRouteDescription = describeRoute({
 type GetPlaygroundContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string>;
 
 const _getPlaygroundMinimal = server.get(
-  "/playground",
+  "/playgrounds/current",
   requireTeamAccess(),
   getPlaygroundRouteDescription,
  _getPlaygroundImplementation,
@@ -87,18 +87,10 @@ const createPlaygroundJsonBodySchema = z.object({
 
 type CreatePlaygroundContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof createPlaygroundJsonBodySchema> }, out: { json: z.infer<typeof createPlaygroundJsonBodySchema> } }>;
 
-const _createPlaygroundMinimal = server.post(
-  "/playground",
-  requireAuth(),
-  createPlaygroundRouteDescription,
-  zodValidator("json", createPlaygroundJsonBodySchema),
-  _createPlaygroundImplementation,
-);
-
 const _createPlayground = server.post(
   "/playgrounds",
   requireAuth(),
-  describeRoute({hide: true}),
+  createPlaygroundRouteDescription,
   zodValidator("json", createPlaygroundJsonBodySchema),
   _createPlaygroundImplementation,
 );
@@ -118,7 +110,7 @@ async function _createPlaygroundImplementation(c: CreatePlaygroundContext) {
   }
 }
 
-export type Playgrounds = typeof _getPlayground | typeof _getPlaygroundMinimal | typeof _createPlayground | typeof _createPlaygroundMinimal;
+export type Playgrounds = typeof _getPlayground | typeof _getPlaygroundMinimal | typeof _createPlayground;
 
 export default server;
 
