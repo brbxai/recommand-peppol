@@ -8,7 +8,7 @@ import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
 import { UserFacingError } from "@peppol/utils/util";
-import { supplierResponse, supplierIdParamSchema, companyIdQuerySchema } from "./shared";
+import { supplierResponse, supplierIdParamSchema } from "./shared";
 
 const server = new Server();
 
@@ -28,14 +28,13 @@ const getSupplierParamSchemaWithTeamId = supplierIdParamSchema.extend({
   teamId: z.string(),
 });
 
-type GetSupplierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof getSupplierParamSchemaWithTeamId>, query: z.input<typeof companyIdQuerySchema> }, out: { param: z.infer<typeof getSupplierParamSchemaWithTeamId>, query: z.infer<typeof companyIdQuerySchema> } }>;
+type GetSupplierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof getSupplierParamSchemaWithTeamId> }, out: { param: z.infer<typeof getSupplierParamSchemaWithTeamId> } }>;
 
 const _getSupplierMinimal = server.get(
     "/suppliers/:supplierId",
     requireTeamAccess(),
     getSupplierRouteDescription,
     zodValidator("param", supplierIdParamSchema),
-    zodValidator("query", companyIdQuerySchema),
     _getSupplierImplementation,
 );
 
@@ -44,17 +43,15 @@ const _getSupplier = server.get(
     requireTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", getSupplierParamSchemaWithTeamId),
-    zodValidator("query", companyIdQuerySchema),
     _getSupplierImplementation,
 );
 
 async function _getSupplierImplementation(c: GetSupplierContext) {
     try {
         const { supplierId } = c.req.valid("param");
-        const { companyId } = c.req.valid("query");
         const teamId = c.var.team.id;
 
-        const supplier = await getSupplierByIdOrExternalId(teamId, supplierId, companyId);
+        const supplier = await getSupplierByIdOrExternalId(teamId, supplierId);
 
         if (!supplier) {
             return c.json(actionFailure(new UserFacingError("Supplier not found")), 404);

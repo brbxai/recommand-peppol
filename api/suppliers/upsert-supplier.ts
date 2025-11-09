@@ -33,9 +33,6 @@ const upsertSupplierJsonBodySchema = z.object({
   name: z.string().openapi({
     description: "The name of the supplier",
   }),
-  companyId: z.string().nullable().optional().openapi({
-    description: "The company ID associated with the supplier",
-  }),
   externalId: z.string().nullable().optional().openapi({
     description: "The external ID of the supplier. If provided without id, finds by externalId and updates or creates if not found.",
   }),

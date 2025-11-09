@@ -10,7 +10,7 @@ import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
 import { UserFacingError } from "@peppol/utils/util";
-import { supplierIdParamSchema, companyIdQuerySchema } from "./shared";
+import { supplierIdParamSchema } from "./shared";
 
 const server = new Server();
 
@@ -30,14 +30,13 @@ const deleteSupplierParamSchemaWithTeamId = supplierIdParamSchema.extend({
   teamId: z.string(),
 });
 
-type DeleteSupplierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof deleteSupplierParamSchemaWithTeamId>, query: z.input<typeof companyIdQuerySchema> }, out: { param: z.infer<typeof deleteSupplierParamSchemaWithTeamId>, query: z.infer<typeof companyIdQuerySchema> } }>;
+type DeleteSupplierContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof deleteSupplierParamSchemaWithTeamId> }, out: { param: z.infer<typeof deleteSupplierParamSchemaWithTeamId> } }>;
 
 const _deleteSupplierMinimal = server.delete(
   "/suppliers/:supplierId",
   requireTeamAccess(),
   deleteSupplierRouteDescription,
   zodValidator("param", supplierIdParamSchema),
-  zodValidator("query", companyIdQuerySchema),
   _deleteSupplierImplementation,
 );
 
@@ -46,15 +45,13 @@ const _deleteSupplier = server.delete(
   requireTeamAccess(),
   describeRoute({hide: true}),
   zodValidator("param", deleteSupplierParamSchemaWithTeamId),
-  zodValidator("query", companyIdQuerySchema),
   _deleteSupplierImplementation,
 );
 
 async function _deleteSupplierImplementation(c: DeleteSupplierContext) {
   try {
     const { supplierId } = c.req.valid("param");
-    const { companyId } = c.req.valid("query");
-    await deleteSupplier(c.var.team.id, supplierId, companyId);
+    await deleteSupplier(c.var.team.id, supplierId);
     return c.json(actionSuccess());
   } catch (error) {
     console.error(error);

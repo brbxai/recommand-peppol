@@ -8,7 +8,7 @@ import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
 import { UserFacingError } from "@peppol/utils/util";
-import { supplierIdParamSchema, companyIdQuerySchema } from "./shared";
+import { supplierIdParamSchema } from "./shared";
 
 const server = new Server();
 
@@ -34,14 +34,13 @@ const unassignLabelParamSchemaWithTeamId = unassignLabelParamSchema.extend({
     teamId: z.string(),
 });
 
-type UnassignLabelContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof unassignLabelParamSchemaWithTeamId>, query: z.input<typeof companyIdQuerySchema> }, out: { param: z.infer<typeof unassignLabelParamSchemaWithTeamId>, query: z.infer<typeof companyIdQuerySchema> } }>;
+type UnassignLabelContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof unassignLabelParamSchemaWithTeamId> }, out: { param: z.infer<typeof unassignLabelParamSchemaWithTeamId> } }>;
 
 const _unassignLabelMinimal = server.delete(
     "/suppliers/:supplierId/labels/:labelId",
     requireTeamAccess(),
     unassignLabelRouteDescription,
     zodValidator("param", unassignLabelParamSchema),
-    zodValidator("query", companyIdQuerySchema),
     _unassignLabelImplementation,
 );
 
@@ -50,15 +49,13 @@ const _unassignLabel = server.delete(
     requireTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", unassignLabelParamSchemaWithTeamId),
-    zodValidator("query", companyIdQuerySchema),
     _unassignLabelImplementation,
 );
 
 async function _unassignLabelImplementation(c: UnassignLabelContext) {
     try {
         const { supplierId, labelId } = c.req.valid("param");
-        const { companyId } = c.req.valid("query");
-        await unassignLabelFromSupplier(c.var.team.id, supplierId, labelId, companyId);
+        await unassignLabelFromSupplier(c.var.team.id, supplierId, labelId);
         return c.json(actionSuccess({}));
     } catch (error) {
         console.error(error);

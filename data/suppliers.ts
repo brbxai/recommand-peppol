@@ -1,6 +1,6 @@
 import { supportingDataSuppliers, supportingDataSupplierLabels, labels } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, sql, desc, inArray, or, ilike, SQL, isNull } from "drizzle-orm";
+import { eq, and, sql, desc, inArray, or, ilike, SQL } from "drizzle-orm";
 import type { Label } from "./labels";
 import { UserFacingError } from "@peppol/utils/util";
 
@@ -52,17 +52,13 @@ export async function getSuppliers(
   options: {
     page?: number;
     limit?: number;
-    companyId?: string[];
     search?: string;
   } = {}
 ): Promise<{ suppliers: SupplierWithLabels[]; total: number }> {
-  const { page = 1, limit = 10, companyId, search } = options;
+  const { page = 1, limit = 10, search } = options;
   const offset = (page - 1) * limit;
 
   const whereClause = [eq(supportingDataSuppliers.teamId, teamId)];
-  if (companyId) {
-    whereClause.push(inArray(supportingDataSuppliers.companyId, companyId));
-  }
   if (search) {
     whereClause.push(
       or(
@@ -84,7 +80,6 @@ export async function getSuppliers(
     .select({
       id: supportingDataSuppliers.id,
       teamId: supportingDataSuppliers.teamId,
-      companyId: supportingDataSuppliers.companyId,
       externalId: supportingDataSuppliers.externalId,
       name: supportingDataSuppliers.name,
       vatNumber: supportingDataSuppliers.vatNumber,
@@ -114,21 +109,14 @@ export async function getSupplier(
   options: {
     id?: string;
     externalId?: string | null;
-    companyId?: string | null;
   }
 ): Promise<Supplier | null> {
-  const { id, externalId, companyId } = options;
+  const { id, externalId } = options;
   if(!id && !externalId) {
     return null;
   }
 
   const whereClause = [eq(supportingDataSuppliers.teamId, teamId)];
-
-  if(companyId === null) {
-    whereClause.push(isNull(supportingDataSuppliers.companyId));
-  }else if (companyId) {
-    whereClause.push(eq(supportingDataSuppliers.companyId, companyId));
-  }
 
   const whereIdOrExternalId: SQL[] = [];
   if (id) {
@@ -152,10 +140,9 @@ export async function getSupplier(
 
 export async function getSupplierByIdOrExternalId(
   teamId: string,
-  supplierId: string,
-  companyId?: string | null
+  supplierId: string
 ): Promise<Supplier | null> {
-  return await getSupplier(teamId, { id: supplierId, externalId: supplierId, companyId });
+  return await getSupplier(teamId, { id: supplierId, externalId: supplierId });
 }
 
 export async function upsertSupplier(
@@ -164,12 +151,11 @@ export async function upsertSupplier(
     name: string;
     id?: string;
     externalId?: string | null;
-    companyId?: string | null;
     vatNumber?: string | null;
     peppolAddresses?: string[];
   }
 ): Promise<SupplierWithLabels> {
-  const { id, externalId, teamId, companyId, name, vatNumber, peppolAddresses } = data;
+  const { id, externalId, teamId, name, vatNumber, peppolAddresses } = data;
 
   let existingSupplier: Supplier | null = null;
 
@@ -179,7 +165,7 @@ export async function upsertSupplier(
       throw new UserFacingError("Supplier not found");
     }
   } else if (externalId !== undefined && externalId !== null) {
-    existingSupplier = await getSupplier(teamId, { externalId, companyId });
+    existingSupplier = await getSupplier(teamId, { externalId });
   }
 
   let supplier: Supplier;
@@ -191,9 +177,6 @@ export async function upsertSupplier(
       peppolAddresses: peppolAddresses ?? [],
     };
 
-    if (companyId !== undefined) {
-      updateData.companyId = companyId ?? null;
-    }
     if (externalId !== undefined) {
       updateData.externalId = externalId ?? null;
     }
@@ -208,7 +191,6 @@ export async function upsertSupplier(
     const insertData: InsertSupplier = {
       teamId,
       name,
-      companyId: companyId ?? null,
       externalId: externalId ?? null,
       vatNumber: vatNumber ?? null,
       peppolAddresses: peppolAddresses ?? [],
@@ -232,10 +214,9 @@ export async function upsertSupplier(
 
 export async function deleteSupplier(
   teamId: string,
-  supplierId: string,
-  companyId?: string | null
+  supplierId: string
 ): Promise<void> {
-  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId, companyId);
+  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId);
   if (!supplier) {
     throw new UserFacingError("Supplier not found");
   }
@@ -252,17 +233,10 @@ export async function deleteSupplier(
 
 export async function findSupplierByVatAndPeppolId(
   teamId: string,
-  companyId: string,
   vatNumber: string | null | undefined,
   peppolId: string | null | undefined
 ): Promise<Supplier | null> {
   const whereClause: SQL[] = [eq(supportingDataSuppliers.teamId, teamId)];
-
-  const companyConditions: SQL[] = [
-    eq(supportingDataSuppliers.companyId, companyId),
-    isNull(supportingDataSuppliers.companyId),
-  ];
-  whereClause.push(or(...companyConditions) as SQL);
 
   const matchConditions: SQL[] = [];
 

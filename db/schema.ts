@@ -305,8 +305,6 @@ export const supportingDataSuppliers = pgTable("supporting_data_suppliers", {
   teamId: text("team_id")
     .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),
-  companyId: text("company_id")
-    .references(() => companies.id, { onDelete: "cascade" }),
   externalId: text("external_id"),
   name: text("name").notNull(),
   vatNumber: text("vat_number"),
@@ -315,8 +313,7 @@ export const supportingDataSuppliers = pgTable("supporting_data_suppliers", {
   updatedAt: autoUpdateTimestamp(),
 }, (table) => [
   index("supporting_suppliers_team_id_idx").on(table.teamId),
-  index("supporting_suppliers_company_id_idx").on(table.companyId),
-  uniqueIndex("supporting_suppliers_external_id_unique").on(table.teamId, table.companyId, table.externalId).where(isNotNull(table.externalId)),
+  uniqueIndex("supporting_suppliers_external_id_unique").on(table.teamId, table.externalId).where(isNotNull(table.externalId)),
 ]);
 
 export const supportingDataSupplierLabels = pgTable("supporting_data_supplier_labels", {

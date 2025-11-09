@@ -7,10 +7,9 @@ import { getSupplierByIdOrExternalId } from "./suppliers";
 export async function assignLabelToSupplier(
   teamId: string,
   supplierId: string,
-  labelId: string,
-  companyId?: string | null
+  labelId: string
 ): Promise<void> {
-  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId, companyId);
+  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId);
 
   if (!supplier) {
     throw new UserFacingError("Supplier not found");
@@ -50,10 +49,9 @@ export async function assignLabelToSupplier(
 export async function unassignLabelFromSupplier(
   teamId: string,
   supplierId: string,
-  labelId: string,
-  companyId?: string | null
+  labelId: string
 ): Promise<void> {
-  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId, companyId);
+  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId);
 
   if (!supplier) {
     throw new UserFacingError("Supplier not found");
@@ -81,10 +79,9 @@ export async function unassignLabelFromSupplier(
 
 export async function getSupplierLabels(
   teamId: string,
-  supplierId: string,
-  companyId?: string | null
+  supplierId: string
 ) {
-  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId, companyId);
+  const supplier = await getSupplierByIdOrExternalId(teamId, supplierId);
 
   if (!supplier) {
     throw new UserFacingError("Supplier not found");

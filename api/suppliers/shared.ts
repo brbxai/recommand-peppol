@@ -11,7 +11,6 @@ export const labelResponse = z.object({
 export const supplierResponse = z.object({
   id: z.string(),
   teamId: z.string(),
-  companyId: z.string().nullable(),
   externalId: z.string().nullable(),
   name: z.string(),
   vatNumber: z.string().nullable(),
@@ -24,12 +23,6 @@ export const supplierResponse = z.object({
 export const supplierIdParamSchema = z.object({
   supplierId: z.string().openapi({
     description: "The internal ID or external ID of the supplier",
-  }),
-});
-
-export const companyIdQuerySchema = z.object({
-  companyId: z.string().nullable().optional().openapi({
-    description: "The company ID to filter by when searching by external ID",
   }),
 });
 

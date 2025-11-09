@@ -8,7 +8,7 @@ import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
 import { UserFacingError } from "@peppol/utils/util";
-import { supplierIdParamSchema, companyIdQuerySchema } from "./shared";
+import { supplierIdParamSchema } from "./shared";
 
 const server = new Server();
 
@@ -35,14 +35,13 @@ const assignLabelParamSchemaWithTeamId = assignLabelParamSchema.extend({
     teamId: z.string(),
 });
 
-type AssignLabelContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof assignLabelParamSchemaWithTeamId>, query: z.input<typeof companyIdQuerySchema> }, out: { param: z.infer<typeof assignLabelParamSchemaWithTeamId>, query: z.infer<typeof companyIdQuerySchema> } }>;
+type AssignLabelContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext, string, { in: { param: z.input<typeof assignLabelParamSchemaWithTeamId> }, out: { param: z.infer<typeof assignLabelParamSchemaWithTeamId> } }>;
 
 const _assignLabelMinimal = server.post(
     "/suppliers/:supplierId/labels/:labelId",
     requireTeamAccess(),
     assignLabelRouteDescription,
     zodValidator("param", assignLabelParamSchema),
-    zodValidator("query", companyIdQuerySchema),
     _assignLabelImplementation,
 );
 
@@ -51,15 +50,13 @@ const _assignLabel = server.post(
     requireTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", assignLabelParamSchemaWithTeamId),
-    zodValidator("query", companyIdQuerySchema),
     _assignLabelImplementation,
 );
 
 async function _assignLabelImplementation(c: AssignLabelContext) {
     try {
         const { supplierId, labelId } = c.req.valid("param");
-        const { companyId } = c.req.valid("query");
-        await assignLabelToSupplier(c.var.team.id, supplierId, labelId, companyId);
+        await assignLabelToSupplier(c.var.team.id, supplierId, labelId);
         return c.json(actionSuccess({}));
     } catch (error) {
         console.error(error);

@@ -44,12 +44,6 @@ const getSuppliersQuerySchema = z.object({
     description: "The number of items per page",
     example: 10,
   }),
-  companyId: z
-    .union([z.string(), z.array(z.string())])
-    .optional()
-    .openapi({
-      description: "Filter suppliers by company ID",
-    }),
   search: z.string().optional().openapi({
     description: "Search term to filter suppliers",
     example: "supplier name",
@@ -81,17 +75,12 @@ const _getSuppliers = server.get(
 
 async function _getSuppliersImplementation(c: GetSuppliersContext) {
   try {
-    const { page, limit, companyId, search } = c.req.valid("query");
+    const { page, limit, search } = c.req.valid("query");
     const { suppliers, total } = await getSuppliers(
       c.var.team.id,
       {
         page,
         limit,
-        companyId: Array.isArray(companyId)
-          ? companyId
-          : companyId
-            ? [companyId]
-            : undefined,
         search,
       }
     );

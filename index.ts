@@ -52,8 +52,8 @@ All API requests must be authenticated using Basic Authentication. Your API key 
 
 For some endpoints, you will need to provide a team or company ID.
 
-- You can find your team ID [here](/api-keys).
-- You can find your company IDs [here](/companies).
+- You can find your team ID [here](https://app.recommand.eu/api-keys).
+- You can find your company IDs [here](https://app.recommand.eu/companies).
 
 ## Support
 

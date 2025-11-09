@@ -18,7 +18,6 @@ import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import type { Suppliers } from "@peppol/api/suppliers";
-import type { Companies } from "@peppol/api/companies";
 import type { Labels } from "@peppol/api/labels";
 import { DataTablePagination } from "@core/components/data-table/pagination";
 import {
@@ -39,26 +38,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@core/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@core/components/ui/select";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { AsyncButton } from "@core/components/async-button";
 import type { Label as LabelType } from "@peppol/types/label";
 
 const client = rc<Suppliers>("peppol");
-const companiesClient = rc<Companies>("peppol");
 const labelsClient = rc<Labels>("peppol");
 
 type Supplier = {
   id: string;
   teamId: string;
-  companyId: string | null;
   externalId: string | null;
   name: string;
   vatNumber: string | null;
@@ -71,7 +61,6 @@ type Supplier = {
 type SupplierFormData = {
   id?: string;
   name: string;
-  companyId: string | null;
   externalId: string | null;
   vatNumber: string | null;
   peppolAddresses: string[];
@@ -79,7 +68,6 @@ type SupplierFormData = {
 
 const defaultSupplierFormData: SupplierFormData = {
   name: "",
-  companyId: null,
   externalId: null,
   vatNumber: null,
   peppolAddresses: [],
@@ -94,42 +82,12 @@ export default function Page() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
-  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [labels, setLabels] = useState<LabelType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [formData, setFormData] = useState<SupplierFormData>(defaultSupplierFormData);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const activeTeam = useActiveTeam();
-
-  const fetchCompanies = useCallback(async () => {
-    if (!activeTeam?.id) {
-      setCompanies([]);
-      return;
-    }
-
-    try {
-      const response = await companiesClient[":teamId"]["companies"].$get({
-        param: { teamId: activeTeam.id },
-      });
-      const json = await response.json();
-
-      if (!json.success || !Array.isArray(json.companies)) {
-        toast.error("Failed to load companies");
-        setCompanies([]);
-      } else {
-        setCompanies(
-          json.companies.map((company: { id: string; name: string }) => ({
-            id: company.id,
-            name: company.name,
-          }))
-        );
-      }
-    } catch (error) {
-      toast.error("Failed to load companies");
-      setCompanies([]);
-    }
-  }, [activeTeam?.id]);
 
   const fetchLabels = useCallback(async () => {
     if (!activeTeam?.id) {
@@ -162,16 +120,12 @@ export default function Page() {
       return;
     }
 
-    const companyFilter = columnFilters.find((f) => f.id === "companyId");
-    const filteredCompanyIds = companyFilter?.value as string[] ?? [];
-
     try {
       const response = await client[":teamId"]["suppliers"].$get({
         param: { teamId: activeTeam.id },
         query: {
           page,
           limit,
-          companyId: filteredCompanyIds.length > 0 ? filteredCompanyIds : undefined,
           search: globalFilter || undefined,
         },
       });
@@ -199,9 +153,8 @@ export default function Page() {
   }, [activeTeam?.id, page, limit, columnFilters, globalFilter]);
 
   useEffect(() => {
-    fetchCompanies();
     fetchLabels();
-  }, [fetchCompanies, fetchLabels]);
+  }, [fetchLabels]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -240,7 +193,6 @@ export default function Page() {
           supplierId,
           labelId,
         },
-        query: {},
       });
       const json = await response.json();
       if (!json.success) {
@@ -282,7 +234,6 @@ export default function Page() {
           supplierId,
           labelId,
         },
-        query: {},
       });
       const json = await response.json();
       if (!json.success) {
@@ -385,19 +336,6 @@ export default function Page() {
       cell: ({ row }) => {
         const name = row.getValue("name") as string;
         return <span>{name}</span>;
-      },
-      enableGlobalFilter: true,
-    },
-    {
-      accessorKey: "companyId",
-      header: ({ column }) => <ColumnHeader column={column} title="Company" />,
-      cell: ({ row }) => {
-        const companyId = row.getValue("companyId") as string | null;
-        if (!companyId) {
-          return <span className="text-muted-foreground">-</span>;
-        }
-        const company = companies.find((c) => c.id === companyId);
-        return company ? <span>{company.name}</span> : <span className="text-muted-foreground">-</span>;
       },
       enableGlobalFilter: true,
     },
@@ -529,7 +467,6 @@ export default function Page() {
                 setFormData({
                   id: supplier.id,
                   name: supplier.name,
-                  companyId: supplier.companyId,
                   externalId: supplier.externalId,
                   vatNumber: supplier.vatNumber,
                   peppolAddresses: supplier.peppolAddresses || [],
@@ -587,16 +524,7 @@ export default function Page() {
     manualFiltering: true,
   });
 
-  const filterConfigs: FilterConfig<Supplier>[] = [
-    {
-      id: "companyId",
-      title: "Company",
-      options: companies.map((company) => ({
-        label: company.name,
-        value: company.id,
-      })),
-    },
-  ];
+  const filterConfigs: FilterConfig<Supplier>[] = [];
 
   const addPeppolAddress = () => {
     setFormData({
@@ -659,27 +587,6 @@ export default function Page() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyId">Company</Label>
-                <Select
-                  value={formData.companyId || "__none__"}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, companyId: value === "__none__" ? null : value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a company (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="externalId">External ID</Label>

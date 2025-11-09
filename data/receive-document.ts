@@ -104,7 +104,6 @@ export async function receiveDocument(options: {
       const vatNumber = parsedDocument.seller?.vatNumber || null;
       const supplier = await findSupplierByVatAndPeppolId(
         company.teamId,
-        company.id,
         vatNumber,
         senderId
       );
