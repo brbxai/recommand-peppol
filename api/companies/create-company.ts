@@ -68,6 +68,7 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
         const company = await createCompany({
             ...c.req.valid("json"),
             teamId: c.var.team.id,
+            enterpriseNumber,
         });
         return c.json(actionSuccess({ company }));
     } catch (error) {
