@@ -215,8 +215,8 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         );
       }
 
-      if (!invoice.seller) {
-        invoice.seller = {
+      if (!invoice.buyer) {
+        invoice.buyer = {
           vatNumber: c.var.company.vatNumber,
           name: c.var.company.name,
           street: c.var.company.address,
@@ -256,8 +256,8 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         );
       }
 
-      if (!selfBillingCreditNote.seller) {
-        selfBillingCreditNote.seller = {
+      if (!selfBillingCreditNote.buyer) {
+        selfBillingCreditNote.buyer = {
           vatNumber: c.var.company.vatNumber,
           name: c.var.company.name,
           street: c.var.company.address,
