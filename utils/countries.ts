@@ -100,6 +100,12 @@ export const COUNTRIES: CountryInfo[] = [
         flag: "🇸🇪",
     },
     {
+        code: "SK",
+        name: "Slovakia",
+        flag: "🇸🇰",
+        defaultEnterpriseNumberScheme: "0158",
+    },
+    {
         code: "GB",
         name: "United Kingdom",
         flag: "🇬🇧",
