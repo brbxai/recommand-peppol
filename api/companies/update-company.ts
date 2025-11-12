@@ -35,6 +35,10 @@ const updateCompanyParamSchema = z.object({
     }),
 });
 
+const updateCompanyParamSchemaWithTeamId = updateCompanyParamSchema.extend({
+    teamId: z.string(),
+});
+
 const updateCompanyJsonBodySchema = z.object({
     name: z.string().optional(),
     address: z.string().optional(),
@@ -46,7 +50,7 @@ const updateCompanyJsonBodySchema = z.object({
     isSmpRecipient: z.boolean().optional(),
 });
 
-type UpdateCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateCompanyParamSchema>, json: z.input<typeof updateCompanyJsonBodySchema> }, out: { param: z.infer<typeof updateCompanyParamSchema>, json: z.infer<typeof updateCompanyJsonBodySchema> } }>;
+type UpdateCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateCompanyParamSchemaWithTeamId>, json: z.input<typeof updateCompanyJsonBodySchema> }, out: { param: z.infer<typeof updateCompanyParamSchemaWithTeamId>, json: z.infer<typeof updateCompanyJsonBodySchema> } }>;
 
 const _updateCompanyMinimal = server.put(
     "/companies/:companyId",
@@ -61,11 +65,7 @@ const _updateCompany = server.put(
     "/:teamId/companies/:companyId",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", updateCompanyParamSchema.extend({
-        teamId: z.string().openapi({
-            description: "The ID of the team",
-        }),
-    })),
+    zodValidator("param", updateCompanyParamSchemaWithTeamId),
     zodValidator("json", updateCompanyJsonBodySchema),
     _updateCompanyImplementation,
 );

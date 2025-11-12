@@ -34,12 +34,16 @@ const createCompanyJsonBodySchema = z.object({
     postalCode: z.string(),
     city: z.string(),
     country: zodValidCountryCodes,
-    enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
+    enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber).openapi({ description: "The enterprise number of the company. For Belgian businesses it will be inferred from the VAT number if not provided." }),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
     isSmpRecipient: z.boolean().default(true),
 });
 
-type CreateCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof createCompanyJsonBodySchema> }, out: { json: z.infer<typeof createCompanyJsonBodySchema> } }>;
+const createCompanyParamSchemaWithTeamId = z.object({
+    teamId: z.string(),
+});
+
+type CreateCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof createCompanyParamSchemaWithTeamId>, json: z.input<typeof createCompanyJsonBodySchema> }, out: { param: z.infer<typeof createCompanyParamSchemaWithTeamId>, json: z.infer<typeof createCompanyJsonBodySchema> } }>;
 
 const _createCompanyMinimal = server.post(
     "/companies",
@@ -53,14 +57,15 @@ const _createCompany = server.post(
     "/:teamId/companies",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", z.object({ teamId: z.string() })),
+    zodValidator("param", createCompanyParamSchemaWithTeamId),
     zodValidator("json", createCompanyJsonBodySchema),
     _createCompanyImplementation,
 );
 
 async function _createCompanyImplementation(c: CreateCompanyContext) {
     let enterpriseNumber = c.req.valid("json").enterpriseNumber;
-    if (!enterpriseNumber && c.req.valid("json").vatNumber) {
+    if (!enterpriseNumber && c.req.valid("json").vatNumber && c.req.valid("json").country === "BE") {
+        // If the country is Belgium and the vat number is provided, we can use the vat number to autogenerate the enterprise number
         enterpriseNumber = cleanEnterpriseNumber(c.req.valid("json").vatNumber!);
     }
 

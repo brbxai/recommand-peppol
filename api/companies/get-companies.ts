@@ -25,7 +25,11 @@ const getCompaniesRouteDescription = describeRoute({
     },
 });
 
-type GetCompaniesContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string>;
+const getCompaniesParamSchemaWithTeamId = z.object({
+    teamId: z.string(),
+});
+
+type GetCompaniesContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getCompaniesParamSchemaWithTeamId> }, out: { param: z.infer<typeof getCompaniesParamSchemaWithTeamId> } }>;
 
 const _getCompaniesMinimal = server.get(
     "/companies",
@@ -38,9 +42,7 @@ const _getCompanies = server.get(
     "/:teamId/companies",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", z.object({
-        teamId: z.string(),
-    })),
+    zodValidator("param", getCompaniesParamSchemaWithTeamId),
     _getCompaniesImplementation,
 );
 

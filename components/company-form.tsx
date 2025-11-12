@@ -62,7 +62,7 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                 <Label htmlFor="country">Country</Label>
                 <Select
                     value={company.country || ""}
-                    onValueChange={(value) => onChange({ ...company, country: value as z.infer<typeof zodValidCountryCodes> })}
+                    onValueChange={(value) => onChange({ ...company, enterpriseNumber: null, vatNumber: null, country: value as z.infer<typeof zodValidCountryCodes> })}
                 >
                     <SelectTrigger>
                         <SelectValue placeholder="Select a country" />
@@ -83,8 +83,9 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                     value={company.vatNumber || ""}
                     onChange={(e) => onChange({ ...company, vatNumber: e.target.value || null })}
                 />
+                {company.country === "BE" && <p className="text-xs text-pretty text-muted-foreground">For Belgian businesses, the VAT number will be used to infer the enterprise number.</p>}
             </div>
-            <div className="space-y-1">
+            {company.country !== "BE" && <div className="space-y-1">
                 <div className="space-y-2">
                     <Label htmlFor="enterpriseNumber">Enterprise Number (Optional)</Label>
                     <Input
@@ -93,7 +94,7 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                         onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value })}
                     />
                 </div>
-            </div>
+            </div>}
             <div className="space-y-1">
                 <div className="flex items-start gap-2">
                     <Checkbox

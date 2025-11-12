@@ -30,7 +30,11 @@ const deleteCompanyParamSchema = z.object({
     }),
 });
 
-type DeleteCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteCompanyParamSchema> }, out: { param: z.infer<typeof deleteCompanyParamSchema> } }>;
+const deleteCompanyParamSchemaWithTeamId = deleteCompanyParamSchema.extend({
+    teamId: z.string(),
+});
+
+type DeleteCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteCompanyParamSchemaWithTeamId> }, out: { param: z.infer<typeof deleteCompanyParamSchemaWithTeamId> } }>;
 
 const _deleteCompanyMinimal = server.delete(
     "/companies/:companyId",
@@ -44,11 +48,7 @@ const _deleteCompany = server.delete(
     "/:teamId/companies/:companyId",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", deleteCompanyParamSchema.extend({
-        teamId: z.string().openapi({
-            description: "The ID of the team",
-        }),
-    })),
+    zodValidator("param", deleteCompanyParamSchemaWithTeamId),
     _deleteCompanyImplementation,
 );
 

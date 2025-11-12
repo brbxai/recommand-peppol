@@ -6,8 +6,8 @@ export function cleanVatNumber(vatNumber: string | undefined | null) {
 
 export function cleanEnterpriseNumber(enterpriseNumber: string | undefined | null) {
   if (!enterpriseNumber) return undefined;
-  // Replace every non-numeric character with an empty string
-  return enterpriseNumber.replace(/[^0-9]/g, "");
+  // Replace every non-alphanumeric character with an empty string
+  return enterpriseNumber.replace(/[^a-zA-Z0-9]/g, "");
 }
 
 export class UserFacingError extends Error {
