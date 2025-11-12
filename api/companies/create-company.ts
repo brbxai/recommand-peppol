@@ -34,7 +34,7 @@ const createCompanyJsonBodySchema = z.object({
     postalCode: z.string(),
     city: z.string(),
     country: zodValidCountryCodes,
-    enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber).openapi({ description: "The enterprise number of the company. For Belgian businesses it will be inferred from the VAT number if not provided." }),
+    enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber).openapi({ description: "The enterprise number of the company. Can only contain alphanumeric characters. For Belgian businesses it will be inferred from the VAT number if not provided." }),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
     isSmpRecipient: z.boolean().default(true),
 });
