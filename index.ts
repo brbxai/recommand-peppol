@@ -43,7 +43,7 @@ To get started with the API:
 
 ## Authentication
 
-All API requests must be authenticated using Basic Authentication. Your API key should be used as the username, and your API secret as the password.
+All API requests must be authenticated using Basic Authentication, JWT bearer authentication, or OAuth2. More information on the authentication methods can be found [in the Recommand authentication guide](https://recommand.eu/en/docs/authentication-guide).
 
 > [!TIP]
 > If you are signed in to the Recommand dashboard in this browser, you can use the API client that is embedded below without creating an API key, you will be authenticated via a session cookie.
