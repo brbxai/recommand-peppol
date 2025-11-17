@@ -67,6 +67,9 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
     if (!enterpriseNumber && c.req.valid("json").vatNumber && c.req.valid("json").country === "BE") {
         // If the country is Belgium and the vat number is provided, we can use the vat number to autogenerate the enterprise number
         enterpriseNumber = cleanEnterpriseNumber(c.req.valid("json").vatNumber!);
+        if(enterpriseNumber?.startsWith("BE")){
+            enterpriseNumber = enterpriseNumber.slice(2);
+        }
     }
 
     try {
