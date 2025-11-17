@@ -52,7 +52,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
       "cbc:IssueDate": creditNote.issueDate,
       "cbc:CreditNoteTypeCode": "381",
       ...(creditNote.note && { "cbc:Note": creditNote.note }),
-      "cbc:DocumentCurrencyCode": "EUR",
+      "cbc:DocumentCurrencyCode": creditNote.currency,
       ...(creditNote.buyerReference && {
         "cbc:BuyerReference": creditNote.buyerReference,
       }),
@@ -243,7 +243,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
             ...(discount.reasonCode && { "cbc:AllowanceChargeReasonCode": discount.reasonCode }),
             ...(discount.reason && { "cbc:AllowanceChargeReason": discount.reason }),
             "cbc:Amount": {
-              "@_currencyID": "EUR",
+              "@_currencyID": creditNote.currency,
               "#text": discount.amount,
             },
             "cac:TaxCategory": {
@@ -259,7 +259,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
             ...(surcharge.reasonCode && { "cbc:AllowanceChargeReasonCode": surcharge.reasonCode }),
             ...(surcharge.reason && { "cbc:AllowanceChargeReason": surcharge.reason }),
             "cbc:Amount": {
-              "@_currencyID": "EUR",
+              "@_currencyID": creditNote.currency,
               "#text": surcharge.amount,
             },
             "cac:TaxCategory": {
@@ -274,16 +274,16 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
       }),
       "cac:TaxTotal": {
         "cbc:TaxAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": vat.totalVatAmount,
         },
         "cac:TaxSubtotal": vat.subtotals.map((subtotal) => ({
           "cbc:TaxableAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": creditNote.currency,
             "#text": subtotal.taxableAmount,
           },
           "cbc:TaxAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": creditNote.currency,
             "#text": subtotal.vatAmount,
           },
           "cac:TaxCategory": {
@@ -303,39 +303,39 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
       },
       "cac:LegalMonetaryTotal": {
         "cbc:LineExtensionAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": extractedTotals.linesAmount,
         },
         "cbc:TaxExclusiveAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": extractedTotals.taxExclusiveAmount,
         },
         "cbc:TaxInclusiveAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": extractedTotals.taxInclusiveAmount,
         },
         ...(extractedTotals.discountAmount && {
           "cbc:AllowanceTotalAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": extractedTotals.discountAmount,
         },
         }),
         ...(extractedTotals.surchargeAmount && {
           "cbc:ChargeTotalAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": creditNote.currency,
             "#text": extractedTotals.surchargeAmount,
           },
         }),
         "cbc:PrepaidAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": extractedTotals.paidAmount,
         },
         "cbc:PayableRoundingAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": extractedTotals.payableRoundingAmount,
         },
         "cbc:PayableAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": extractedTotals.payableAmount,
         },
       },
@@ -346,7 +346,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
           "#text": item.quantity,
         },
         "cbc:LineExtensionAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": creditNote.currency,
           "#text": item.netAmount,
         },
         "cac:Item": {
@@ -381,7 +381,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
         },
         "cac:Price": {
           "cbc:PriceAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": creditNote.currency,
             "#text": item.netPriceAmount,
           },
         },

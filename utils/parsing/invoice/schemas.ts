@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Decimal } from 'decimal.js';
 import "zod-openapi/extend";
+import { CURRENCIES, zCurrencies } from '@peppol/utils/currencies';
 
 export const VAT_CATEGORIES = {
   AE: 'Vat Reverse Charge',
@@ -181,6 +182,7 @@ export const _invoiceSchema = z.object({
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
   attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the invoice" }),
+  currency: zCurrencies.default("EUR").openapi({ example: "EUR", description: "The currency of the invoice. Defaults to EUR.", enum: CURRENCIES.map((currency) => currency.code) }),
 })
 
 export const invoiceSchema = _invoiceSchema.openapi({ ref: "Invoice" });
