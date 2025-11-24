@@ -419,6 +419,7 @@ describe("calculateTotals", () => {
             invoiceNumber: "TEST-001",
             issueDate: "2025-01-01",
             dueDate: "2025-02-01",
+            currency: "EUR",
             seller: {
                 name: "Seller",
                 street: "Street 1",
@@ -559,6 +560,7 @@ describe("calculateTotals", () => {
             const totalVat = new Decimal(vat.totalVatAmount);
             const expectedTaxInclusive = taxExclusive.plus(totalVat).toNearest(0.01);
             expect(result.taxInclusiveAmount).toBe(expectedTaxInclusive.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe("48.18");
         });
 
         it("should validate totals formula: taxExclusiveAmount = sum(lines) - discounts + surcharges", () => {
@@ -1154,6 +1156,68 @@ describe("calculateTotals", () => {
             expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
             expect(result.discountAmount).toBe(totalDiscounts.toFixed(2));
             expect(result.surchargeAmount).toBe(totalSurcharges.toFixed(2));
+        });
+    });
+
+    describe("multiple identical lines", () => {
+        it("should handle 45 lines of 1 x 9.9174 with 21% VAT each", () => {
+            const invoice = createInvoice({
+                lines: Array.from({ length: 45 }, (_, i) => ({
+                    name: `Item ${i + 1}`,
+                    quantity: "1",
+                    unitCode: "C62",
+                    netPriceAmount: "9.9174",
+                    vat: { category: "S", percentage: "21.00" },
+                })),
+            });
+
+            const result = calculateTotals(invoice);
+            const vat = calculateVat(invoice);
+
+            const lineNet = new Decimal("1").mul("9.9174").toNearest(0.01);
+            const expectedTaxExclusive = lineNet.mul(45).toNearest(0.01);
+            const expectedVat = expectedTaxExclusive.mul("21.00").div(100).toNearest(0.01);
+            const expectedTaxInclusive = expectedTaxExclusive.plus(expectedVat).toNearest(0.01);
+
+            expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe(expectedTaxInclusive.toFixed(2));
+            expect(vat.totalVatAmount).toBe(expectedVat.toFixed(2));
+
+            const taxExclusive = new Decimal(result.taxExclusiveAmount);
+            const totalVat = new Decimal(vat.totalVatAmount);
+            const calculatedTaxInclusive = taxExclusive.plus(totalVat).toNearest(0.01);
+            expect(result.taxInclusiveAmount).toBe(calculatedTaxInclusive.toFixed(2));
+
+            expect(result.taxExclusiveAmount).toBe("446.40");
+            expect(result.taxInclusiveAmount).toBe("540.14");
+            expect(vat.totalVatAmount).toBe("93.74");
+        });
+
+        it("should handle one invoice line: 1 x 173.69 with 21% VAT", () => {
+            const invoice = createInvoice({
+                lines: [
+                    { name: "Item", quantity: "1", unitCode: "C62", netPriceAmount: "173.69", vat: { category: "S", percentage: "21.00" } },
+                ],
+            });
+
+            const result = calculateTotals(invoice);
+            const vat = calculateVat(invoice);
+
+            const lineNet = new Decimal("1").mul("173.69").toNearest(0.01);
+            const expectedVat = lineNet.mul("21.00").div(100).toNearest(0.01);
+            const expectedTaxInclusive = lineNet.plus(expectedVat).toNearest(0.01);
+
+            expect(result.taxExclusiveAmount).toBe(lineNet.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe(expectedTaxInclusive.toFixed(2));
+            expect(vat.totalVatAmount).toBe(expectedVat.toFixed(2));
+
+            const taxExclusive = new Decimal(result.taxExclusiveAmount);
+            const totalVat = new Decimal(vat.totalVatAmount);
+            const calculatedTaxInclusive = taxExclusive.plus(totalVat).toNearest(0.01);
+            expect(result.taxInclusiveAmount).toBe(calculatedTaxInclusive.toFixed(2));
+            expect(result.taxExclusiveAmount).toBe("173.69");
+            expect(result.taxInclusiveAmount).toBe("210.16");
+            expect(vat.totalVatAmount).toBe("36.47");
         });
     });
 });
