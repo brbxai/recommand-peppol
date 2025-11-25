@@ -16,3 +16,9 @@ export class UserFacingError extends Error {
     this.name = "UserFacingError";
   }
 }
+
+export function createCleanUrl(parts: string[]) {
+  // Remove trailing slash from each part
+  const cleanParts = parts.map(part => part.replace(/\/$/, ""));
+  return cleanParts.join("/");
+}

@@ -350,3 +350,18 @@ export const activatedIntegrations = pgTable("activated_integrations", {
 }, (table) => [
   index("activated_integrations_team_id_idx").on(table.teamId),
 ]);
+
+export const integrationTaskLogs = pgTable("integration_task_logs", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "itl_" + ulid()),
+  integrationId: text("integration_id")
+    .references(() => activatedIntegrations.id, { onDelete: "cascade" })
+    .notNull(),
+  task: text("task").notNull(),
+  success: boolean("success").notNull(),
+  message: text("message").notNull(),
+  context: text("context").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
+});

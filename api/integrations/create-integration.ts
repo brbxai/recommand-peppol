@@ -29,9 +29,16 @@ const createIntegrationRouteDescription = describeRoute({
 
 const createIntegrationJsonBodySchema = z.object({
     companyId: z.string(),
-    manifest: manifestSchema,
+    manifest: manifestSchema.optional(),
+    url: z.string().url().optional(),
     configuration: configurationSchema,
-}).strict();
+}).strict().refine(
+    (data) => data.manifest !== undefined || data.url !== undefined,
+    {
+        message: "Either 'manifest' or 'url' must be provided",
+        path: ["manifest"],
+    }
+);
 
 const createIntegrationParamSchemaWithTeamId = z.object({
     teamId: z.string(),
@@ -64,6 +71,7 @@ async function _createIntegrationImplementation(c: CreateIntegrationContext) {
         });
         return c.json(actionSuccess({ integration }));
     } catch (error) {
+        console.error(error);
         if (error instanceof UserFacingError) {
             return c.json(actionFailure(error), 400);
         }

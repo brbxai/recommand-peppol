@@ -44,3 +44,4 @@ export const manifestSchema = z.object({
 }).strict();
 
 export type IntegrationManifest = z.infer<typeof manifestSchema>;
+export type IntegrationEvent = z.infer<typeof integrationEventSchema>;

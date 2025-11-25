@@ -1,12 +1,12 @@
-import { activatedIntegrations } from "@peppol/db/schema";
+import { activatedIntegrations, integrationTaskLogs } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq, and } from "drizzle-orm";
-import { manifestSchema } from "@peppol/types/integration/manifest";
 import { configurationSchema } from "@peppol/types/integration/configuration";
 import { stateSchema } from "@peppol/types/integration/state";
-import type { IntegrationManifest, IntegrationConfiguration, IntegrationState } from "@peppol/types/integration";
+import { type IntegrationManifest, type IntegrationConfiguration, type IntegrationState, taskSchema } from "@peppol/types/integration";
 import { UserFacingError } from "@peppol/utils/util";
 import { getCompany } from "@peppol/data/companies";
+import { getIntegrationManifestFromUrl, validateManifest } from "./client";
 
 export type ActivatedIntegration = typeof activatedIntegrations.$inferSelect;
 export type InsertActivatedIntegration = typeof activatedIntegrations.$inferInsert;
@@ -36,14 +36,6 @@ export async function getIntegrationsByCompany(
     .where(
       and(eq(activatedIntegrations.teamId, teamId), eq(activatedIntegrations.companyId, companyId))
     );
-}
-
-function validateManifest(manifest: unknown): IntegrationManifest {
-  const result = manifestSchema.safeParse(manifest);
-  if (!result.success) {
-    throw new UserFacingError(`Invalid manifest: ${result.error.errors.map(e => e.message).join(", ")}`);
-  }
-  return result.data;
 }
 
 function validateConfiguration(configuration: unknown): IntegrationConfiguration {
@@ -113,21 +105,35 @@ function validateConfigurationCompatibility(
   }
 }
 
-export async function createIntegration(integration: Omit<InsertActivatedIntegration, "state">): Promise<ActivatedIntegration> {
+export async function createIntegration(
+  integration: Omit<InsertActivatedIntegration, "state" | "manifest"> & {
+    manifest?: IntegrationManifest;
+    url?: string;
+  }
+): Promise<ActivatedIntegration> {
   const company = await getCompany(integration.teamId, integration.companyId);
   if (!company) {
     throw new UserFacingError("Company not found or does not belong to the team");
   }
 
-  const manifest = validateManifest(integration.manifest);
+  let manifest: IntegrationManifest;
+  if (integration.manifest) {
+    manifest = validateManifest(integration.manifest);
+  } else if (integration.url) {
+    manifest = await getIntegrationManifestFromUrl(integration.url);
+  } else {
+    throw new UserFacingError("Either 'manifest' or 'url' must be provided");
+  }
+
   const configuration = validateConfiguration(integration.configuration);
   const state = validateState({});
 
   validateConfigurationCompatibility(manifest, configuration);
 
+  const { url: _, ...integrationData } = integration;
   return await db
     .insert(activatedIntegrations)
-    .values({ ...integration, manifest, configuration, state })
+    .values({ ...integrationData, manifest, configuration, state })
     .returning()
     .then((rows) => rows[0]);
 }
@@ -157,6 +163,20 @@ export async function updateIntegration(
     .then((rows) => rows[0]);
 }
 
+export async function updateIntegrationState(
+  teamId: string,
+  integrationId: string,
+  state: IntegrationState
+): Promise<void> {
+
+  const validatedState = validateState(state);
+
+  await db
+    .update(activatedIntegrations)
+    .set({ state: validatedState })
+    .where(and(eq(activatedIntegrations.teamId, teamId), eq(activatedIntegrations.id, integrationId)));
+}
+
 export async function deleteIntegration(
   teamId: string,
   integrationId: string
@@ -166,3 +186,15 @@ export async function deleteIntegration(
     .where(and(eq(activatedIntegrations.teamId, teamId), eq(activatedIntegrations.id, integrationId)));
 }
 
+export async function createIntegrationTaskLog(
+  integrationId: string,
+  task: string,
+  success: boolean,
+  message: string,
+  context: string
+): Promise<void> {
+  const validatedTaskLog = taskSchema.parse({ task, success, message, context });
+  await db
+    .insert(integrationTaskLogs)
+    .values({ integrationId, task: validatedTaskLog.task, success: validatedTaskLog.success, message: validatedTaskLog.message, context: validatedTaskLog.context });
+}
