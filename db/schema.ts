@@ -22,6 +22,7 @@ import { autoUpdateTimestamp } from "@recommand/db/custom-types";
 import { COUNTRIES } from "@peppol/utils/countries";
 import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import type { IntegrationConfiguration, IntegrationManifest, IntegrationState } from "@peppol/types/integration";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -52,6 +53,10 @@ export const transferEventTypeEnum = pgEnum(
   "peppol_transfer_event_type",
   ["peppol", "email"]
 );
+
+export function lower(email: AnyPgColumn): SQL {
+  return sql`lower(${email})`;
+}
 
 export const billingProfiles = pgTable("peppol_billing_profiles", {
   id: text("id")
@@ -327,6 +332,21 @@ export const supportingDataSupplierLabels = pgTable("supporting_data_supplier_la
   primaryKey({ name: "supporting_data_supplier_labels_pkey", columns: [table.supportingDataSupplierId, table.labelId] }),
 ]);
 
-export function lower(email: AnyPgColumn): SQL {
-  return sql`lower(${email})`;
-}
+export const activatedIntegrations = pgTable("activated_integrations", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "itg_" + ulid()),
+  teamId: text("team_id")
+    .references(() => teams.id, { onDelete: "cascade" })
+    .notNull(),
+  companyId: text("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull(),
+  manifest: jsonb("manifest").$type<IntegrationManifest>().notNull(),
+  configuration: jsonb("configuration").$type<IntegrationConfiguration>().notNull(),
+  state: jsonb("state").$type<IntegrationState>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: autoUpdateTimestamp(),
+}, (table) => [
+  index("activated_integrations_team_id_idx").on(table.teamId),
+]);

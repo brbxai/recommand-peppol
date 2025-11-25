@@ -10,6 +10,7 @@ import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/documents";
 import { openAPISpecs } from "hono-openapi";
 import webhooksServer from "./api/webhooks";
+import integrationsServer from "./api/integrations";
 import recipientServer from "./api/recipients";
 import playgroundsServer from "./api/playgrounds";
 import suppliersServer from "./api/suppliers";
@@ -25,6 +26,7 @@ export async function init(app: RecommandApp, server: Server) {
   const exclude: RegExp[] = [
     /^\/api\/core(?!\/auth\/verify).*$/, // Exclude all core API endpoints except the auth/verify endpoint
     /^\/api\/peppol.*$/ // Exclude all peppol API endpoints (these have been replaced by the new v1 API)
+    // /^\/api\/v1\/integrations.*$/ // Exclude all integrations API endpoints
   ];
 
   // Add OpenAPI documentation
@@ -126,6 +128,10 @@ For additional support or questions, don't hesitate to contact our support team.
           name: "Suppliers",
           description: "You can manage all suppliers (supporting data) for a team. Suppliers are used to organize and categorize your supporting data.",
         },
+        {
+          name: "Integrations",
+          description: "You can manage all activated integrations for a team. Integrations allow you to connect external services and automate workflows.",
+        },
       ],
     },
   })
@@ -140,6 +146,7 @@ for(const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix + "internal/", receiveDocumentServer);
 
   server.route(prefix, webhooksServer);
+  server.route(prefix, integrationsServer);
   server.route(prefix, playgroundsServer);
   
   server.route(prefix, suppliersServer);

@@ -274,6 +274,13 @@
       "when": 1762986146766,
       "tag": "20251112222226_left_violations",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1764109563711,
+      "tag": "20251125222603_lowly_tomorrow_man",
+      "breakpoints": true
     }
   ]
 }
