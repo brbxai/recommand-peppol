@@ -1,6 +1,7 @@
 import { XMLParser } from "fast-xml-parser";
 import { creditNoteSchema, type CreditNote } from "./schemas";
 import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent } from "../xml-helpers";
+import type { SelfBillingCreditNote } from "../self-billing-creditnote/schemas";
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -186,7 +187,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     },
   }));
 
-  const parsedCreditNote = {
+  const parsedCreditNote: CreditNote & SelfBillingCreditNote = {
     creditNoteNumber,
     issueDate,
     note,
@@ -205,6 +206,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     discounts,
     surcharges,
     totals,
+    currency: getTextContent(creditNote.DocumentCurrencyCode), // TODO: Keep in mind that the VAT accounting curency code and the credit note total VAT amount can technically be in a different currency than the document currency
   };
 
   // Validate the parsed credit note

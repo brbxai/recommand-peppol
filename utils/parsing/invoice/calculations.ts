@@ -24,23 +24,10 @@ export function calculateTotals(invoice: Invoice | CreditNote | SelfBillingInvoi
     (sum, line) => sum.plus(getNetAmount(line)),
     new Decimal(0)
   ).toNearest(0.01);
-  const lineTotalsIncl = invoice.lines.reduce(
-    (sum, line) =>
-      sum.plus(
-        new Decimal(getNetAmount(line)).plus(
-          new Decimal(getNetAmount(line)).mul(line.vat.percentage).div(100).toNearest(0.01)
-        )
-      ),
-    new Decimal(0)
-  ).toNearest(0.01);
 
   // Discount totals
   const discountTotalsExcl = invoice.discounts?.reduce(
     (sum, discount) => sum.plus(discount.amount),
-    new Decimal(0)
-  ).toNearest(0.01) ?? new Decimal(0);
-  const discountTotalsIncl = invoice.discounts?.reduce(
-    (sum, discount) => sum.plus(new Decimal(discount.amount).plus(new Decimal(discount.amount).mul(discount.vat.percentage).div(100).toNearest(0.01))),
     new Decimal(0)
   ).toNearest(0.01) ?? new Decimal(0);
 
@@ -49,14 +36,13 @@ export function calculateTotals(invoice: Invoice | CreditNote | SelfBillingInvoi
     (sum, surcharge) => sum.plus(surcharge.amount),
     new Decimal(0)
   ).toNearest(0.01) ?? new Decimal(0);
-  const surchargeTotalsIncl = invoice.surcharges?.reduce(
-    (sum, surcharge) => sum.plus(new Decimal(surcharge.amount).plus(new Decimal(surcharge.amount).mul(surcharge.vat.percentage).div(100).toNearest(0.01))),
-    new Decimal(0)
-  ).toNearest(0.01) ?? new Decimal(0);
+
+  // Vat totals
+  const vatTotals = calculateVat(invoice);
 
   // Totals
   const taxExclusiveAmount = new Decimal(lineTotalsExcl).minus(discountTotalsExcl).plus(surchargeTotalsExcl).toNearest(0.01);
-  const taxInclusiveAmount = new Decimal(lineTotalsIncl).minus(discountTotalsIncl).plus(surchargeTotalsIncl).toNearest(0.01);
+  const taxInclusiveAmount = taxExclusiveAmount.plus(new Decimal(vatTotals.totalVatAmount));
 
   return {
     linesAmount: invoice.totals?.linesAmount ?? lineTotalsExcl.toFixed(2),
@@ -132,42 +118,35 @@ export function calculateVat(invoice: Invoice | CreditNote) {
     const category = line.vat.category;
     const key = getKey(category, line.vat.percentage);
     const taxableAmount = new Decimal(getNetAmount(line));
-    const vatAmount = taxableAmount.mul(line.vat.percentage).div(100).toNearest(0.01);
 
     if (!acc[key]) {
       acc[key] = {
         taxableAmount: new Decimal(0),
-        vatAmount: new Decimal(0),
         category: category,
         percentage: line.vat.percentage,
       };
     }
     acc[key].taxableAmount = acc[key].taxableAmount.plus(taxableAmount);
-    acc[key].vatAmount = acc[key].vatAmount.plus(vatAmount);
     return acc;
-  }, {} as Record<string, { taxableAmount: Decimal; vatAmount: Decimal; category: VatCategory; percentage: string }>);
+  }, {} as Record<string, { taxableAmount: Decimal; category: VatCategory; percentage: string }>);
 
   // Add global discounts
   for(const discount of invoice.discounts ?? []) {
     const key = getKey(discount.vat.category, discount.vat.percentage);
     const taxableAmount = new Decimal(discount.amount);
-    const vatAmount = taxableAmount.mul(discount.vat.percentage).div(100).toNearest(0.01);
     subtotalsByKey[key].taxableAmount = subtotalsByKey[key].taxableAmount.minus(taxableAmount);
-    subtotalsByKey[key].vatAmount = subtotalsByKey[key].vatAmount.minus(vatAmount);
   }
 
   // Add global surcharges
   for(const surcharge of invoice.surcharges ?? []) {
     const key = getKey(surcharge.vat.category, surcharge.vat.percentage);
     const taxableAmount = new Decimal(surcharge.amount);
-    const vatAmount = taxableAmount.mul(surcharge.vat.percentage).div(100).toNearest(0.01);
     subtotalsByKey[key].taxableAmount = subtotalsByKey[key].taxableAmount.plus(taxableAmount);
-    subtotalsByKey[key].vatAmount = subtotalsByKey[key].vatAmount.plus(vatAmount);
   }
 
   const subtotals = Object.values(subtotalsByKey).map(subtotal => ({
     taxableAmount: subtotal.taxableAmount.toNearest(0.01).toFixed(2),
-    vatAmount: subtotal.vatAmount.toNearest(0.01).toFixed(2),
+    vatAmount: subtotal.taxableAmount.mul(subtotal.percentage).div(100).toNearest(0.01).toFixed(2),
     category: subtotal.category,
     percentage: subtotal.percentage,
     exemptionReasonCode: null as string | null,

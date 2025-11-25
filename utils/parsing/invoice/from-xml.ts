@@ -202,6 +202,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     discounts,
     surcharges,
     totals,
+    currency: getTextContent(invoice.DocumentCurrencyCode), // TODO: Keep in mind that the VAT accounting curency code and the invoice total VAT amount can technically be in a different currency than the document currency
   };
 
   // Validate the parsed invoice

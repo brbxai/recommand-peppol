@@ -53,7 +53,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
       "cbc:DueDate": invoice.dueDate,
       "cbc:InvoiceTypeCode": "380",
       ...(invoice.note && { "cbc:Note": invoice.note }),
-      "cbc:DocumentCurrencyCode": "EUR",
+      "cbc:DocumentCurrencyCode": invoice.currency,
       ...(invoice.buyerReference && {
         "cbc:BuyerReference": invoice.buyerReference,
       }),
@@ -236,7 +236,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
             ...(discount.reasonCode && { "cbc:AllowanceChargeReasonCode": discount.reasonCode }),
             ...(discount.reason && { "cbc:AllowanceChargeReason": discount.reason }),
             "cbc:Amount": {
-              "@_currencyID": "EUR",
+              "@_currencyID": invoice.currency,
               "#text": discount.amount,
             },
             "cac:TaxCategory": {
@@ -252,7 +252,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
             ...(surcharge.reasonCode && { "cbc:AllowanceChargeReasonCode": surcharge.reasonCode }),
             ...(surcharge.reason && { "cbc:AllowanceChargeReason": surcharge.reason }),
             "cbc:Amount": {
-              "@_currencyID": "EUR",
+              "@_currencyID": invoice.currency,
               "#text": surcharge.amount,
             },
             "cac:TaxCategory": {
@@ -267,16 +267,16 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
       }),
       "cac:TaxTotal": {
         "cbc:TaxAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": vat.totalVatAmount,
         },
         "cac:TaxSubtotal": vat.subtotals.map((subtotal) => ({
           "cbc:TaxableAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": invoice.currency,
             "#text": subtotal.taxableAmount,
           },
           "cbc:TaxAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": invoice.currency,
             "#text": subtotal.vatAmount,
           },
           "cac:TaxCategory": {
@@ -296,39 +296,39 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
       },
       "cac:LegalMonetaryTotal": {
         "cbc:LineExtensionAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": extractedTotals.linesAmount,
         },
         "cbc:TaxExclusiveAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": extractedTotals.taxExclusiveAmount,
         },
         "cbc:TaxInclusiveAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": extractedTotals.taxInclusiveAmount,
         },
         ...(extractedTotals.discountAmount && {
           "cbc:AllowanceTotalAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": extractedTotals.discountAmount,
         },
         }),
         ...(extractedTotals.surchargeAmount && {
           "cbc:ChargeTotalAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": invoice.currency,
             "#text": extractedTotals.surchargeAmount,
           },
         }),
         "cbc:PrepaidAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": extractedTotals.paidAmount,
         },
         "cbc:PayableRoundingAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": extractedTotals.payableRoundingAmount,
         },
         "cbc:PayableAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": extractedTotals.payableAmount,
         },
       },
@@ -339,7 +339,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
           "#text": item.quantity,
         },
         "cbc:LineExtensionAmount": {
-          "@_currencyID": "EUR",
+          "@_currencyID": invoice.currency,
           "#text": item.netAmount,
         },
         "cac:Item": {
@@ -374,7 +374,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
         },
         "cac:Price": {
           "cbc:PriceAmount": {
-            "@_currencyID": "EUR",
+            "@_currencyID": invoice.currency,
             "#text": item.netPriceAmount,
           },
         },

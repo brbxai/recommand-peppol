@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import "zod-openapi/extend";
 import { attachmentSchema, deliverySchema, discountSchema, lineSchema, partySchema, paymentMeansSchema, surchargeSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
+import { CURRENCIES, zCurrencies } from '@peppol/utils/currencies';
 
 const creditNoteInvoiceReferenceSchema = z.object({
   id: z.string().min(1).openapi({ example: "INV-2024-001", description: "The reference to the invoice that is being credited" }),
@@ -28,6 +29,7 @@ export const _creditNoteSchema = z.object({
   totals: totalsSchema.nullish(),
   vat: vatTotalsSchema.nullish(),
   attachments: z.array(attachmentSchema).nullish().openapi({ description: "Optional attachments to the credit note" }),
+  currency: zCurrencies.default("EUR").openapi({ example: "EUR", description: "The currency of the credit note. Defaults to EUR.", enum: CURRENCIES.map((currency) => currency.code) }),
 })
 
 export const creditNoteSchema = _creditNoteSchema.openapi({ ref: "CreditNote" });
