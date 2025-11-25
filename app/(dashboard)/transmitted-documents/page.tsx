@@ -38,7 +38,7 @@ import type { Label } from "@peppol/types/label";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
-const labelsClient = rc<Labels>("peppol");
+const labelsClient = rc<Labels>("v1");
 
 export default function Page() {
   const [documents, setDocuments] = useState<TransmittedDocumentWithoutBody[]>(

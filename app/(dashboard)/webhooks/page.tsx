@@ -33,8 +33,8 @@ import { WebhookForm } from "../../../components/webhook-form";
 import { CompanyDropdown } from "../../../components/company-dropdown";
 import { Label } from "@core/components/ui/label";
 
-const client = rc<Webhooks>("peppol");
-const companiesClient = rc<Companies>("peppol");
+const client = rc<Webhooks>("v1");
+const companiesClient = rc<Companies>("v1");
 
 // Utility function to handle API responses
 const handleApiResponse = async (

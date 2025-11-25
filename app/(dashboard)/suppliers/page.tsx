@@ -43,8 +43,8 @@ import { Label } from "@core/components/ui/label";
 import { AsyncButton } from "@core/components/async-button";
 import type { Label as LabelType } from "@peppol/types/label";
 
-const client = rc<Suppliers>("peppol");
-const labelsClient = rc<Labels>("peppol");
+const client = rc<Suppliers>("v1");
+const labelsClient = rc<Labels>("v1");
 
 type Supplier = {
   id: string;

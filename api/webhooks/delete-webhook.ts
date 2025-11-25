@@ -28,7 +28,11 @@ const deleteWebhookParamSchema = z.object({
     }),
 });
 
-type DeleteWebhookContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteWebhookParamSchema> }, out: { param: z.infer<typeof deleteWebhookParamSchema> } }>;
+const deleteWebhookParamSchemaWithTeamId = deleteWebhookParamSchema.extend({
+    teamId: z.string(),
+});
+
+type DeleteWebhookContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof deleteWebhookParamSchemaWithTeamId> }, out: { param: z.infer<typeof deleteWebhookParamSchemaWithTeamId> } }>;
 
 const _deleteWebhookMinimal = server.delete(
     "/webhooks/:webhookId",
@@ -42,7 +46,7 @@ const _deleteWebhook = server.delete(
     "/:teamId/webhooks/:webhookId",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", deleteWebhookParamSchema.extend({ teamId: z.string() })),
+    zodValidator("param", deleteWebhookParamSchemaWithTeamId),
     _deleteWebhookImplementation,
 );
 

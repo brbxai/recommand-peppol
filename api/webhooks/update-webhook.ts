@@ -36,7 +36,11 @@ const updateWebhookJsonBodySchema = z.object({
     companyId: z.string().nullish(),
 });
 
-type UpdateWebhookContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateWebhookParamSchema>, json: z.input<typeof updateWebhookJsonBodySchema> }, out: { param: z.infer<typeof updateWebhookParamSchema>, json: z.infer<typeof updateWebhookJsonBodySchema> } }>;
+const updateWebhookParamSchemaWithTeamId = updateWebhookParamSchema.extend({
+    teamId: z.string(),
+});
+
+type UpdateWebhookContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateWebhookParamSchemaWithTeamId>, json: z.input<typeof updateWebhookJsonBodySchema> }, out: { param: z.infer<typeof updateWebhookParamSchemaWithTeamId>, json: z.infer<typeof updateWebhookJsonBodySchema> } }>;
 
 const _updateWebhookMinimal = server.put(
     "/webhooks/:webhookId",

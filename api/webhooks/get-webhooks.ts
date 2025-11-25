@@ -27,7 +27,11 @@ const getWebhooksQuerySchema = z.object({
     companyId: z.string().nullish(),
 });
 
-type GetWebhooksContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { query: z.input<typeof getWebhooksQuerySchema> }, out: { query: z.infer<typeof getWebhooksQuerySchema> } }>;
+const getWebhooksParamSchemaWithTeamId = z.object({
+    teamId: z.string(),
+});
+
+type GetWebhooksContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { query: z.input<typeof getWebhooksQuerySchema>, param: z.input<typeof getWebhooksParamSchemaWithTeamId> }, out: { query: z.infer<typeof getWebhooksQuerySchema>, param: z.infer<typeof getWebhooksParamSchemaWithTeamId> } }>;
 
 const _getWebhooksMinimal = server.get(
     "/webhooks",
@@ -41,7 +45,7 @@ const _getWebhooks = server.get(
     "/:teamId/webhooks",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", z.object({ teamId: z.string() })),
+    zodValidator("param", getWebhooksParamSchemaWithTeamId),
     zodValidator("query", getWebhooksQuerySchema),
     _getWebhooksImplementation,
 );

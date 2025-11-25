@@ -4,7 +4,7 @@ import type { InferResponseType } from 'hono/client';
 import { useEffect, useState } from "react";
 import { useUserStore } from "@core/lib/user-store";
 
-export const client = rc<Playgrounds>("peppol");
+export const client = rc<Playgrounds>("v1");
 
 type GetPlaygroundSuccess = Extract<
   InferResponseType<typeof client[":teamId"]["playground"]["$get"]>,

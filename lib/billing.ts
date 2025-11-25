@@ -5,7 +5,7 @@ import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import type { BillingProfileData } from "@peppol/api/billing-profile";
 
-const billingProfileClient = rc<BillingProfile>('peppol');
+const billingProfileClient = rc<BillingProfile>('v1');
 
 export async function fetchBillingProfile(teamId: string): Promise<BillingProfileData | null> {
   try {

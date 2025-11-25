@@ -8,7 +8,7 @@ import { Button } from "@core/components/ui/button";
 import type { BillingProfile } from "@peppol/api/billing-profile";
 import { useNavigate } from "react-router-dom";
 
-const billingProfileClient = rc<BillingProfile>('peppol');
+const billingProfileClient = rc<BillingProfile>('v1');
 
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);

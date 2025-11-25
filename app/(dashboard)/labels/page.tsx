@@ -31,7 +31,7 @@ import { DataTableToolbar } from "@core/components/data-table/toolbar";
 import { DataTablePagination } from "@core/components/data-table/pagination";
 import { AsyncButton } from "@core/components/async-button";
 
-const client = rc<Labels>("peppol");
+const client = rc<Labels>("v1");
 
 const handleApiResponse = async (
   response: Response,

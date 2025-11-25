@@ -29,7 +29,11 @@ const createWebhookJsonBodySchema = z.object({
     companyId: z.string().nullish(),
 });
 
-type CreateWebhookContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof createWebhookJsonBodySchema> }, out: { json: z.infer<typeof createWebhookJsonBodySchema> } }>;
+const createWebhookParamSchemaWithTeamId = z.object({
+    teamId: z.string(),
+});
+
+type CreateWebhookContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof createWebhookJsonBodySchema>, param: z.input<typeof createWebhookParamSchemaWithTeamId> }, out: { json: z.infer<typeof createWebhookJsonBodySchema>, param: z.infer<typeof createWebhookParamSchemaWithTeamId> } }>;
 
 const _createWebhookMinimal = server.post(
     "/webhooks",
@@ -43,7 +47,7 @@ const _createWebhook = server.post(
     "/:teamId/webhooks",
     requireTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", z.object({ teamId: z.string() })),
+    zodValidator("param", createWebhookParamSchemaWithTeamId),
     zodValidator("json", createWebhookJsonBodySchema),
     _createWebhookImplementation,
 );

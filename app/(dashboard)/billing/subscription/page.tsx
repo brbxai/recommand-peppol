@@ -64,8 +64,8 @@ import {
 } from "@peppol/lib/billing";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 
-const subscriptionClient = rc<Subscription>("peppol");
-const billingProfileClient = rc<BillingProfile>("peppol");
+const subscriptionClient = rc<Subscription>("v1");
+const billingProfileClient = rc<BillingProfile>("v1");
 
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);

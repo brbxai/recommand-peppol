@@ -2,6 +2,9 @@
   "name": "peppol",
   "module": "index.ts",
   "type": "module",
+  "recommand":{
+    "apiMount": ""
+  },
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "test": "bun test"

@@ -22,10 +22,16 @@ export async function init(app: RecommandApp, server: Server) {
   logger = new Logger(app);
   logger.info("Initializing peppol app");
 
+  const exclude: RegExp[] = [
+    /^\/api\/core(?!\/auth\/verify).*$/, // Exclude all core API endpoints except the auth/verify endpoint
+    /^\/api\/peppol.*$/ // Exclude all peppol API endpoints (these have been replaced by the new v1 API)
+  ];
+
   // Add OpenAPI documentation
 server.get(
   "/openapi",
   openAPISpecs(server, {
+    exclude,
     documentation: {
       info: {
         title: "Recommand Peppol API",
@@ -126,16 +132,21 @@ For additional support or questions, don't hesitate to contact our support team.
 );
 }
 
-server.route("/", sendDocumentServer);
-server.route("/", subscriptionServer);
-server.route("/", billingProfileServer);
-server.route("/", companiesServer);
-server.route("/", labelsServer);
-server.route("/internal/", receiveDocumentServer);
-server.route("/", transmittedDocumentsServer);
-server.route("/", webhooksServer);
-server.route("/", recipientServer);
-server.route("/", playgroundsServer);
-server.route("/", suppliersServer);
+for(const prefix of ["/peppol/", "/v1/"]) {
+  server.route(prefix, sendDocumentServer);
+  server.route(prefix, companiesServer);
+  server.route(prefix, transmittedDocumentsServer);
+  server.route(prefix, recipientServer);
+  server.route(prefix + "internal/", receiveDocumentServer);
+
+  server.route(prefix, webhooksServer);
+  server.route(prefix, playgroundsServer);
+  
+  server.route(prefix, suppliersServer);
+  server.route(prefix, labelsServer);
+
+  server.route(prefix, billingProfileServer); 
+  server.route(prefix, subscriptionServer); 
+}
 
 export default server;

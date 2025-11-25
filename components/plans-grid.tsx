@@ -16,7 +16,7 @@ import type { Subscription } from "api/subscription";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { Check } from "lucide-react";
 
-const subscriptionClient = rc<Subscription>("peppol");
+const subscriptionClient = rc<Subscription>("v1");
 
 interface PlansGridProps {
   currentSubscription: SubscriptionType | null;
