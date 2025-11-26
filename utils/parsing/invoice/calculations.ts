@@ -113,38 +113,47 @@ export function calculateVat(invoice: Invoice | CreditNote) {
 
   const getKey = (category: VatCategory, percentage: string) => `${category}-${percentage}`;
 
-  // Start with invoice line vat totals
-  const subtotalsByKey = invoice.lines.reduce((acc, line) => {
-    const category = line.vat.category;
-    const key = getKey(category, line.vat.percentage);
-    const taxableAmount = new Decimal(getNetAmount(line));
+  // Collect all vat categories and percentages
+  const vatInfo = new Set<{ category: VatCategory; percentage: string }>();
+  for(const line of invoice.lines) {
+    vatInfo.add({ category: line.vat.category, percentage: line.vat.percentage });
+  }
+  for(const discount of invoice.discounts ?? []) {
+    vatInfo.add({ category: discount.vat.category, percentage: discount.vat.percentage });
+  }
+  for(const surcharge of invoice.surcharges ?? []) {
+    vatInfo.add({ category: surcharge.vat.category, percentage: surcharge.vat.percentage });
+  }
 
-    if (!acc[key]) {
-      acc[key] = {
-        taxableAmount: new Decimal(0),
-        category: category,
-        percentage: line.vat.percentage,
-      };
+  const subtotalsByKey = new Map<string, { taxableAmount: Decimal; category: VatCategory; percentage: string }>();
+
+  const addToSubtotals = (category: VatCategory, percentage: string, taxableAmount: Decimal) => {
+    const key = getKey(category, new Decimal(percentage).toString());
+    if (!subtotalsByKey.has(key)) {
+      subtotalsByKey.set(key, { taxableAmount: new Decimal(0), category: category, percentage: percentage });
     }
-    acc[key].taxableAmount = acc[key].taxableAmount.plus(taxableAmount);
-    return acc;
-  }, {} as Record<string, { taxableAmount: Decimal; category: VatCategory; percentage: string }>);
+    subtotalsByKey.get(key)!.taxableAmount = subtotalsByKey.get(key)!.taxableAmount.plus(taxableAmount);
+  }
+
+  // Add invoice lines
+  for(const line of invoice.lines) {
+    const taxableAmount = new Decimal(getNetAmount(line));
+    addToSubtotals(line.vat.category, line.vat.percentage, taxableAmount);
+  }
 
   // Add global discounts
   for(const discount of invoice.discounts ?? []) {
-    const key = getKey(discount.vat.category, discount.vat.percentage);
     const taxableAmount = new Decimal(discount.amount);
-    subtotalsByKey[key].taxableAmount = subtotalsByKey[key].taxableAmount.minus(taxableAmount);
+    addToSubtotals(discount.vat.category, discount.vat.percentage, taxableAmount.neg());
   }
 
   // Add global surcharges
   for(const surcharge of invoice.surcharges ?? []) {
-    const key = getKey(surcharge.vat.category, surcharge.vat.percentage);
     const taxableAmount = new Decimal(surcharge.amount);
-    subtotalsByKey[key].taxableAmount = subtotalsByKey[key].taxableAmount.plus(taxableAmount);
+    addToSubtotals(surcharge.vat.category, surcharge.vat.percentage, taxableAmount);
   }
 
-  const subtotals = Object.values(subtotalsByKey).map(subtotal => ({
+  const subtotals = Array.from(subtotalsByKey.values()).map(subtotal => ({
     taxableAmount: subtotal.taxableAmount.toNearest(0.01).toFixed(2),
     vatAmount: subtotal.taxableAmount.mul(subtotal.percentage).div(100).toNearest(0.01).toFixed(2),
     category: subtotal.category,
