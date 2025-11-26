@@ -216,7 +216,6 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
       ...(creditNote.paymentMeans && {
         "cac:PaymentMeans": creditNote.paymentMeans.map((payment) => ({
           "cbc:PaymentMeansCode": {
-            "@_name": "Credit Transfer",
             "#text": "30",
           },
           ...(payment.reference && {
@@ -228,6 +227,9 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
             "cbc:ID": {
               "#text": payment.iban,
             },
+            ...(payment.name && {
+              "cbc:Name": payment.name,
+            }),
           },
         })),
       }),
@@ -340,7 +342,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
         },
       },
       "cac:CreditNoteLine": lines.map((item, index) => ({
-        "cbc:ID": (index + 1).toString(),
+        "cbc:ID": item.id === undefined || item.id === null ? (index + 1).toString() : item.id,
         "cbc:CreditedQuantity": {
           "@_unitCode": item.unitCode,
           "#text": item.quantity,
