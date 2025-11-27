@@ -1,4 +1,4 @@
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { getSupplierByIdOrExternalId, getLabelsForSuppliers } from "@peppol/data/suppliers";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
@@ -9,6 +9,7 @@ import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
 import { UserFacingError } from "@peppol/utils/util";
 import { supplierResponse, supplierIdParamSchema } from "./shared";
+import { requireIntegrationSupportedTeamAccess } from "@peppol/utils/auth-middleware";
 
 const server = new Server();
 
@@ -32,7 +33,7 @@ type GetSupplierContext = Context<AuthenticatedUserContext & AuthenticatedTeamCo
 
 const _getSupplierMinimal = server.get(
     "/suppliers/:supplierId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     getSupplierRouteDescription,
     zodValidator("param", supplierIdParamSchema),
     _getSupplierImplementation,
@@ -40,7 +41,7 @@ const _getSupplierMinimal = server.get(
 
 const _getSupplier = server.get(
     "/:teamId/suppliers/:supplierId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", getSupplierParamSchemaWithTeamId),
     _getSupplierImplementation,

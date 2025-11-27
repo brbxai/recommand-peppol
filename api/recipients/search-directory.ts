@@ -3,12 +3,12 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
-import { requireAuth, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedAuth, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { searchPeppolDirectory } from "@peppol/data/peppol-directory";
 
 const server = new Server();
@@ -31,7 +31,7 @@ type SearchDirectoryContext = Context<AuthenticatedUserContext & AuthenticatedTe
 
 const _searchDirectoryMinimal = server.post(
     "/search-peppol-directory",
-    requireAuth(),
+    requireIntegrationSupportedAuth(),
     searchDirectoryRouteDescription,
     zodValidator("json", searchDirectoryJsonBodySchema),
     _searchDirectoryImplementation,
@@ -39,7 +39,7 @@ const _searchDirectoryMinimal = server.post(
 
 const _searchDirectory = server.post(
     "/searchPeppolDirectory",
-    requireAuth(),
+    requireIntegrationSupportedAuth(),
     describeRoute({hide: true}),
     zodValidator("json", searchDirectoryJsonBodySchema),
     _searchDirectoryImplementation,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
     getInbox,
@@ -12,7 +12,7 @@ import {
     describeErrorResponse,
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { transmittedDocumentResponse } from "./shared";
 
 const server = new Server();
@@ -43,7 +43,7 @@ type GetInboxContext = Context<AuthenticatedUserContext & AuthenticatedTeamConte
 
 const _getInboxMinimal = server.get(
     "/inbox",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     getInboxRouteDescription,
     zodValidator("query", getInboxQuerySchema),
     _getInboxImplementation,
@@ -51,7 +51,7 @@ const _getInboxMinimal = server.get(
 
 const _getInbox = server.get(
     "/:teamId/inbox",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("query", getInboxQuerySchema),
     zodValidator("param", z.object({

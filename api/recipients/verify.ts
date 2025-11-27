@@ -3,12 +3,12 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionSuccess } from "@recommand/lib/utils";
-import { requireAuth, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedAuth, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { verifyRecipient } from "@peppol/data/recipient";
 
 const server = new Server();
@@ -36,7 +36,7 @@ type VerifyRecipientContext = Context<AuthenticatedUserContext & AuthenticatedTe
 
 const _verifyRecipient = server.post(
     "/verify",
-    requireAuth(),
+    requireIntegrationSupportedAuth(),
     verifyRecipientRouteDescription,
     zodValidator("json", verifyRecipientJsonBodySchema),
     _verifyRecipientImplementation,

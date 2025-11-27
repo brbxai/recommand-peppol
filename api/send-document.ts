@@ -15,7 +15,7 @@ import { sendAs4 } from "@peppol/data/phase4-ap/client";
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import {
-  requireCompanyAccess,
+  requireIntegrationSupportedCompanyAccess,
   requireValidSubscription,
   type CompanyAccessContext,
 } from "@peppol/utils/auth-middleware";
@@ -84,7 +84,7 @@ type SendDocumentContext = Context<AuthenticatedUserContext & AuthenticatedTeamC
 
 const _sendDocument = server.post(
   "/:companyId/sendDocument",
-  requireCompanyAccess(),
+  requireIntegrationSupportedCompanyAccess(),
   requireValidSubscription(),
   describeRoute({ hide: true }),
   zodValidator("json", sendDocumentSchema),
@@ -93,7 +93,7 @@ const _sendDocument = server.post(
 
 const _sendDocumentMinimal = server.post(
   "/:companyId/send",
-  requireCompanyAccess(),
+  requireIntegrationSupportedCompanyAccess(),
   requireValidSubscription(),
   routeDescription,
   zodValidator("json", sendDocumentSchema),

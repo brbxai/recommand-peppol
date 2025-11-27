@@ -1,4 +1,4 @@
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { unassignLabelFromSupplier } from "@peppol/data/supplier-labels";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
@@ -9,6 +9,7 @@ import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
 import { UserFacingError } from "@peppol/utils/util";
 import { supplierIdParamSchema } from "./shared";
+import { requireIntegrationSupportedTeamAccess } from "@peppol/utils/auth-middleware";
 
 const server = new Server();
 
@@ -38,7 +39,7 @@ type UnassignLabelContext = Context<AuthenticatedUserContext & AuthenticatedTeam
 
 const _unassignLabelMinimal = server.delete(
     "/suppliers/:supplierId/labels/:labelId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     unassignLabelRouteDescription,
     zodValidator("param", unassignLabelParamSchema),
     _unassignLabelImplementation,
@@ -46,7 +47,7 @@ const _unassignLabelMinimal = server.delete(
 
 const _unassignLabel = server.delete(
     "/:teamId/suppliers/:supplierId/labels/:labelId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", unassignLabelParamSchemaWithTeamId),
     _unassignLabelImplementation,

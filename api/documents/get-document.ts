@@ -3,7 +3,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
     getTransmittedDocument,
@@ -12,7 +12,7 @@ import {
   describeErrorResponse,
   describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { transmittedDocumentResponse } from "./shared";
 
 const server = new Server();
@@ -43,7 +43,7 @@ type GetTransmittedDocumentContext = Context<AuthenticatedUserContext & Authenti
 
 const _getTransmittedDocumentMinimal = server.get(
     "/documents/:documentId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     getTransmittedDocumentRouteDescription,
     zodValidator("param", getTransmittedDocumentParamSchema),
     _getTransmittedDocumentImplementation,
@@ -51,7 +51,7 @@ const _getTransmittedDocumentMinimal = server.get(
 
 const _getTransmittedDocument = server.get(
     "/:teamId/documents/:documentId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", getTransmittedDocumentParamSchemaWithTeamId),
     _getTransmittedDocumentImplementation,

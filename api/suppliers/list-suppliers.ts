@@ -3,7 +3,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
   getSuppliers,
@@ -13,6 +13,7 @@ import {
   describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
 import { supplierResponse } from "./shared";
+import { requireIntegrationSupportedTeamAccess } from "@peppol/utils/auth-middleware";
 
 const server = new Server();
 
@@ -58,7 +59,7 @@ type GetSuppliersContext = Context<AuthenticatedUserContext & AuthenticatedTeamC
 
 const _getSuppliersMinimal = server.get(
     "/suppliers",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     getSuppliersRouteDescription,
     zodValidator("query", getSuppliersQuerySchema),
     _getSuppliersImplementation,
@@ -66,7 +67,7 @@ const _getSuppliersMinimal = server.get(
 
 const _getSuppliers = server.get(
     "/:teamId/suppliers",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("query", getSuppliersQuerySchema),
     zodValidator("param", getSuppliersParamSchema),

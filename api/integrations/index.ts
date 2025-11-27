@@ -5,10 +5,12 @@ import getIntegrationServer, { type GetIntegration } from "./get-integration";
 import createIntegrationServer, { type CreateIntegration } from "./create-integration";
 import updateIntegrationServer, { type UpdateIntegration } from "./update-integration";
 import deleteIntegrationServer, { type DeleteIntegration } from "./delete-integration";
+import jwksServer, { type GetJwks } from "./jwks";
 
-export type Integrations = GetIntegrations | GetIntegration | CreateIntegration | UpdateIntegration | DeleteIntegration;
+export type Integrations = GetIntegrations | GetIntegration | CreateIntegration | UpdateIntegration | DeleteIntegration | GetJwks;
 
 const server = new Server();
+server.route("/", jwksServer);
 server.route("/", getIntegrationsServer);
 server.route("/", getIntegrationServer);
 server.route("/", createIntegrationServer);

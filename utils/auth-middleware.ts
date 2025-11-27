@@ -1,11 +1,15 @@
 import { isMember } from "@core/data/teams";
-import type {
-  AuthenticatedTeamContext,
-  AuthenticatedUserContext,
+import {
+  requireAuth,
+  requireTeamAccess,
+  type AuthenticatedTeamContext,
+  type AuthenticatedUserContext,
+  type TeamAccessOptions,
 } from "@core/lib/auth-middleware";
-import { verifySession } from "@core/lib/session";
+import { verifySession, type SessionVerificationExtension } from "@core/lib/session";
 import { getBillingProfile } from "@peppol/data/billing-profile";
 import { getCompanyById, type Company } from "@peppol/data/companies";
+import { verifyIntegrationJwt } from "@peppol/data/integrations/auth";
 import { getExtendedTeam, type ExtendedTeam } from "@peppol/data/teams";
 import { actionFailure } from "@recommand/lib/utils";
 import { createMiddleware } from "hono/factory";
@@ -34,18 +38,20 @@ export type CompanyAccessContext = {
   };
 };
 
-export function requireCompanyAccess() {
+type CompanyAccessOptions = {
+  extensions?: SessionVerificationExtension[];
+};
+
+export function requireCompanyAccess(options: CompanyAccessOptions = {}) {
   return createMiddleware<
     AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext
   >(async (c, next) => {
     // Verify user's session
-    await verifySession(c);
-
-    // Get user from context
-    const user: { id: string; isAdmin: boolean } | null = c.get("user");
-    if (!user?.id) {
+    const session = await verifySession(c, options.extensions);
+    if (!session) {
       return c.json(actionFailure("Unauthorized"), 401);
     }
+
 
     const companyId = c.req.param("companyId");
     if (!companyId) {
@@ -56,13 +62,18 @@ export function requireCompanyAccess() {
       return c.json(actionFailure("Company not found"), 404);
     }
 
-    const apiKey = c.get("apiKey");
-    if (apiKey) {
+    const contextTeamId = c.get("teamId");
+    if (contextTeamId) {
       // If the user is authenticated via an API key, ensure the API key belongs to the team
-      if (apiKey.teamId !== company.teamId) {
+      if (contextTeamId !== company.teamId) {
         return c.json(actionFailure("Unauthorized"), 401);
       }
     } else {
+      // Get user from context
+      const user: { id: string; isAdmin: boolean } | null = c.get("user");
+      if (!user?.id) {
+        return c.json(actionFailure("Unauthorized"), 401);
+      }
       // If the user is not authenticated via an API key, ensure they are a member of the team
       if (!(await isMember(user.id, company.teamId))) {
         return c.json(actionFailure("Unauthorized"), 401);
@@ -78,7 +89,7 @@ export function requireCompanyAccess() {
     // If there is a teamId param as well, ensure it matches the company's teamId
     const teamId = c.req.param("teamId");
     if (teamId && teamId !== company.teamId) {
-      return c.json(actionFailure("Unauthorized: provided teamId does not match company's teamId"), 401);
+      return c.json(actionFailure("Unauthorized"), 401);
     }
 
     c.set("team", team);
@@ -112,4 +123,48 @@ export function requireValidSubscription() {
       await next();
     }
   );
+}
+
+const integrationSupportedAuthExtensions: SessionVerificationExtension[] = [
+  // Also allow access if the user is authenticated via an integration JWT
+  async (c) => {
+    const authorizationHeader = c.req.header("Authorization")?.split(" ");
+    if (!authorizationHeader || authorizationHeader.length !== 2) {
+      return null;
+    }
+    const authorizationType = authorizationHeader[0];
+    const encodedCredentials = authorizationHeader[1];
+    if (authorizationType !== "Bearer" || !encodedCredentials) {
+      return null;
+    }
+    try {
+      const payload = await verifyIntegrationJwt(encodedCredentials);
+      if (!payload) {
+        return null;
+      }
+      return { userId: null, isAdmin: false, apiKey: null, teamId: payload.teamId as string };
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  }
+]
+
+export function requireIntegrationSupportedAuth() {
+  return requireAuth({
+    extensions: integrationSupportedAuthExtensions,
+  })
+}
+
+export function requireIntegrationSupportedTeamAccess(options: TeamAccessOptions = {}) {
+  return requireTeamAccess({
+    ...options,
+    extensions: integrationSupportedAuthExtensions,
+  });
+}
+
+export function requireIntegrationSupportedCompanyAccess() {
+  return requireCompanyAccess({
+    extensions: integrationSupportedAuthExtensions,
+  });
 }

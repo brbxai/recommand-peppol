@@ -1,4 +1,4 @@
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import {
     deleteLabel,
 } from "@peppol/data/labels";
@@ -10,6 +10,7 @@ import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponse } from "@peppol/utils/api-docs";
 import { UserFacingError } from "@peppol/utils/util";
+import { requireIntegrationSupportedTeamAccess } from "@peppol/utils/auth-middleware";
 
 const server = new Server();
 
@@ -39,7 +40,7 @@ type DeleteLabelContext = Context<AuthenticatedUserContext & AuthenticatedTeamCo
 
 const _deleteLabelMinimal = server.delete(
     "/labels/:labelId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     deleteLabelRouteDescription,
     zodValidator("param", deleteLabelParamSchema),
     _deleteLabelImplementation,
@@ -47,7 +48,7 @@ const _deleteLabelMinimal = server.delete(
 
 const _deleteLabel = server.delete(
     "/:teamId/labels/:labelId",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", deleteLabelParamSchemaWithTeamId),
     _deleteLabelImplementation,

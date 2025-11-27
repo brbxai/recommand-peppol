@@ -3,7 +3,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure } from "@recommand/lib/utils";
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
     getTransmittedDocument,
@@ -11,7 +11,7 @@ import {
 import {
     describeErrorResponse,
 } from "@peppol/utils/api-docs";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import JSZip from "jszip";
 
 const server = new Server();
@@ -52,7 +52,7 @@ type DownloadPackageContext = Context<AuthenticatedUserContext & AuthenticatedTe
 
 const _downloadPackageMinimal = server.get(
     "/documents/:documentId/download-package",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     downloadPackageRouteDescription,
     zodValidator("param", downloadPackageParamSchema),
     _downloadPackageImplementation,
@@ -60,7 +60,7 @@ const _downloadPackageMinimal = server.get(
 
 const _downloadPackage = server.get(
     "/:teamId/documents/:documentId/downloadPackage",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", downloadPackageParamSchemaWithTeamId),
     _downloadPackageImplementation,

@@ -3,7 +3,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
+import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
   getTransmittedDocuments,
@@ -13,7 +13,7 @@ import {
   describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
 import { supportedDocumentTypeEnum } from "@peppol/db/schema";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { transmittedDocumentResponse } from "./shared";
 
 const server = new Server();
@@ -70,7 +70,7 @@ type GetTransmittedDocumentsContext = Context<AuthenticatedUserContext & Authent
 
 const _transmittedDocumentsMinimal = server.get(
     "/documents",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     getTransmittedDocumentsRouteDescription,
     zodValidator("query", getTransmittedDocumentsQuerySchema),
     _getTransmittedDocumentsImplementation,
@@ -78,7 +78,7 @@ const _transmittedDocumentsMinimal = server.get(
 
 const _transmittedDocuments = server.get(
     "/:teamId/documents",
-    requireTeamAccess(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("query", getTransmittedDocumentsQuerySchema),
     _getTransmittedDocumentsImplementation,
