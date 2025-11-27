@@ -28,3 +28,4 @@ export const configurationAuthSchema = z.object({
   }).strict();
   
   export type IntegrationConfiguration = z.infer<typeof configurationSchema>;
+  export type IntegrationConfigurationField = z.infer<typeof configurationFieldSchema>;

@@ -1,6 +1,13 @@
-import { manifestSchema, responseSchema, type IntegrationEvent, type IntegrationManifest } from "@peppol/types/integration";
+import { errorResponseSchema, manifestSchema, successResponseSchema, type IntegrationConfigurationField, type IntegrationEvent, type IntegrationManifest } from "@peppol/types/integration";
 import { createIntegrationTaskLog, updateIntegrationState, type ActivatedIntegration } from ".";
 import { createCleanUrl, UserFacingError } from "@peppol/utils/util";
+
+function flattenFieldsToObject(fields: IntegrationConfigurationField[]): Record<string, unknown> {
+    return fields.reduce((acc, field) => {
+        acc[field.id] = field.value;
+        return acc;
+    }, {} as Record<string, unknown>);
+}
 
 export async function postToIntegration({
     integration,
@@ -12,23 +19,27 @@ export async function postToIntegration({
     ctx?: { documentId?: string }
 }) {
 
+    const body = JSON.stringify({
+        version: integration.manifest.version,
+        // TODO: REPLACE
+        jwt: "...",
+        auth: integration.configuration.auth,
+        fields: flattenFieldsToObject(integration.configuration.fields),
+        state: integration.state,
+        context: {
+            ...ctx,
+            companyId: integration.companyId,
+            teamId: integration.teamId,
+        }
+    });
+    console.log("Posting to integration", integration.manifest.url, event, body);
+
     const response = await fetch(createCleanUrl([integration.manifest.url, event]), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            version: integration.manifest.version,
-            jwt: "",
-            auth: integration.configuration.auth,
-            fields: integration.configuration.fields,
-            state: integration.state,
-            context: {
-                ...ctx,
-                companyId: integration.companyId,
-                teamId: integration.teamId,
-            }
-        }),
+        body,
     });
 
     const json = await response.json();
@@ -38,7 +49,22 @@ export async function postToIntegration({
         throw new UserFacingError(`Unsupported response version: ${json.version}. Expected version: 1.0.0`);
     }
 
-    const parsedResponse = responseSchema.parse(json);
+    if (response.status !== 200) {
+        const result = errorResponseSchema.safeParse(json);
+        let message = "Invalid response for unsuccessful integration request";
+        if (result.success) {
+            const parsedResponse = result.data;
+            message = parsedResponse.error.message;
+        }
+        await createIntegrationTaskLog(integration.id, event, "", false, message, "");
+        throw new UserFacingError(message);
+    }
+
+    const result = successResponseSchema.safeParse(json);
+    if (!result.success) {
+        throw new UserFacingError(`Invalid response for successful integration request: ${JSON.stringify(result.error)}`);
+    }
+    const parsedResponse = result.data;
 
     // If the response contains a state, update the integration state
     if (parsedResponse.state !== null && parsedResponse.state !== undefined) {
@@ -48,7 +74,7 @@ export async function postToIntegration({
     // If the response contains tasks, create task logs
     if (parsedResponse.tasks !== null && parsedResponse.tasks !== undefined) {
         for (const task of parsedResponse.tasks) {
-            await createIntegrationTaskLog(integration.id, task.task, task.success, task.message, task.context);
+            await createIntegrationTaskLog(integration.id, event, task.task, task.success, task.message, task.context ?? "");
         }
     }
 

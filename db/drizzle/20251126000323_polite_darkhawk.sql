@@ -1,0 +1,1 @@
+ALTER TABLE "integration_task_logs" ADD COLUMN "event" text NOT NULL;

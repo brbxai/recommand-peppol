@@ -14,6 +14,7 @@ import integrationsServer from "./api/integrations";
 import recipientServer from "./api/recipients";
 import playgroundsServer from "./api/playgrounds";
 import suppliersServer from "./api/suppliers";
+import { initializeIntegrationCronJobs } from "./data/integrations/cron";
 
 export let logger: Logger;
 
@@ -22,6 +23,8 @@ const server = new Server();
 export async function init(app: RecommandApp, server: Server) {
   logger = new Logger(app);
   logger.info("Initializing peppol app");
+
+  initializeIntegrationCronJobs(logger);
 
   const exclude: RegExp[] = [
     /^\/api\/core(?!\/auth\/verify).*$/, // Exclude all core API endpoints except the auth/verify endpoint

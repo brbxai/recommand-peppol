@@ -1,12 +1,12 @@
 import { activatedIntegrations, integrationTaskLogs } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { configurationSchema } from "@peppol/types/integration/configuration";
 import { stateSchema } from "@peppol/types/integration/state";
-import { type IntegrationManifest, type IntegrationConfiguration, type IntegrationState, taskSchema } from "@peppol/types/integration";
+import { type IntegrationManifest, type IntegrationConfiguration, type IntegrationState, type IntegrationEvent, taskLogSchema } from "@peppol/types/integration";
 import { UserFacingError } from "@peppol/utils/util";
 import { getCompany } from "@peppol/data/companies";
-import { getIntegrationManifestFromUrl, validateManifest } from "./client";
+import { getIntegrationManifestFromUrl, validateManifest, postToIntegration } from "./client";
 
 export type ActivatedIntegration = typeof activatedIntegrations.$inferSelect;
 export type InsertActivatedIntegration = typeof activatedIntegrations.$inferInsert;
@@ -188,13 +188,40 @@ export async function deleteIntegration(
 
 export async function createIntegrationTaskLog(
   integrationId: string,
+  event: IntegrationEvent,
   task: string,
   success: boolean,
   message: string,
   context: string
 ): Promise<void> {
-  const validatedTaskLog = taskSchema.parse({ task, success, message, context });
+  const validatedTaskLog = taskLogSchema.parse({ event, task, success, message, context });
   await db
     .insert(integrationTaskLogs)
-    .values({ integrationId, task: validatedTaskLog.task, success: validatedTaskLog.success, message: validatedTaskLog.message, context: validatedTaskLog.context });
+    .values({ integrationId, event, task: validatedTaskLog.task, success: validatedTaskLog.success, message: validatedTaskLog.message, context: validatedTaskLog.context ?? "" });
+}
+
+export async function getIntegrationsWithCronEnabled(
+  event: "integration.cron.short" | "integration.cron.medium" | "integration.cron.long"
+): Promise<ActivatedIntegration[]> {
+  const capabilityJson = JSON.stringify([{ event, enabled: true }]);
+  return await db
+    .select()
+    .from(activatedIntegrations)
+    .where(
+      sql`${activatedIntegrations.configuration}->'capabilities' @> ${sql.raw(`'${capabilityJson.replace(/'/g, "''")}'`)}::jsonb`
+    );
+}
+
+export async function executeCronJob(event: IntegrationEvent): Promise<void> {
+  const integrations = await getIntegrationsWithCronEnabled(
+    event as "integration.cron.short" | "integration.cron.medium" | "integration.cron.long"
+  );
+
+  for (const integration of integrations) {
+    try {
+      await postToIntegration({ integration, event });
+    } catch (error) {
+      console.error("Failed to execute cron job", event, integration.id, error);
+    }
+  }
 }

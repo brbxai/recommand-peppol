@@ -358,6 +358,7 @@ export const integrationTaskLogs = pgTable("integration_task_logs", {
   integrationId: text("integration_id")
     .references(() => activatedIntegrations.id, { onDelete: "cascade" })
     .notNull(),
+  event: text("event").notNull(),
   task: text("task").notNull(),
   success: boolean("success").notNull(),
   message: text("message").notNull(),
