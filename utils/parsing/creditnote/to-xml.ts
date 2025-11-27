@@ -108,14 +108,6 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
             "@_schemeID": sender.schemeId,
             "#text": sender.identifier,
           },
-          "cac:PartyIdentification": [
-            {
-              "cbc:ID": {
-                "@_schemeID": sender.schemeId,
-                "#text": sender.identifier,
-              },
-            },
-          ],
           "cac:PartyName": {
             "cbc:Name": creditNote.seller.name,
           },
@@ -149,14 +141,6 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
             "@_schemeID": recipient.schemeId,
             "#text": recipient.identifier,
           },
-          "cac:PartyIdentification": [
-            {
-              "cbc:ID": {
-                "@_schemeID": recipient.schemeId,
-                "#text": recipient.identifier,
-              },
-            },
-          ],
           "cac:PartyName": {
             "cbc:Name": creditNote.buyer.name,
           },
