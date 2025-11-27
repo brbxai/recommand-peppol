@@ -8,7 +8,7 @@ import { stateSchema } from "./state";
 export const taskSchema = z.object({
     task: z.string().min(1),
     success: z.boolean(),
-    message: z.string(),
+    message: z.string().optional(),
     context: z.string().optional(),
 }).strict();
 
@@ -29,8 +29,9 @@ export const successResponseSchema = z.object({
 export const errorResponseSchema = z.object({
     version: z.string().regex(/^[0-9]+\.[0-9]+\.[0-9]+$/),
     error: z.object({
-        code: z.string(),
+        task: z.string(),
         message: z.string(),
+        context: z.string().optional(),
     }).strict(),
 }).strict();
 

@@ -2,6 +2,7 @@ import { addSeconds } from "date-fns";
 import { type ActivatedIntegration } from ".";
 import { createLocalJWKSet, importPKCS8, jwtVerify, SignJWT, type JWTPayload } from "jose";
 import { ulid } from "ulid";
+import { fixNewlines } from "@peppol/utils/util";
 
 export async function generateIntegrationJwt(integration: ActivatedIntegration) {
 
@@ -11,7 +12,7 @@ export async function generateIntegrationJwt(integration: ActivatedIntegration) 
     if (!process.env.INTEGRATIONS_PRIVATE_KEY) {
         throw new Error("INTEGRATIONS_PRIVATE_KEY is not set");
     }
-    const privateKey = await importPKCS8(process.env.INTEGRATIONS_PRIVATE_KEY, "RS256");
+    const privateKey = await importPKCS8(fixNewlines(process.env.INTEGRATIONS_PRIVATE_KEY), "RS256");
 
     const jwt = await new SignJWT({
         teamId: integration.teamId,

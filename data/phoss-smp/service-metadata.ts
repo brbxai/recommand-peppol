@@ -1,4 +1,4 @@
-import { UserFacingError } from "@peppol/utils/util";
+import { fixNewlines, UserFacingError } from "@peppol/utils/util";
 import { fetchSmp } from "./client";
 import { XMLBuilder } from "fast-xml-parser";
 
@@ -11,19 +11,6 @@ const builder = new XMLBuilder({
   format: true,
   suppressBooleanAttributes: true,
 });
-
-// fixNewlines replaces spaces that are actually newlines in the certificate format
-function fixNewlines(content: string): string {
-  // Split by "-----" to handle certificate boundaries
-  const parts = content.split("-----");
-  for (let i = 0; i < parts.length; i++) {
-    // Only process the parts that are between the BEGIN and END markers
-    if (i > 0 && i < parts.length - 1 && !parts[i].includes("BEGIN") && !parts[i].includes("END")) {
-      parts[i] = parts[i].replace(/ /g, "\n");
-    }
-  }
-  return parts.join("-----");
-}
 
 export async function registerServiceMetadata(
   peppolIdentifierEas: string,

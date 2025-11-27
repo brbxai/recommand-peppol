@@ -1,6 +1,7 @@
 import { errorResponseSchema, manifestSchema, successResponseSchema, type IntegrationConfigurationField, type IntegrationEvent, type IntegrationManifest } from "@peppol/types/integration";
 import { createIntegrationTaskLog, updateIntegrationState, type ActivatedIntegration } from ".";
 import { createCleanUrl, UserFacingError } from "@peppol/utils/util";
+import { generateIntegrationJwt } from "./auth";
 
 function flattenFieldsToObject(fields: IntegrationConfigurationField[]): Record<string, unknown> {
     return fields.reduce((acc, field) => {
@@ -21,8 +22,7 @@ export async function postToIntegration({
 
     const body = JSON.stringify({
         version: integration.manifest.version,
-        // TODO: REPLACE
-        jwt: "...",
+        jwt: await generateIntegrationJwt(integration),
         auth: integration.configuration.auth,
         fields: flattenFieldsToObject(integration.configuration.fields),
         state: integration.state,
@@ -32,7 +32,7 @@ export async function postToIntegration({
             teamId: integration.teamId,
         }
     });
-    console.log("Posting to integration", integration.manifest.url, event, body);
+    console.log("Posting to integration", integration.manifest.url, event, JSON.stringify({...JSON.parse(body), jwt: "...", auth: {...integration.configuration.auth, token: "..."}}, null, 2));
 
     const response = await fetch(createCleanUrl([integration.manifest.url, event]), {
         method: 'POST',
@@ -55,8 +55,9 @@ export async function postToIntegration({
         if (result.success) {
             const parsedResponse = result.data;
             message = parsedResponse.error.message;
+            await createIntegrationTaskLog(integration.id, event, parsedResponse.error.task, false, message, parsedResponse.error.context ?? "");
         }
-        await createIntegrationTaskLog(integration.id, event, "", false, message, "");
+        console.error("Error response from integration", integration.manifest.url, event, JSON.stringify(json, null, 2));
         throw new UserFacingError(message);
     }
 
@@ -74,7 +75,7 @@ export async function postToIntegration({
     // If the response contains tasks, create task logs
     if (parsedResponse.tasks !== null && parsedResponse.tasks !== undefined) {
         for (const task of parsedResponse.tasks) {
-            await createIntegrationTaskLog(integration.id, event, task.task, task.success, task.message, task.context ?? "");
+            await createIntegrationTaskLog(integration.id, event, task.task, task.success, task.message ?? "", task.context ?? "");
         }
     }
 
@@ -83,7 +84,7 @@ export async function postToIntegration({
 }
 
 export async function getIntegrationManifestFromUrl(url: string) {
-    const response = await fetch(createCleanUrl([url, "integration.manifest"]), {
+    const response = await fetch(createCleanUrl([url, "manifest"]), {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
