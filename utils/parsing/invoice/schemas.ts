@@ -73,6 +73,7 @@ export const deliverySchema = z.object({
 }).partial().openapi({ ref: "Delivery" });
 
 export const paymentMeansSchema = z.object({
+  name: z.string().nullish().openapi({ example: "Credit Transfer", description: "The name of the payment means." }),
   paymentMethod: z.enum(['credit_transfer']).default('credit_transfer').openapi({ example: "credit_transfer" }),
   reference: z.string().default("").openapi({ example: "INV-2026-001" }),
   iban: z.string().openapi({ example: "BE1234567890" }),
@@ -110,6 +111,7 @@ export const totalsSchema = z.object({
 }).openapi({ ref: "Totals", description: "If not provided, the totals will be calculated from the document lines." });
 
 export const lineSchema = z.object({
+  id: z.string().nullish().openapi({ example: "1", description: "A line number. If not provided, it will be calculated automatically." }),
   name: z.string().default("").openapi({ example: "Consulting Services" }),
   description: z.string().nullish().openapi({ example: "Professional consulting services" }),
   buyersId: z.string().nullish().openapi({ example: "CS-001", description: "The item identifier of the item as defined by the buyer." }),

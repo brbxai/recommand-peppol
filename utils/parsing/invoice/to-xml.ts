@@ -209,7 +209,6 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
       ...(invoice.paymentMeans && {
         "cac:PaymentMeans": invoice.paymentMeans.map((payment) => ({
           "cbc:PaymentMeansCode": {
-            "@_name": "Credit Transfer",
             "#text": "30",
           },
           ...(payment.reference && {
@@ -221,6 +220,9 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
             "cbc:ID": {
               "#text": payment.iban,
             },
+            ...(payment.name && {
+              "cbc:Name": payment.name,
+            }),
           },
         })),
       }),
@@ -333,7 +335,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
         },
       },
       "cac:InvoiceLine": lines.map((item, index) => ({
-        "cbc:ID": (index + 1).toString(),
+        "cbc:ID": item.id === undefined || item.id === null ? (index + 1).toString() : item.id,
         "cbc:InvoicedQuantity": {
           "@_unitCode": item.unitCode,
           "#text": item.quantity,
