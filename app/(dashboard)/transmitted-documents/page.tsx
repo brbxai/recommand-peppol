@@ -35,6 +35,7 @@ import {
   PopoverTrigger,
 } from "@core/components/ui/popover";
 import type { Label } from "@peppol/types/label";
+import { Link } from "react-router-dom";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -342,9 +343,12 @@ export default function Page() {
         const id = row.getValue("id") as string;
         return (
           <div className="flex items-center gap-2">
-            <pre className="font-mono text-xs">
+            <Link
+              to={`/transmitted-documents/${id}`}
+              className="font-mono text-xs hover:underline"
+            >
               {id.slice(0, 6)}...{id.slice(-6)}
-            </pre>
+            </Link>
             <Button
               variant="ghost"
               size="icon"

@@ -163,7 +163,24 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       );
       xmlDocument = ublInvoice;
       type = "invoice";
-      parsedDocument = invoice;
+
+      const parsed = parseDocument(
+        doctypeId,
+        xmlDocument,
+        company,
+        senderAddress,
+      );
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as
+          | Invoice
+          | CreditNote
+          | SelfBillingInvoice
+          | SelfBillingCreditNote;
+        type = parsed.type;
+      } else {
+        parsedDocument = invoice;
+      }
     } else if (jsonBody.documentType === DocumentType.CREDIT_NOTE) {
       const creditNote = document as CreditNote;
 
@@ -201,7 +218,24 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       type = "creditNote";
       doctypeId =
         "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
-      parsedDocument = creditNote;
+
+      const parsed = parseDocument(
+        doctypeId,
+        xmlDocument,
+        company,
+        senderAddress,
+      );
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as
+          | Invoice
+          | CreditNote
+          | SelfBillingInvoice
+          | SelfBillingCreditNote;
+        type = parsed.type;
+      } else {
+        parsedDocument = creditNote;
+      }
     } else if (jsonBody.documentType === DocumentType.SELF_BILLING_INVOICE) {
       const invoice = document as SelfBillingInvoice;
 
@@ -241,8 +275,26 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       );
       xmlDocument = ublInvoice;
       type = "selfBillingInvoice";
-      doctypeId = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
-      parsedDocument = invoice;
+      doctypeId =
+        "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
+
+      const parsed = parseDocument(
+        doctypeId,
+        xmlDocument,
+        company,
+        senderAddress,
+      );
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as
+          | Invoice
+          | CreditNote
+          | SelfBillingInvoice
+          | SelfBillingCreditNote;
+        type = parsed.type;
+      } else {
+        parsedDocument = invoice;
+      }
     } else if (jsonBody.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE) {
       const selfBillingCreditNote = document as SelfBillingCreditNote;
 
@@ -280,7 +332,24 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       type = "selfBillingCreditNote";
       doctypeId =
         "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
-      parsedDocument = selfBillingCreditNote;
+
+      const parsed = parseDocument(
+        doctypeId,
+        xmlDocument,
+        company,
+        senderAddress,
+      );
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as
+          | Invoice
+          | CreditNote
+          | SelfBillingInvoice
+          | SelfBillingCreditNote;
+        type = parsed.type;
+      } else {
+        parsedDocument = selfBillingCreditNote;
+      }
     } else if (jsonBody.documentType === DocumentType.XML) {
       xmlDocument = document as string;
       if (jsonBody.doctypeId) {

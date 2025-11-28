@@ -13,6 +13,7 @@ import {
 } from "@peppol/utils/api-docs";
 import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import JSZip from "jszip";
+import { renderDocumentPdf } from "@peppol/utils/document-renderer";
 
 const server = new Server();
 
@@ -98,6 +99,15 @@ async function _downloadPackageImplementation(c: DownloadPackageContext) {
                     zip.file(filename, Buffer.from(base64, 'base64'));
                 }
             }
+        }
+
+        // Try to generate a PDF representation and add it to the zip
+        try {
+            const pdfBuffer = await renderDocumentPdf(document);
+            zip.file("document.pdf", pdfBuffer);
+        } catch (error) {
+            // If PDF generation fails, we still want to return the rest of the package
+            console.error("Failed to generate PDF for document package:", error);
         }
 
         // Generate the zip file

@@ -8,8 +8,9 @@ import markAsReadServer, { type MarkAsRead } from "./mark-as-read";
 import downloadPackageServer, { type DownloadPackage } from "./download-package";
 import assignLabelServer, { type AssignLabel } from "./assign-label";
 import unassignLabelServer, { type UnassignLabel } from "./unassign-label";
+import renderDocumentServer, { type RenderDocument } from "./render-document";
 
-export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | GetInbox | MarkAsRead | DownloadPackage | AssignLabel | UnassignLabel;
+export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | GetInbox | MarkAsRead | DownloadPackage | AssignLabel | UnassignLabel | RenderDocument;
 
 const server = new Server();
 server.route("/", listDocumentsServer);
@@ -20,4 +21,5 @@ server.route("/", markAsReadServer);
 server.route("/", downloadPackageServer);
 server.route("/", assignLabelServer);
 server.route("/", unassignLabelServer);
+server.route("/", renderDocumentServer);
 export default server;

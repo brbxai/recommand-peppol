@@ -98,11 +98,11 @@ console.log(data);`;
                   <Copy className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="overflow-auto w-full rounded border">
+              <div className="h-[400px] overflow-auto w-full rounded border bg-white">
                 <SyntaxHighlighter
                   code={requestBody}
                   language="json"
-                  className="p-4 bg-white h-full"
+                  className="p-4 h-full min-w-full"
                 />
               </div>
             </TabsContent>
@@ -118,11 +118,11 @@ console.log(data);`;
                   <Copy className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="h-[400px] overflow-auto w-full rounded border">
+              <div className="h-[400px] overflow-auto w-full rounded border bg-white">
                 <SyntaxHighlighter
                   code={curlCommand}
                   language="bash"
-                  className="p-4 bg-white h-full"
+                  className="p-4 h-full min-w-full"
                 />
               </div>
             </TabsContent>
@@ -140,11 +140,11 @@ console.log(data);`;
                   <Copy className="h-3 w-3" />
                 </Button>
               </div>
-              <div className="h-[400px] overflow-auto w-full rounded border">
+              <div className="h-[400px] overflow-auto w-full rounded border bg-white">
                 <SyntaxHighlighter
                   code={javascriptCode}
                   language="javascript"
-                  className="p-4 bg-white h-full"
+                  className="p-4 h-full min-w-full"
                 />
               </div>
             </TabsContent>
