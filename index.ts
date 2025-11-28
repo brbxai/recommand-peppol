@@ -28,8 +28,8 @@ export async function init(app: RecommandApp, server: Server) {
 
   const exclude: RegExp[] = [
     /^\/api\/core(?!\/auth\/verify).*$/, // Exclude all core API endpoints except the auth/verify endpoint
-    /^\/api\/peppol.*$/ // Exclude all peppol API endpoints (these have been replaced by the new v1 API)
-    // /^\/api\/v1\/integrations.*$/ // Exclude all integrations API endpoints
+    /^\/api\/peppol.*$/, // Exclude all peppol API endpoints (these have been replaced by the new v1 API)
+    /^\/api\/v1\/integrations.*$/ // Exclude all integrations API endpoints
   ];
 
   // Add OpenAPI documentation
