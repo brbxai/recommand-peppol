@@ -2,10 +2,13 @@ import { Cron } from "croner";
 import { Logger } from "@recommand/lib/logger";
 import { executeCronJob } from "./index";
 
-export function initializeIntegrationCronJobs(logger: Logger): void {
+export async function initializeIntegrationCronJobs(logger: Logger): Promise<void> {
   if (process.env.RUN_CRON !== "true") {
     return;
   }
+
+  // Soft start of 10 seconds
+  await new Promise(resolve => setTimeout(resolve, 10000));
 
   logger.info("Initializing integration cron jobs");
 
