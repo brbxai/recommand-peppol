@@ -172,11 +172,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       );
 
       if (parsed.parsedDocument) {
-        parsedDocument = parsed.parsedDocument as
-          | Invoice
-          | CreditNote
-          | SelfBillingInvoice
-          | SelfBillingCreditNote;
+        parsedDocument = parsed.parsedDocument as Invoice
         type = parsed.type;
       } else {
         parsedDocument = invoice;
@@ -227,11 +223,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       );
 
       if (parsed.parsedDocument) {
-        parsedDocument = parsed.parsedDocument as
-          | Invoice
-          | CreditNote
-          | SelfBillingInvoice
-          | SelfBillingCreditNote;
+        parsedDocument = parsed.parsedDocument as CreditNote
         type = parsed.type;
       } else {
         parsedDocument = creditNote;
@@ -286,11 +278,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       );
 
       if (parsed.parsedDocument) {
-        parsedDocument = parsed.parsedDocument as
-          | Invoice
-          | CreditNote
-          | SelfBillingInvoice
-          | SelfBillingCreditNote;
+        parsedDocument = parsed.parsedDocument as SelfBillingInvoice;
         type = parsed.type;
       } else {
         parsedDocument = invoice;
@@ -341,11 +329,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       );
 
       if (parsed.parsedDocument) {
-        parsedDocument = parsed.parsedDocument as
-          | Invoice
-          | CreditNote
-          | SelfBillingInvoice
-          | SelfBillingCreditNote;
+        parsedDocument = parsed.parsedDocument as SelfBillingCreditNote;
         type = parsed.type;
       } else {
         parsedDocument = selfBillingCreditNote;
