@@ -12,17 +12,17 @@ export function ValidationDetails({ validation }: ValidationDetailsProps) {
           <div className="text-sm font-medium mb-2">Errors:</div>
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {validation.errors.map((error, index) => (
-              <div key={index} className="text-xs border-l-2 border-destructive pl-2">
+              <div key={index} className="text-xs border-l-2 border-destructive pl-2 break-words">
                 {error.fieldName && (
-                  <div className="font-medium text-foreground mb-0.5">
+                  <div className="font-medium text-foreground mb-0.5 break-words">
                     {error.fieldName}
                   </div>
                 )}
-                <div className="text-muted-foreground">
+                <div className="text-muted-foreground break-words">
                   {error.errorMessage}
                 </div>
                 {error.ruleCode && (
-                  <div className="text-muted-foreground mt-0.5 font-mono text-[10px]">
+                  <div className="text-muted-foreground mt-0.5 font-mono text-[10px] break-words">
                     {error.ruleCode}
                   </div>
                 )}
