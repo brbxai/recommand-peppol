@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_companies" ALTER COLUMN "is_outgoing_document_validation_enforced" SET DEFAULT true;

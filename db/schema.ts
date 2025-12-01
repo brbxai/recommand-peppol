@@ -163,7 +163,7 @@ export const companies = pgTable("peppol_companies", {
   enterpriseNumber: text("enterprise_number"),
   vatNumber: text("vat_number"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
-  isOutgoingDocumentValidationEnforced: boolean("is_outgoing_document_validation_enforced").notNull().default(false),
+  isOutgoingDocumentValidationEnforced: boolean("is_outgoing_document_validation_enforced").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
