@@ -50,7 +50,7 @@ type BillingTemplateData = {
   totals?: TemplateTotals | null;
 };
 
-const TAILWIND_PDF_ENDPOINT = "https://tailwind-pdf-generator.fly.dev/";
+const RECOMMAND_RENDER_ENDPOINT = "https://render.recommand.dev";
 
 function getDocumentTypeLabel(type: TransmittedDocument["type"]): string {
   switch (type) {
@@ -182,8 +182,8 @@ async function callTailwindPdfGenerator(
   const body = JSON.stringify({ html: templateHtml, data });
 
   const url = options.preview
-    ? `${TAILWIND_PDF_ENDPOINT}/?preview=1`
-    : TAILWIND_PDF_ENDPOINT;
+    ? `${RECOMMAND_RENDER_ENDPOINT}/?preview=true`
+    : RECOMMAND_RENDER_ENDPOINT;
 
   const response = await fetch(url, {
     method: "POST",

@@ -206,3 +206,4 @@ export type Item = z.infer<typeof lineSchema>;
 export type Vat = z.infer<typeof vatSchema>;
 export type VatSubtotal = z.infer<typeof vatSubtotalSchema>;
 export type Totals = z.infer<typeof totalsSchema>;
+export type Attachment = z.infer<typeof attachmentSchema>;

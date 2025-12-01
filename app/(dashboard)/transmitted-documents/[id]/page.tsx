@@ -31,6 +31,7 @@ import {
 import { SyntaxHighlighter } from "@peppol/components/send-document/syntax-highlighter";
 import { ValidationDetails } from "@peppol/components/validation-details";
 import type { ValidationResponse } from "@peppol/types/validation";
+import { CsvAttachmentTable } from "@peppol/components/csv-attachment-table";
 
 const client = rc<TransmittedDocuments>("peppol");
 
@@ -81,26 +82,6 @@ export default function TransmittedDocumentDetailPage() {
         };
 
         setDoc(hydratedDoc);
-
-        // Fetch HTML preview in parallel once we have a valid document
-        try {
-          setIsPreviewLoading(true);
-          const previewResponse =
-            await client[":teamId"]["documents"][":documentId"]["render"].$get({
-              param: {
-                teamId: activeTeam.id,
-                documentId: hydratedDoc.id,
-              },
-            });
-          const previewJson = await previewResponse.json();
-          if (previewJson.success && typeof previewJson.html === "string") {
-            setPreviewHtml(previewJson.html);
-          }
-        } catch (error) {
-          console.error("Failed to load rendered document HTML:", error);
-        } finally {
-          setIsPreviewLoading(false);
-        }
       } catch (error) {
         console.error("Error fetching document:", error);
         toast.error("Failed to load document");
@@ -112,6 +93,40 @@ export default function TransmittedDocumentDetailPage() {
 
     fetchDocument();
   }, [id, activeTeam?.id, navigate]);
+
+  useEffect(() => {
+    if (!activeTeam?.id || !doc) {
+      setPreviewHtml(null);
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    const fetchPreview = async () => {
+      try {
+        setIsPreviewLoading(true);
+        const previewResponse =
+          await client[":teamId"]["documents"][":documentId"]["render"].$get({
+            param: {
+              teamId: activeTeam.id,
+              documentId: doc.id,
+            },
+          });
+        const previewJson = await previewResponse.json();
+        if (previewJson.success && typeof previewJson.html === "string") {
+          setPreviewHtml(previewJson.html);
+        } else {
+          setPreviewHtml(null);
+        }
+      } catch (error) {
+        console.error("Failed to load rendered document HTML:", error);
+        setPreviewHtml(null);
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    };
+
+    fetchPreview();
+  }, [activeTeam?.id, doc]);
 
   const handleDelete = async () => {
     if (!activeTeam?.id || !doc) return;
@@ -208,6 +223,9 @@ export default function TransmittedDocumentDetailPage() {
   }
 
   const parsed: any = doc.parsed;
+  const attachments: any[] = Array.isArray(parsed?.attachments)
+    ? parsed.attachments
+    : [];
 
   const directionIcon =
     doc.direction === "incoming" ? (
@@ -328,30 +346,177 @@ export default function TransmittedDocumentDetailPage() {
             <CardHeader>
               <CardTitle>Document preview</CardTitle>
               <CardDescription>
-                Rendered billing document as it appears in the generated PDF.
+                Rendered billing document and inline previews for any attachments.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isPreviewLoading && (
-                <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading preview...
-                </div>
-              )}
-              {!isPreviewLoading && previewHtml && (
-                <div className="border rounded-md overflow-hidden bg-background">
-                  <iframe
-                    title="Document preview"
-                    srcDoc={previewHtml}
-                    className="w-full h-[800px] border-0"
-                  />
-                </div>
-              )}
-              {!isPreviewLoading && !previewHtml && (
-                <p className="text-sm text-muted-foreground">
-                  No preview available for this document.
-                </p>
-              )}
+              <Tabs defaultValue="main" className="w-full">
+                <TabsList className="flex w-full gap-2 overflow-x-auto mb-3">
+                  <TabsTrigger value="main">Generated document preview</TabsTrigger>
+                  {attachments.map((attachment, index) => (
+                    <TabsTrigger
+                      key={attachment.id ?? `${attachment.filename}-${index}`}
+                      value={`attachment-${index}`}
+                    >
+                      {attachment.filename || `Attachment ${index + 1}`}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+
+                <TabsContent value="main">
+                  {isPreviewLoading && (
+                    <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading preview...
+                    </div>
+                  )}
+                  {!isPreviewLoading && previewHtml && (
+                    <div className="border rounded-md overflow-hidden bg-background">
+                      <iframe
+                        title="Document preview"
+                        srcDoc={previewHtml}
+                        className="w-full h-[800px] border-0"
+                      />
+                    </div>
+                  )}
+                  {!isPreviewLoading && !previewHtml && (
+                    <p className="text-sm text-muted-foreground">
+                      No preview available for this document.
+                    </p>
+                  )}
+                </TabsContent>
+
+                {attachments.map((attachment, index) => {
+                  const tabValue = `attachment-${index}`;
+                  const hasEmbedded = !!attachment.embeddedDocument;
+                  const mimeType =
+                    (typeof attachment.mimeCode === "string" &&
+                      attachment.mimeCode) ||
+                    "application/octet-stream";
+                  const dataUrl =
+                    hasEmbedded && attachment.embeddedDocument
+                      ? `data:${mimeType};base64,${attachment.embeddedDocument}`
+                      : null;
+
+                  const isImage = mimeType.startsWith("image/");
+                  const isPdf = mimeType === "application/pdf";
+                  const isTextLike = mimeType.startsWith("text/");
+                  const isCsv =
+                    mimeType === "text/csv" ||
+                    (typeof attachment.filename === "string" &&
+                      attachment.filename.toLowerCase().endsWith(".csv"));
+
+                  let decodedText: string | null = null;
+                  if (hasEmbedded && isTextLike && typeof window !== "undefined") {
+                    try {
+                      decodedText = window.atob(attachment.embeddedDocument);
+                    } catch {
+                      decodedText = null;
+                    }
+                  }
+
+                  return (
+                    <TabsContent key={tabValue} value={tabValue}>
+                      <div className="space-y-3">
+                        <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+                          <span className="font-mono break-all">
+                            {attachment.filename || "Unnamed attachment"}
+                          </span>
+                          {mimeType && (
+                            <>
+                              <span>•</span>
+                              <span>{mimeType}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {hasEmbedded && isImage && dataUrl && (
+                          <div className="flex justify-center">
+                            <img
+                              src={dataUrl}
+                              alt={attachment.filename || "Image attachment"}
+                              className="max-h-[800px] w-auto rounded border bg-background"
+                            />
+                          </div>
+                        )}
+
+                        {hasEmbedded && isPdf && dataUrl && (
+                          <div className="border rounded-md overflow-hidden bg-background">
+                            <iframe
+                              title={attachment.filename || "PDF attachment"}
+                              src={dataUrl}
+                              className="w-full h-[800px] border-0"
+                            />
+                          </div>
+                        )}
+
+                        {hasEmbedded && isCsv && decodedText !== null && (
+                          <div className="h-[800px] overflow-auto w-full rounded bg-white">
+                            <CsvAttachmentTable csv={decodedText} />
+                          </div>
+                        )}
+
+                        {hasEmbedded &&
+                          !isCsv &&
+                          isTextLike &&
+                          decodedText !== null && (
+                            <div className="h-[800px] overflow-auto w-full rounded border bg-white">
+                              <SyntaxHighlighter
+                                code={decodedText}
+                                language="text"
+                                className="p-4 h-full min-w-full"
+                              />
+                            </div>
+                          )}
+
+                        {!hasEmbedded && attachment.url && (
+                          <p className="text-sm text-muted-foreground">
+                            This attachment is referenced externally.{" "}
+                            <a
+                              href={attachment.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary underline break-all"
+                            >
+                              Open external reference
+                            </a>
+                            .
+                          </p>
+                        )}
+
+                        {hasEmbedded &&
+                          !isImage &&
+                          !isPdf &&
+                          !isCsv &&
+                          (!isTextLike || decodedText === null) &&
+                          dataUrl && (
+                            <p className="text-sm text-muted-foreground">
+                              This attachment type cannot be previewed inline, but
+                              you can download it.
+                            </p>
+                          )}
+
+                        {hasEmbedded && dataUrl && (
+                          <a
+                            href={dataUrl}
+                            download={attachment.filename || undefined}
+                            className="inline-flex items-center text-sm text-primary underline"
+                          >
+                            Download attachment
+                          </a>
+                        )}
+
+                        {!hasEmbedded && !attachment.url && (
+                          <p className="text-sm text-muted-foreground">
+                            No embedded content or external reference available
+                            for this attachment.
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
             </CardContent>
           </Card>
 
@@ -430,7 +595,53 @@ export default function TransmittedDocumentDetailPage() {
                           {doc.countryC1}
                         </div>
                       </div>
+                      <div className="space-y-1">
+                      <div className="text-muted-foreground">Attachments</div>
+                      {attachments.length === 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          No attachments found on this document.
+                        </div>
+                      )}
+                      {attachments.length > 0 && (
+                        <div className="space-y-1">
+                          {attachments.map((attachment, index) => (
+                            <div
+                              key={attachment.id ?? `${attachment.filename}-${index}`}
+                              className="rounded border px-2 py-1 bg-muted/40"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-1">
+                                <div className="font-mono text-xs break-all">
+                                  {attachment.filename || "Unnamed attachment"}
+                                </div>
+                                {attachment.mimeCode && (
+                                  <span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+                                    {attachment.mimeCode}
+                                  </span>
+                                )}
+                              </div>
+                              {attachment.description && (
+                                <div className="mt-0.5 text-xs text-muted-foreground">
+                                  {attachment.description}
+                                </div>
+                              )}
+                              {attachment.url && (
+                                <div className="mt-0.5 text-xs">
+                                  <a
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary underline break-all"
+                                  >
+                                    Open external reference
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
+                  </div>
                   </TabsContent>
                   <TabsContent value="json">
                     {hasStructuredData && (

@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import { useActiveTeam } from "@core/hooks/user";
+import { AttachmentsEditor } from "./attachments-editor";
 
 const companiesClient = rc<Companies>("peppol");
 
@@ -38,6 +39,7 @@ export function InvoiceForm({
       "yyyy-MM-dd"
     ),
     lines: [],
+    attachments: [],
     ...document,
   });
   const [openSections, setOpenSections] = useState({
@@ -46,6 +48,7 @@ export function InvoiceForm({
     payment: false,
     notes: false,
     lines: true,
+    attachments: false,
   });
   const activeTeam = useActiveTeam();
 
@@ -196,6 +199,26 @@ export function InvoiceForm({
           <LineItemsEditor
             lines={invoice.lines || []}
             onChange={(lines) => handleFieldChange("lines", lines)}
+          />
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible open={openSections.attachments}>
+        <CollapsibleTrigger
+          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+          onClick={() => toggleSection("attachments")}
+        >
+          <span>Attachments</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${openSections.attachments ? "rotate-180" : ""}`}
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <AttachmentsEditor
+            attachments={invoice.attachments || []}
+            onChange={(attachments) =>
+              handleFieldChange("attachments", attachments)
+            }
           />
         </CollapsibleContent>
       </Collapsible>
