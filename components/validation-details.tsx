@@ -7,9 +7,6 @@ interface ValidationDetailsProps {
 export function ValidationDetails({ validation }: ValidationDetailsProps) {
   return (
     <>
-      <div className="text-xs text-muted-foreground mb-3">
-        Result: <span className="font-medium capitalize">{validation.result}</span>
-      </div>
       {validation.errors && validation.errors.length > 0 && (
         <>
           <div className="text-sm font-medium mb-2">Errors:</div>

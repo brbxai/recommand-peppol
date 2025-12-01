@@ -227,6 +227,15 @@ export default function TransmittedDocumentDetailPage() {
   const directionLabel =
     doc.direction === "incoming" ? "Incoming document" : "Outgoing document";
 
+  const pageTitle = doc.validation && doc.validation.result !== "valid" ? (
+    <div className="flex items-center gap-2">
+      <span>{doc.id}</span>
+      <Badge variant="destructive" className="capitalize text-sm">
+        {doc.validation.result.replaceAll("_", " ")}
+      </Badge>
+    </div>
+  ) : undefined;
+
   return (
     <PageTemplate
       breadcrumbs={[
@@ -237,6 +246,7 @@ export default function TransmittedDocumentDetailPage() {
         },
         { label: doc.id },
       ]}
+      title={pageTitle}
       description="Preview and metadata for this transmitted Peppol document."
       buttons={[
         <AsyncButton key="download" variant="outline" onClick={handleDownload}>
@@ -349,7 +359,7 @@ export default function TransmittedDocumentDetailPage() {
             {doc.validation && doc.validation.result !== "valid" && (
               <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
                 <CardHeader>
-                  <CardTitle className="text-orange-900 dark:text-orange-100">
+                  <CardTitle>
                     Document Validation Issues
                   </CardTitle>
                   <CardDescription className="text-orange-700 dark:text-orange-300">
