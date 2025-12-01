@@ -1,0 +1,4 @@
+ALTER TABLE "peppol_company_notification_email_addresses" ADD COLUMN "include_auto_generated_pdf_incoming" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "peppol_company_notification_email_addresses" ADD COLUMN "include_auto_generated_pdf_outgoing" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "peppol_company_notification_email_addresses" ADD COLUMN "include_document_json_incoming" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "peppol_company_notification_email_addresses" ADD COLUMN "include_document_json_outgoing" boolean DEFAULT false NOT NULL;

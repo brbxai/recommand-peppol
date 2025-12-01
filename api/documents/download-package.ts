@@ -102,13 +102,13 @@ async function _downloadPackageImplementation(c: DownloadPackageContext) {
         }
 
         // Try to generate a PDF representation and add it to the zip
-        // try {
-        //     const pdfBuffer = await renderDocumentPdf(document);
-        //     zip.file("auto-generated.pdf", pdfBuffer);
-        // } catch (error) {
-        //     // If PDF generation fails, we still want to return the rest of the package
-        //     console.error("Failed to generate PDF for document package:", error);
-        // }
+        try {
+            const pdfBuffer = await renderDocumentPdf(document);
+            zip.file("auto-generated.pdf", pdfBuffer);
+        } catch (error) {
+            // If PDF generation fails, we still want to return the rest of the package
+            console.error("Failed to generate PDF for document package:", error);
+        }
 
         // Generate the zip file
         const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });

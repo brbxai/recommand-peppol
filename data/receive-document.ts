@@ -131,6 +131,7 @@ export async function receiveDocument(options: {
   // Send notification emails to configured addresses
   try {
     await sendIncomingDocumentNotifications({
+      transmittedDocumentId: transmittedDocument.id,
       companyId: company.id,
       companyName: company.name,
       type,
