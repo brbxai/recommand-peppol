@@ -9,6 +9,8 @@ import { sendIncomingDocumentNotifications } from "./send-document-notifications
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { findSupplierByVatAndPeppolId } from "./suppliers";
 import { assignSupplierLabelsToDocument } from "./document-labels";
+import { validateXmlDocument } from "./validation/client";
+import type { ValidationResponse } from "@peppol/types/validation";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -48,8 +50,13 @@ export async function receiveDocument(options: {
     cleanProcessId = options.processId.substring(processSchemePrefix.length);
   }
 
+  // Validate the XML document
+  const validation: ValidationResponse = await validateXmlDocument(options.body);
+
   // Parse the XML document
-  const { parsedDocument, type } = parseDocument(cleanDocTypeId, options.body, company, senderId);
+  const parseResults = parseDocument(cleanDocTypeId, options.body, company, senderId);
+  const type = parseResults.type;
+  const parsedDocument = parseResults.parsedDocument;
 
   // Create a new transmittedDocument
   const transmittedDocument = await db
@@ -66,6 +73,7 @@ export async function receiveDocument(options: {
       xml: options.body,
       type,
       parsed: parsedDocument,
+      validation,
     })
     .returning({ id: transmittedDocuments.id })
     .then((rows) => rows[0]);

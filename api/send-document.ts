@@ -41,6 +41,8 @@ import { selfBillingCreditNoteToUBL } from "@peppol/utils/parsing/self-billing-c
 import { sendOutgoingDocumentNotifications } from "@peppol/data/send-document-notifications";
 import type z from "zod";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
+import { validateXmlDocument } from "@peppol/data/validation/client";
+import type { ValidationResponse } from "@peppol/types/validation";
 
 const server = new Server();
 
@@ -338,9 +340,9 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       xmlDocument = document as string;
       if (jsonBody.doctypeId) {
         doctypeId = jsonBody.doctypeId;
-      }else{
+      } else {
         doctypeId = detectDoctypeId(xmlDocument) || "";
-        if(!doctypeId) {
+        if (!doctypeId) {
           return c.json(actionFailure("Document type could not be detected automatically from your XML document. Please provide the doctypeId manually."), 400);
         }
       }
@@ -351,7 +353,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         company,
         senderAddress
       );
-      
+
       parsedDocument = parsed.parsedDocument;
       type = parsed.type;
     } else {
@@ -360,6 +362,25 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
 
     if (!xmlDocument) {
       return c.json(actionFailure("Document could not be parsed."), 400);
+    }
+
+    const validation: ValidationResponse = await validateXmlDocument(xmlDocument);
+    if (company.isOutgoingDocumentValidationEnforced) {
+      if (validation.result === "invalid" || validation.result === "error") { // Only stop sending if explicitly invalid or an error occurred
+        // Transform into key (ruleCode) value (errorMessage) object
+        const errors: Record<string, string[]> = validation.errors.reduce((acc: Record<string, string[]>, error) => {
+          const ruleErrors = acc[error.fieldName] || [];
+          const message = `${error.ruleCode}: ${error.errorMessage}`;
+          if (!ruleErrors.includes(message)) {
+            acc[error.fieldName] = [...ruleErrors, message];
+          }
+          return acc;
+        }, {});
+        return c.json(actionFailure({
+          root: ["Document validation failed. Please ensure your document complies with EN16931 and PEPPOL BIS 3.0 requirements."],
+          ...errors,
+        }), 400);
+      }
     }
 
     let sentPeppol = false;
@@ -475,6 +496,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
 
         type,
         parsed: parsedDocument,
+        validation,
       })
       .returning({ id: transmittedDocuments.id })
       .then((rows) => rows[0]);

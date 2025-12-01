@@ -37,6 +37,7 @@ const createCompanyJsonBodySchema = z.object({
     enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber).openapi({ description: "The enterprise number of the company. Can only contain alphanumeric characters. For Belgian businesses it will be inferred from the VAT number if not provided." }),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
     isSmpRecipient: z.boolean().default(true),
+    isOutgoingDocumentValidationEnforced: z.boolean().default(true).openapi({ description: "If document validation is enabled, outgoing documents will be validated against Peppol standards. Defaults to true for new companies." }),
 });
 
 const createCompanyParamSchemaWithTeamId = z.object({

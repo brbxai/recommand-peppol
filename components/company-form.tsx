@@ -106,6 +106,17 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                 </div>
                 <p className="text-xs text-pretty text-muted-foreground">If enabled, the company will be registered as a recipient in our SMP (the Peppol address book). This will allow you to send and receive documents. If disabled, you will only be able to send documents via Recommand.</p>
             </div>
+            <div className="space-y-1">
+                <div className="flex items-start gap-2">
+                    <Checkbox
+                        id="isOutgoingDocumentValidationEnforced"
+                        checked={company.isOutgoingDocumentValidationEnforced ?? false}
+                        onCheckedChange={(checked) => onChange({ ...company, isOutgoingDocumentValidationEnforced: checked === true })}
+                    />
+                    <Label htmlFor="isOutgoingDocumentValidationEnforced" className="text-sm mt-0 pt-0">Enforce document validation on sending</Label>
+                </div>
+                <p className="text-xs text-pretty text-muted-foreground">If enabled, all outgoing documents will be validated against Peppol standards.</p>
+            </div>
             <div className="flex justify-end gap-2">
                 <Button
                     type="button"

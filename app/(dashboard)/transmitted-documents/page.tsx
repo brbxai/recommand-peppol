@@ -28,6 +28,7 @@ import {
 } from "@core/components/data-table/toolbar";
 import { PartyInfoTooltip } from "@peppol/components/party-info-tooltip";
 import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
+import { DocumentTypeCell } from "@peppol/components/document-type-cell";
 import { Badge } from "@core/components/ui/badge";
 import {
   Popover,
@@ -378,6 +379,13 @@ export default function Page() {
     {
       accessorKey: "type",
       header: ({ column }) => <ColumnHeader column={column} title="Type" />,
+      cell: ({ row }) => {
+        const document = row.original;
+        const type = row.getValue("type") as string;
+        const validation = document.validation;
+
+        return <DocumentTypeCell type={type} validation={validation} />;
+      },
       enableGlobalFilter: true,
     },
     {

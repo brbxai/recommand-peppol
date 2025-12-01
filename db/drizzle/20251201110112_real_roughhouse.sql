@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_companies" RENAME COLUMN "is_document_validation_enabled" TO "is_outgoing_document_validation_enforced";

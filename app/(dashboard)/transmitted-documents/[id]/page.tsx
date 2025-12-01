@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
-import { Loader2, Trash2, FolderArchive, ArrowDown, ArrowUp } from "lucide-react";
+import { Loader2, Trash2, FolderArchive, ArrowDown, ArrowUp, Copy } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -29,6 +29,8 @@ import {
   TabsTrigger,
 } from "@core/components/ui/tabs";
 import { SyntaxHighlighter } from "@peppol/components/send-document/syntax-highlighter";
+import { ValidationDetails } from "@peppol/components/validation-details";
+import type { ValidationResponse } from "@peppol/types/validation";
 
 const client = rc<TransmittedDocuments>("peppol");
 
@@ -311,7 +313,7 @@ export default function TransmittedDocumentDetailPage() {
           </Alert>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <Card>
             <CardHeader>
               <CardTitle>Document preview</CardTitle>
@@ -343,89 +345,135 @@ export default function TransmittedDocumentDetailPage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:sticky lg:top-6">
-            <CardHeader>
-              <CardTitle>Technical details & raw data</CardTitle>
-              <CardDescription>
-                Inspect metadata, parsed JSON structure, or the original XML payload.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="metadata">
-                <TabsList className="grid w-full grid-cols-3 mb-3">
-                  <TabsTrigger value="metadata">Metadata</TabsTrigger>
-                  <TabsTrigger value="json" disabled={!hasStructuredData}>
-                    JSON
-                  </TabsTrigger>
-                  <TabsTrigger value="xml">XML</TabsTrigger>
-                </TabsList>
-                <TabsContent value="metadata">
-                  <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground">Document ID</div>
-                      <div className="font-mono text-xs break-all">{doc.id}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground">Company ID</div>
-                      <div className="font-mono text-xs break-all">
-                        {doc.companyId}
+          <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+            {doc.validation && doc.validation.result !== "valid" && (
+              <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
+                <CardHeader>
+                  <CardTitle className="text-orange-900 dark:text-orange-100">
+                    Document Validation Issues
+                  </CardTitle>
+                  <CardDescription className="text-orange-700 dark:text-orange-300">
+                    This document has validation errors that need attention.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ValidationDetails validation={doc.validation as ValidationResponse} />
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Technical details & raw data</CardTitle>
+                <CardDescription>
+                  Inspect metadata, parsed JSON structure, or the original XML payload.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="metadata">
+                  <TabsList className="grid w-full grid-cols-3 mb-3">
+                    <TabsTrigger value="metadata">Metadata</TabsTrigger>
+                    <TabsTrigger value="json" disabled={!hasStructuredData}>
+                      JSON
+                    </TabsTrigger>
+                    <TabsTrigger value="xml">XML</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="metadata">
+                    <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground">Document ID</div>
+                        <div className="font-mono text-xs break-all">{doc.id}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground">Company ID</div>
+                        <div className="font-mono text-xs break-all">
+                          {doc.companyId}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground">Sender ID</div>
+                        <div className="font-mono text-xs break-all">
+                          {doc.senderId}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground">Receiver ID</div>
+                        <div className="font-mono text-xs break-all">
+                          {doc.receiverId}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground">DocType ID</div>
+                        <div className="font-mono text-xs break-all">
+                          {doc.docTypeId}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground">Process ID</div>
+                        <div className="font-mono text-xs break-all">
+                          {doc.processId}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-muted-foreground">Country (C1)</div>
+                        <div className="font-mono text-xs break-all">
+                          {doc.countryC1}
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground">Sender ID</div>
-                      <div className="font-mono text-xs break-all">
-                        {doc.senderId}
+                  </TabsContent>
+                  <TabsContent value="json">
+                    {hasStructuredData && (
+                      <div className="space-y-2">
+                        <div className="h-[320px] overflow-auto w-full rounded border bg-white">
+                          <SyntaxHighlighter
+                            code={JSON.stringify(parsed, null, 2)}
+                            language="json"
+                            className="p-4 h-full min-w-full"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => {
+                            navigator.clipboard.writeText(JSON.stringify(parsed, null, 2));
+                            toast.success("JSON copied to clipboard");
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy JSON
+                        </Button>
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground">Receiver ID</div>
-                      <div className="font-mono text-xs break-all">
-                        {doc.receiverId}
+                    )}
+                  </TabsContent>
+                  <TabsContent value="xml">
+                    <div className="space-y-2">
+                      <div className="h-[320px] overflow-auto w-full rounded border bg-white">
+                        <SyntaxHighlighter
+                          code={doc.xml ?? ""}
+                          language="xml"
+                          className="p-4 h-full min-w-full"
+                        />
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          navigator.clipboard.writeText(doc.xml ?? "");
+                          toast.success("XML copied to clipboard");
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy XML
+                      </Button>
                     </div>
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground">DocType ID</div>
-                      <div className="font-mono text-xs break-all">
-                        {doc.docTypeId}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground">Process ID</div>
-                      <div className="font-mono text-xs break-all">
-                        {doc.processId}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="text-muted-foreground">Country (C1)</div>
-                      <div className="font-mono text-xs break-all">
-                        {doc.countryC1}
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="json">
-                  {hasStructuredData && (
-                    <div className="h-[320px] overflow-auto w-full rounded border bg-white">
-                      <SyntaxHighlighter
-                        code={JSON.stringify(parsed, null, 2)}
-                        language="json"
-                        className="p-4 h-full min-w-full"
-                      />
-                    </div>
-                  )}
-                </TabsContent>
-                <TabsContent value="xml">
-                  <div className="h-[320px] overflow-auto w-full rounded border bg-white">
-                    <SyntaxHighlighter
-                      code={doc.xml ?? ""}
-                      language="xml"
-                      className="p-4 h-full min-w-full"
-                    />
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </PageTemplate>

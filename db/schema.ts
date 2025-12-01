@@ -23,6 +23,7 @@ import { COUNTRIES } from "@peppol/utils/countries";
 import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 import type { IntegrationConfiguration, IntegrationManifest, IntegrationState } from "@peppol/types/integration";
+import { validationResponse, validationResult } from "@peppol/types/validation";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -53,6 +54,8 @@ export const transferEventTypeEnum = pgEnum(
   "peppol_transfer_event_type",
   ["peppol", "email"]
 );
+
+export const validationResultEnum = pgEnum("peppol_validation_result", validationResult.options);
 
 export function lower(email: AnyPgColumn): SQL {
   return sql`lower(${email})`;
@@ -160,6 +163,7 @@ export const companies = pgTable("peppol_companies", {
   enterpriseNumber: text("enterprise_number"),
   vatNumber: text("vat_number"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
+  isOutgoingDocumentValidationEnforced: boolean("is_outgoing_document_validation_enforced").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
@@ -263,6 +267,7 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
 
   type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
   parsed: jsonb("parsed").$type<Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote>(),
+  validation: jsonb("validation").$type<z.infer<typeof validationResponse>>(),
 
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

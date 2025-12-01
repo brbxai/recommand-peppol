@@ -111,6 +111,7 @@ export async function getTransmittedDocuments(
       sentOverEmail: transmittedDocuments.sentOverEmail,
       emailRecipients: transmittedDocuments.emailRecipients,
       parsed: transmittedDocuments.parsed,
+      validation: transmittedDocuments.validation,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
@@ -171,6 +172,7 @@ export async function getInbox(
       sentOverPeppol: transmittedDocuments.sentOverPeppol,
       sentOverEmail: transmittedDocuments.sentOverEmail,
       emailRecipients: transmittedDocuments.emailRecipients,
+      validation: transmittedDocuments.validation,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))

@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_companies" ADD COLUMN "is_document_validation_enabled" boolean DEFAULT false NOT NULL;

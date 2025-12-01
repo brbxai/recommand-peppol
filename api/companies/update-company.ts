@@ -48,6 +48,7 @@ const updateCompanyJsonBodySchema = z.object({
     enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
     isSmpRecipient: z.boolean().optional(),
+    isOutgoingDocumentValidationEnforced: z.boolean().optional().openapi({ description: "If document validation is enabled, outgoing documents will be validated against Peppol standards. Defaults to true for new companies." }),
 });
 
 type UpdateCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateCompanyParamSchemaWithTeamId>, json: z.input<typeof updateCompanyJsonBodySchema> }, out: { param: z.infer<typeof updateCompanyParamSchemaWithTeamId>, json: z.infer<typeof updateCompanyJsonBodySchema> } }>;
