@@ -23,15 +23,15 @@ You should be in total control of your business' data and operations. Before Pep
 
 ## Main API Endpoints
 
-- `POST /api/peppol/{companyId}/sendDocument` — Send invoices and documents via Peppol
-- `GET /api/peppol/{teamId}/documents` — List all sent and received documents
-- `GET /api/peppol/{teamId}/inbox` — Access unread incoming documents
-- `POST /api/peppol/verify` — Verify if a recipient is registered in the network
+- `POST /api/v1/{companyId}/send` — Send invoices and documents via Peppol
+- `GET /api/v1/documents` — List all sent and received documents
+- `GET /api/v1/inbox` — Access unread incoming documents
+- `POST /api/v1/verify` — Verify if a recipient is registered in the network
 
 ## Documentation
 
 - [Getting Started Guide](https://recommand.eu/docs/getting-started)
-- [API Reference](https://peppol.recommand.eu/api-reference)
+- [API Reference](https://recommand.eu/api-reference)
 - [How-To Guides](https://recommand.eu/docs)
 
 ## Pricing

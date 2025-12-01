@@ -24,8 +24,8 @@ interface ApiPreviewProps {
 
 export function ApiPreview({ formData, companyId }: ApiPreviewProps) {
   const endpoint = companyId
-    ? `/api/peppol/${companyId}/sendDocument`
-    : "/api/peppol/{companyId}/sendDocument";
+    ? `/api/v1/${companyId}/send`
+    : "/api/v1/{companyId}/send";
 
   const requestBody = JSON.stringify(formData, null, 2);
 
