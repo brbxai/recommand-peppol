@@ -46,8 +46,8 @@ export function calculateTotals(invoice: Invoice | CreditNote | SelfBillingInvoi
 
   return {
     linesAmount: invoice.totals?.linesAmount ?? lineTotalsExcl.toFixed(2),
-    discountAmount: invoice.totals?.discountAmount ?? discountTotalsExcl.eq(0) ? null : discountTotalsExcl.toFixed(2),
-    surchargeAmount: invoice.totals?.surchargeAmount ?? surchargeTotalsExcl.eq(0) ? null : surchargeTotalsExcl.toFixed(2),
+    discountAmount: invoice.totals?.discountAmount ?? (discountTotalsExcl.eq(0) ? null : discountTotalsExcl.toFixed(2)),
+    surchargeAmount: invoice.totals?.surchargeAmount ?? (surchargeTotalsExcl.eq(0) ? null : surchargeTotalsExcl.toFixed(2)),
     taxExclusiveAmount: invoice.totals?.taxExclusiveAmount ?? taxExclusiveAmount.toFixed(2),
     taxInclusiveAmount: invoice.totals?.taxInclusiveAmount ?? taxInclusiveAmount.toFixed(2),
     payableAmount: invoice.totals?.payableAmount ?? taxInclusiveAmount.toFixed(2),
@@ -94,10 +94,6 @@ export function extractTotals(totals: Totals): Totals & { paidAmount: string, pa
   }
 
   // Calculate payable rounding amount
-  console.log("payableAmount", payableAmount.toNearest(0.01).toFixed(2));
-  console.log("paidAmount", paidAmount.toNearest(0.01).toFixed(2));
-  console.log("taxInclusiveAmount", taxInclusiveAmount.toNearest(0.01).toFixed(2));
-  console.log("payableRoundingAmount", payableAmount.plus(paidAmount).minus(taxInclusiveAmount).toNearest(0.01).toFixed(2));
   const payableRoundingAmount = payableAmount.plus(paidAmount).minus(taxInclusiveAmount).toNearest(0.01);
 
   return {
