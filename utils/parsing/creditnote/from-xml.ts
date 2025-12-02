@@ -2,6 +2,7 @@ import { XMLParser } from "fast-xml-parser";
 import { creditNoteSchema, type CreditNote } from "./schemas";
 import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent } from "../xml-helpers";
 import type { SelfBillingCreditNote } from "../self-billing-creditnote/schemas";
+import { getPaymentKeyByCode } from "@peppol/utils/payment-means";
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -101,7 +102,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
 
   // Extract payment means
   const paymentMeans = (creditNote.PaymentMeans || []).map((payment: any) => ({
-    paymentMethod: 'credit_transfer' as const,
+    paymentMethod: getPaymentKeyByCode(getTextContent(payment.PaymentMeansCode)),
     reference: getTextContent(payment.PaymentID),
     iban: getTextContent(payment.PayeeFinancialAccount?.ID),
   }));

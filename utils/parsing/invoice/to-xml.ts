@@ -7,6 +7,7 @@ import {
   extractTotals,
 } from "./calculations";
 import { parsePeppolAddress } from "../peppol-address";
+import { getPaymentCodeByKey } from "@peppol/utils/payment-means";
 
 const builder = new XMLBuilder({
   ignoreAttributes: false,
@@ -193,7 +194,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
       ...(invoice.paymentMeans && {
         "cac:PaymentMeans": invoice.paymentMeans.map((payment) => ({
           "cbc:PaymentMeansCode": {
-            "#text": "30",
+            "#text": getPaymentCodeByKey(payment.paymentMethod),
           },
           ...(payment.reference && {
             "cbc:PaymentID": {

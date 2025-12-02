@@ -7,6 +7,7 @@ import {
   extractTotals,
 } from "../invoice/calculations";
 import { parsePeppolAddress } from "../peppol-address";
+import { getPaymentCodeByKey } from "@peppol/utils/payment-means";
 
 const builder = new XMLBuilder({
   ignoreAttributes: false,
@@ -200,7 +201,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
       ...(creditNote.paymentMeans && {
         "cac:PaymentMeans": creditNote.paymentMeans.map((payment) => ({
           "cbc:PaymentMeansCode": {
-            "#text": "30",
+            "#text": getPaymentCodeByKey(payment.paymentMethod),
           },
           ...(payment.reference && {
             "cbc:PaymentID": {

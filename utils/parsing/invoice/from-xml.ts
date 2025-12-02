@@ -2,6 +2,7 @@ import { XMLParser } from "fast-xml-parser";
 import { invoiceSchema, type Invoice } from "./schemas";
 import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent } from "../xml-helpers";
 import type { SelfBillingInvoice } from "../self-billing-invoice/schemas";
+import { getPaymentKeyByCode } from "@peppol/utils/payment-means";
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -97,7 +98,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
 
   // Extract payment means
   const paymentMeans = (invoice.PaymentMeans || []).map((payment: any) => ({
-    paymentMethod: 'credit_transfer' as const,
+    paymentMethod: getPaymentKeyByCode(getTextContent(payment.PaymentMeansCode)),
     reference: getTextContent(payment.PaymentID),
     iban: getTextContent(payment.PayeeFinancialAccount?.ID),
   }));

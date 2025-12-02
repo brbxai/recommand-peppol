@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Decimal } from 'decimal.js';
 import "zod-openapi/extend";
 import { CURRENCIES, zCurrencies } from '@peppol/utils/currencies';
+import { PAYMENT_MEANS } from '@peppol/utils/payment-means';
 
 export const VAT_CATEGORIES = {
   AE: 'Vat Reverse Charge',
@@ -74,7 +75,7 @@ export const deliverySchema = z.object({
 
 export const paymentMeansSchema = z.object({
   name: z.string().nullish().openapi({ example: "Credit Transfer", description: "The name of the payment means." }),
-  paymentMethod: z.enum(['credit_transfer']).default('credit_transfer').openapi({ example: "credit_transfer" }),
+  paymentMethod: z.enum([...PAYMENT_MEANS.map((payment) => payment.key) as [string, ...string[]], "other"]).default('credit_transfer').openapi({ example: "credit_transfer" }),
   reference: z.string().default("").openapi({ example: "INV-2026-001" }),
   iban: z.string().openapi({ example: "BE1234567890" }),
 }).openapi({ ref: "PaymentMeans" });
