@@ -452,6 +452,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
             xmlDocument: xmlDocument,
             type,
             parsedDocument: parsedDocument,
+            isPlayground,
           });
           sentEmailRecipients.push(recipient);
         } catch (error) {
