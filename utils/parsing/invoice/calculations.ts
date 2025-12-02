@@ -51,7 +51,7 @@ export function calculateTotals(invoice: Invoice | CreditNote | SelfBillingInvoi
     taxExclusiveAmount: invoice.totals?.taxExclusiveAmount ?? taxExclusiveAmount.toFixed(2),
     taxInclusiveAmount: invoice.totals?.taxInclusiveAmount ?? taxInclusiveAmount.toFixed(2),
     payableAmount: invoice.totals?.payableAmount ?? taxInclusiveAmount.toFixed(2),
-    paidAmount: "0.00",
+    paidAmount: invoice.totals?.paidAmount ?? "0.00",
   };
 }
 
@@ -94,6 +94,10 @@ export function extractTotals(totals: Totals): Totals & { paidAmount: string, pa
   }
 
   // Calculate payable rounding amount
+  console.log("payableAmount", payableAmount.toNearest(0.01).toFixed(2));
+  console.log("paidAmount", paidAmount.toNearest(0.01).toFixed(2));
+  console.log("taxInclusiveAmount", taxInclusiveAmount.toNearest(0.01).toFixed(2));
+  console.log("payableRoundingAmount", payableAmount.plus(paidAmount).minus(taxInclusiveAmount).toNearest(0.01).toFixed(2));
   const payableRoundingAmount = payableAmount.plus(paidAmount).minus(taxInclusiveAmount).toNearest(0.01);
 
   return {
