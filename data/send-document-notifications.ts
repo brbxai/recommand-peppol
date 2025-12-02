@@ -73,6 +73,7 @@ export async function sendIncomingDocumentNotifications(options: {
   parsedDocument: ParsedDocument | null;
   xmlDocument: string;
   transmittedDocumentId: string;
+  isPlayground?: boolean;
 }): Promise<void> {
   try {
     const notificationEmails = await getIncomingCompanyNotificationEmailAddresses(options.companyId);
@@ -87,9 +88,13 @@ export async function sendIncomingDocumentNotifications(options: {
     );
 
     const documentTypeLabel = getDocumentTypeLabel(options.type);
-    const subject = documentNumber
+    let subject = documentNumber
       ? `New ${documentTypeLabel} Received: ${documentNumber}`
       : `New ${documentTypeLabel} Received - ${options.companyName}`;
+
+    if (options.isPlayground) {
+      subject = `[PLAYGROUND/TEST] ${subject}`;
+    }
 
     const attachments = extractDocumentAttachments(options.parsedDocument);
     const filename = getDocumentFilename(options.type, options.parsedDocument);
@@ -204,6 +209,7 @@ export async function sendOutgoingDocumentNotifications(options: {
   parsedDocument: ParsedDocument | null;
   xmlDocument: string;
   transmittedDocumentId: string;
+  isPlayground?: boolean;
 }): Promise<void> {
   try {
     const notificationEmails = await getOutgoingCompanyNotificationEmailAddresses(options.companyId);
@@ -218,9 +224,13 @@ export async function sendOutgoingDocumentNotifications(options: {
     );
 
     const documentTypeLabel = getDocumentTypeLabel(options.type);
-    const subject = documentNumber
+    let subject = documentNumber
       ? `${documentTypeLabel} Sent Successfully: ${documentNumber}`
       : `${documentTypeLabel} Sent Successfully - ${options.companyName}`;
+
+    if (options.isPlayground) {
+      subject = `[PLAYGROUND/TEST] ${subject}`;
+    }
 
     const attachments = extractDocumentAttachments(options.parsedDocument);
     const filename = getDocumentFilename(options.type, options.parsedDocument);

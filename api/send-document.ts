@@ -536,6 +536,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         type,
         parsedDocument,
         xmlDocument: xmlDocument,
+        isPlayground,
       });
     } catch (error) {
       console.error("Failed to send outgoing document notifications:", error);

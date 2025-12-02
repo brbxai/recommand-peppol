@@ -142,6 +142,7 @@ export async function receiveDocument(options: {
       type,
       parsedDocument,
       xmlDocument: options.body,
+      isPlayground: (options.useTestNetwork || options.playgroundTeamId) ? true : false,
     });
   } catch (error) {
     console.error("Failed to send incoming document notifications:", error);
