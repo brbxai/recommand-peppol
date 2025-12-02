@@ -6,9 +6,9 @@ export type PeppolDirectorySearchResult = {
   supportedDocumentTypes: string[];
 }
 
-export async function searchPeppolDirectory(query: string): Promise<PeppolDirectorySearchResult[]> {
+export async function searchPeppolDirectory({ query, useTestNetwork }: { query: string, useTestNetwork: boolean }): Promise<PeppolDirectorySearchResult[]> {
   const encodedQuery = encodeURIComponent(query);
-  const response = await fetchPeppolDirectory(`search/1.0/json?q=${encodedQuery}`);
+  const response = await fetchPeppolDirectory(`search/1.0/json?q=${encodedQuery}`, { useTestNetwork });
   const data = await response.json();
   
   return data.matches.map((match: any) => ({

@@ -95,7 +95,7 @@ export async function registerCompanyIdentifier({company, identifier, documentTy
       // Try to get the SMP hostnames so we can make a more descriptive error message
       let smpHostnames: string[] = [];
       try{
-        const recipientVerification = await verifyRecipient(identifier.scheme + ":" + identifier.identifier);
+        const recipientVerification = await verifyRecipient({recipientAddress: identifier.scheme + ":" + identifier.identifier, useTestNetwork});
         smpHostnames = recipientVerification.smpHostnames;
       }catch(error){
         // Ignore the error

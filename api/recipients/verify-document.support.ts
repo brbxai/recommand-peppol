@@ -8,8 +8,9 @@ import { describeRoute } from "hono-openapi";
 import {
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import { requireIntegrationSupportedAuth, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedAuth, requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { verifyDocumentSupport } from "@peppol/data/recipient";
+import { getTeamExtension } from "@peppol/data/teams";
 
 const server = new Server();
 
@@ -35,7 +36,7 @@ type VerifyDocumentSupportContext = Context<AuthenticatedUserContext & Authentic
 
 const _verifyDocumentSupportMinimal = server.post(
     "/verify-document-support",
-    requireIntegrationSupportedAuth(),
+    requireIntegrationSupportedTeamAccess(),
     verifyDocumentSupportRouteDescription,
     zodValidator("json", verifyDocumentSupportJsonBodySchema),
     _verifyDocumentSupportImplementation,
@@ -43,7 +44,7 @@ const _verifyDocumentSupportMinimal = server.post(
 
 const _verifyDocumentSupport = server.post(
     "/verifyDocumentSupport",
-    requireIntegrationSupportedAuth(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("json", verifyDocumentSupportJsonBodySchema),
     _verifyDocumentSupportImplementation,
@@ -52,9 +53,11 @@ const _verifyDocumentSupport = server.post(
 async function _verifyDocumentSupportImplementation(c: VerifyDocumentSupportContext) {
     try {
         const { peppolAddress, documentType } = c.req.valid("json");
-        const data = await verifyDocumentSupport(peppolAddress, documentType);
+        const teamExtension = await getTeamExtension(c.var.team.id);
+        const data = await verifyDocumentSupport({ recipientAddress: peppolAddress, documentType, useTestNetwork: teamExtension?.useTestNetwork ?? false });
         return c.json(actionSuccess({ isValid: true, ...data }));
     } catch (error) {
+        console.error(error);
         return c.json(actionSuccess({ isValid: false }));
     }
 }

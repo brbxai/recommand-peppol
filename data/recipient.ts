@@ -1,24 +1,58 @@
 import { createHash } from "crypto";
 import { PARTICIPANT_SCHEME, DOCUMENT_SCHEME } from "./phoss-smp/service-metadata";
 import { XMLParser } from "fast-xml-parser";
+import { base32Encode } from "@peppol/utils/base32";
+import { resolveNaptr } from "@peppol/utils/naptr";
 
 const SML_ZONE = "edelivery.tech.ec.europa.eu";
+const SML_TEST_ZONE = "acc.edelivery.tech.ec.europa.eu";
 
-function getSmpUrl(recipientAddress: string) {
-  // Create MD5 hash of lowercase identifier
-  const hash = createHash("md5")
-    .update(recipientAddress.toLowerCase())
-    .digest("hex");
-
-  // Encode the recipient address for URL safety
-  const encodedAddress = encodeURIComponent(recipientAddress);
-
-  // Construct SMP URL according to Peppol spec with proper encoding
-  return `http://B-${hash}.${PARTICIPANT_SCHEME}.${SML_ZONE}/${PARTICIPANT_SCHEME}::${encodedAddress}`;
+function stripTrailingEquals(str: string): string {
+  return str.replace(/=+$/, "");
 }
 
-export async function verifyRecipient(recipientAddress: string) {
-  const smpUrl = getSmpUrl(recipientAddress);
+async function getSmpUrlNaptr({recipientAddress, useTestNetwork}: {recipientAddress: string, useTestNetwork: boolean}): Promise<string | null> {
+  const dnsZone = useTestNetwork ? SML_TEST_ZONE : SML_ZONE;
+  
+  const sha256Hash = createHash("sha256")
+    .update(recipientAddress.toLowerCase())
+    .digest();
+  
+  const base32Hash = stripTrailingEquals(base32Encode(sha256Hash));
+  const naptrDomain = `${base32Hash}.${PARTICIPANT_SCHEME}.${dnsZone}`.toLowerCase();
+  
+  const smpUrl = await resolveNaptr(naptrDomain);
+  if (smpUrl) {
+    const encodedAddress = encodeURIComponent(recipientAddress);
+    const baseUrl = smpUrl.endsWith("/") ? smpUrl.slice(0, -1) : smpUrl;
+    return `${baseUrl}/${PARTICIPANT_SCHEME}::${encodedAddress}`;
+  }
+  return null;
+}
+
+function getSmpUrlCname({recipientAddress, useTestNetwork}: {recipientAddress: string, useTestNetwork: boolean}): string {
+  const dnsZone = useTestNetwork ? SML_TEST_ZONE : SML_ZONE;
+  
+  const md5Hash = createHash("md5")
+    .update(recipientAddress.toLowerCase())
+    .digest("hex");
+  
+  const encodedAddress = encodeURIComponent(recipientAddress);
+  
+  return `http://B-${md5Hash}.${PARTICIPANT_SCHEME}.${dnsZone}/${PARTICIPANT_SCHEME}::${encodedAddress}`;
+}
+
+async function getSmpUrl({recipientAddress, useTestNetwork}: {recipientAddress: string, useTestNetwork: boolean}): Promise<string> {  
+  const naptrUrl = await getSmpUrlNaptr({recipientAddress, useTestNetwork});
+  if (naptrUrl) {
+    return naptrUrl;
+  }
+  
+  return getSmpUrlCname({recipientAddress, useTestNetwork});
+}
+
+export async function verifyRecipient({recipientAddress, useTestNetwork}: {recipientAddress: string, useTestNetwork: boolean}) {
+  const smpUrl = await getSmpUrl({recipientAddress, useTestNetwork});
 
   try {
     const response = await fetch(smpUrl);
@@ -90,11 +124,8 @@ export async function verifyRecipient(recipientAddress: string) {
   }
 }
 
-export async function verifyDocumentSupport(
-  recipientAddress: string,
-  documentType: string
-) {
-  const smpUrl = getSmpUrl(recipientAddress);
+export async function verifyDocumentSupport({recipientAddress, documentType, useTestNetwork}: {recipientAddress: string, documentType: string, useTestNetwork: boolean}) {
+  const smpUrl = await getSmpUrl({recipientAddress, useTestNetwork});
 
   // Encode the document type for URL safety
   const encodedDocumentType = encodeURIComponent(documentType);
@@ -109,7 +140,7 @@ export async function verifyDocumentSupport(
         `Failed to verify document type capabilities: ${response.statusText}`
       );
     }
-    const data = await response.text();
+
     return {
       smpUrl: smpUrlWithDocumentType,
     };

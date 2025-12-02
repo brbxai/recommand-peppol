@@ -8,8 +8,9 @@ import { describeRoute } from "hono-openapi";
 import {
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import { requireIntegrationSupportedAuth, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { verifyRecipient } from "@peppol/data/recipient";
+import { getTeamExtension } from "@peppol/data/teams";
 
 const server = new Server();
 
@@ -36,7 +37,7 @@ type VerifyRecipientContext = Context<AuthenticatedUserContext & AuthenticatedTe
 
 const _verifyRecipient = server.post(
     "/verify",
-    requireIntegrationSupportedAuth(),
+    requireIntegrationSupportedTeamAccess(),
     verifyRecipientRouteDescription,
     zodValidator("json", verifyRecipientJsonBodySchema),
     _verifyRecipientImplementation,
@@ -44,7 +45,8 @@ const _verifyRecipient = server.post(
 
 async function _verifyRecipientImplementation(c: VerifyRecipientContext) {
     try {
-        const data = await verifyRecipient(c.req.valid("json").peppolAddress);
+        const teamExtension = await getTeamExtension(c.var.team.id);
+        const data = await verifyRecipient({recipientAddress: c.req.valid("json").peppolAddress, useTestNetwork: teamExtension?.useTestNetwork ?? false});
         return c.json(actionSuccess({ isValid: true, ...data }));
     } catch (error) {
         return c.json(actionSuccess({ isValid: false }));

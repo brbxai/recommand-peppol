@@ -8,8 +8,9 @@ import { describeRoute } from "hono-openapi";
 import {
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import { requireIntegrationSupportedAuth, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { searchPeppolDirectory } from "@peppol/data/peppol-directory";
+import { getTeamExtension } from "@peppol/data/teams";
 
 const server = new Server();
 
@@ -31,7 +32,7 @@ type SearchDirectoryContext = Context<AuthenticatedUserContext & AuthenticatedTe
 
 const _searchDirectoryMinimal = server.post(
     "/search-peppol-directory",
-    requireIntegrationSupportedAuth(),
+    requireIntegrationSupportedTeamAccess(),
     searchDirectoryRouteDescription,
     zodValidator("json", searchDirectoryJsonBodySchema),
     _searchDirectoryImplementation,
@@ -39,7 +40,7 @@ const _searchDirectoryMinimal = server.post(
 
 const _searchDirectory = server.post(
     "/searchPeppolDirectory",
-    requireIntegrationSupportedAuth(),
+    requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("json", searchDirectoryJsonBodySchema),
     _searchDirectoryImplementation,
@@ -48,7 +49,8 @@ const _searchDirectory = server.post(
 async function _searchDirectoryImplementation(c: SearchDirectoryContext) {
     try {
         const { query } = c.req.valid("json");
-        const results = await searchPeppolDirectory(query);
+        const teamExtension = await getTeamExtension(c.var.team.id);
+        const results = await searchPeppolDirectory({ query, useTestNetwork: teamExtension?.useTestNetwork ?? false });
         return c.json(actionSuccess({ results }));
     } catch (error) {
         return c.json(actionFailure("Failed to search directory"), 500);
