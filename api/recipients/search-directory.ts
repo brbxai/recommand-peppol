@@ -6,6 +6,7 @@ import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import {
+    describeErrorResponse,
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
 import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
@@ -21,6 +22,7 @@ const searchDirectoryRouteDescription = describeRoute({
     tags: ["Recipients"],
     responses: {
         ...describeSuccessResponseWithZod("Successfully searched directory", z.object({ results: z.array(z.object({ peppolAddress: z.string(), name: z.string(), supportedDocumentTypes: z.array(z.string()) })) })),
+        ...describeErrorResponse(503, "Peppol directory is currently unavailable"),
     },
 });
 
@@ -53,7 +55,7 @@ async function _searchDirectoryImplementation(c: SearchDirectoryContext) {
         const results = await searchPeppolDirectory({ query, useTestNetwork: teamExtension?.useTestNetwork ?? false });
         return c.json(actionSuccess({ results }));
     } catch (error) {
-        return c.json(actionFailure("Failed to search directory"), 500);
+        return c.json(actionFailure("Peppol directory is currently unavailable"), 503);
     }
 }
 
