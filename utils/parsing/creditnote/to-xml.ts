@@ -215,6 +215,11 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
             ...(payment.name && {
               "cbc:Name": payment.name,
             }),
+            ...(payment.financialInstitutionBranch && {
+              "cac:FinancialInstitutionBranch": {
+                "cbc:ID": payment.financialInstitutionBranch,
+              },
+            }),
           },
         })),
       }),

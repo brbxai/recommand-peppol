@@ -208,6 +208,11 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
             ...(payment.name && {
               "cbc:Name": payment.name,
             }),
+            ...(payment.financialInstitutionBranch && {
+              "cac:FinancialInstitutionBranch": {
+                "cbc:ID": payment.financialInstitutionBranch,
+              },
+            }),
           },
         })),
       }),

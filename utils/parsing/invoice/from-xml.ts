@@ -101,6 +101,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     paymentMethod: getPaymentKeyByCode(getTextContent(payment.PaymentMeansCode)),
     reference: getTextContent(payment.PaymentID),
     iban: getTextContent(payment.PayeeFinancialAccount?.ID),
+    financialInstitutionBranch: getNullableTextContent(payment.PayeeFinancialAccount?.FinancialInstitutionBranch?.ID),
   }));
 
   // Extract payment terms if present

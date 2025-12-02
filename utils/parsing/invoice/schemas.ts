@@ -78,6 +78,7 @@ export const paymentMeansSchema = z.object({
   paymentMethod: z.enum([...PAYMENT_MEANS.map((payment) => payment.key) as [string, ...string[]], "other"]).default('credit_transfer').openapi({ example: "credit_transfer" }),
   reference: z.string().default("").openapi({ example: "INV-2026-001" }),
   iban: z.string().openapi({ example: "BE1234567890" }),
+  financialInstitutionBranch: z.string().nullish().openapi({ description: "An identifier for the payment service provider where a payment account is located. Such as a BIC or a national clearing code where required." }),
 }).openapi({ ref: "PaymentMeans" });
 
 export const vatCategoryEnum = z.enum(Object.keys(VAT_CATEGORIES) as [VatCategory, ...VatCategory[]])
