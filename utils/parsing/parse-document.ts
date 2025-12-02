@@ -80,6 +80,7 @@ export function detectDoctypeId(xml: string): string | null {
         const parser = new XMLParser({
             ignoreAttributes: false,
             attributeNamePrefix: "@_",
+            removeNSPrefix: true,
         });
         const parsed = parser.parse(xml);
 

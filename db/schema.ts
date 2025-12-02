@@ -294,6 +294,7 @@ export const teamExtensions = pgTable("peppol_team_extensions", {
     .primaryKey()
     .references(() => teams.id, { onDelete: "cascade" }),
   isPlayground: boolean("is_playground").notNull().default(false),
+  useTestNetwork: boolean("use_test_network").notNull().default(false),
 });
 
 export const labels = pgTable("peppol_labels", {

@@ -27,8 +27,10 @@ server.post(
     const jsonBody = c.req.valid("json");
 
     try {
-      await receiveDocument(jsonBody);
+      const useTestNetwork = c.get("token") !== process.env.INTERNAL_TOKEN;
+      await receiveDocument({...jsonBody, useTestNetwork});
     } catch (error) {
+      console.error("Error receiving document:", error);
       if (error instanceof UserFacingError) {
         return c.json(actionFailure(error), 400);
       }

@@ -12,24 +12,46 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export async function registerServiceMetadata(
-  peppolIdentifierEas: string,
-  peppolIdentifierAddress: string,
-  documentTypeCode: string,
-  documentProcessIdCode: string,
-) {
+export async function registerServiceMetadata({
+  peppolIdentifierEas,
+  peppolIdentifierAddress,
+  documentTypeCode,
+  documentProcessIdCode,
+  useTestNetwork,
+}:{
+  peppolIdentifierEas: string;
+  peppolIdentifierAddress: string;
+  documentTypeCode: string;
+  documentProcessIdCode: string;
+  useTestNetwork: boolean;
+}) {
   const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
   const documentTypeId = `${DOCUMENT_SCHEME}::${documentTypeCode}`;
   
   // Encode the document type id
   const encodedDocumentTypeId = encodeURIComponent(documentTypeId);
 
-  if (!process.env.AP_CERT) {
-    throw new Error("AP_CERT environment variable is not set");
+  let fixedCert: string;
+  let as4Address: string;
+
+  if (useTestNetwork) {
+    if (!process.env.AP_TEST_CERT) {
+      throw new Error("AP_TEST_CERT environment variable is not set");
+    }
+  
+    // Fix newlines in certificate content
+    fixedCert = fixNewlines(process.env.AP_TEST_CERT);
+    as4Address = "https://test-ap.net.recommand.com/as4";
+  }else{
+    if (!process.env.AP_CERT) {
+      throw new Error("AP_CERT environment variable is not set");
+    }
+  
+    // Fix newlines in certificate content
+    fixedCert = fixNewlines(process.env.AP_CERT);
+    as4Address = "https://ap.net.recommand.com/as4";
   }
 
-  // Fix newlines in certificate content
-  const fixedCert = fixNewlines(process.env.AP_CERT);
 
   // Create the XML body according to the Peppol style
   const serviceMetadataXml = {
@@ -56,7 +78,7 @@ export async function registerServiceMetadata(
               "smp:Endpoint": {
                 "@_transportProfile": "peppol-transport-as4-v2_0",
                 "wsa:EndpointReference": {
-                  "wsa:Address": "https://ap.net.recommand.com/as4"
+                  "wsa:Address": as4Address
                 },
                 "smp:RequireBusinessLevelSignature": false,
                 "smp:Certificate": fixedCert,
@@ -77,7 +99,8 @@ export async function registerServiceMetadata(
       headers: {
         "Content-Type": "application/xml"
       },
-      body: builder.build(serviceMetadataXml)
+      body: builder.build(serviceMetadataXml),
+      useTestNetwork,
     }
   );
 
@@ -89,11 +112,17 @@ export async function registerServiceMetadata(
   return true;
 }
 
-export async function deleteServiceMetadata(
+export async function deleteServiceMetadata({
+  peppolIdentifierEas,
+  peppolIdentifierAddress,
+  documentTypeCode,
+  useTestNetwork,
+}:{
   peppolIdentifierEas: string,
   peppolIdentifierAddress: string,
   documentTypeCode: string,
-) {
+  useTestNetwork: boolean,
+}) {
   const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
   const documentTypeId = `${DOCUMENT_SCHEME}::${documentTypeCode}`;
   const encodedDocumentTypeId = encodeURIComponent(documentTypeId);
@@ -101,7 +130,8 @@ export async function deleteServiceMetadata(
   const response = await fetchSmp(
     `${PARTICIPANT_SCHEME}::${serviceGroupId}/services/${encodedDocumentTypeId}`,
     {
-      method: "DELETE"
+      method: "DELETE",
+      useTestNetwork,
     }
   );
 

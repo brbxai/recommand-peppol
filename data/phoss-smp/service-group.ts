@@ -10,10 +10,15 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export async function registerServiceGroup(
-  peppolIdentifierEas: string,
-  peppolIdentifierAddress: string
-) {
+export async function registerServiceGroup({
+  peppolIdentifierEas,
+  peppolIdentifierAddress,
+  useTestNetwork,
+}:{
+  peppolIdentifierEas: string;
+  peppolIdentifierAddress: string;
+  useTestNetwork: boolean;
+}) {
   const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
   
   // Create the XML body according to the Peppol style
@@ -36,7 +41,8 @@ export async function registerServiceGroup(
       headers: {
         "Content-Type": "application/xml"
       },
-      body: builder.build(serviceGroupXml)
+      body: builder.build(serviceGroupXml),
+      useTestNetwork,
     }
   );
 
@@ -49,16 +55,22 @@ export async function registerServiceGroup(
   return data;
 }
 
-export async function deleteServiceGroup(
-  peppolIdentifierEas: string,
-  peppolIdentifierAddress: string
-) {
+export async function deleteServiceGroup({
+  peppolIdentifierEas,
+  peppolIdentifierAddress,
+  useTestNetwork,
+}:{
+  peppolIdentifierEas: string;
+  peppolIdentifierAddress: string;
+  useTestNetwork: boolean;
+}) {
   const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
   
   const response = await fetchSmp(
     `${SCHEME}::${serviceGroupId}`,
     {
-      method: "DELETE"
+      method: "DELETE",
+      useTestNetwork,
     }
   );
 
@@ -77,11 +89,17 @@ export async function deleteServiceGroup(
   return true;
 }
 
-export async function migrateParticipantToOurSMP(
-  peppolIdentifierEas: string,
-  peppolIdentifierAddress: string,
-  migrationKey: string
-) {
+export async function migrateParticipantToOurSMP({
+  peppolIdentifierEas,
+  peppolIdentifierAddress,
+  migrationKey,
+  useTestNetwork,
+}:{
+  peppolIdentifierEas: string;
+  peppolIdentifierAddress: string;
+  migrationKey: string;
+  useTestNetwork: boolean;
+}) {
   const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
   
   const response = await fetchSmp(
@@ -90,7 +108,8 @@ export async function migrateParticipantToOurSMP(
       method: "PUT",
       headers: {
         "Content-Type": "application/json"
-      }
+      },
+      useTestNetwork,
     }
   );
 

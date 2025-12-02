@@ -107,6 +107,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     const jsonBody = c.req.valid("json");
     const document = jsonBody.document;
     const isPlayground = c.get("team").isPlayground;
+    const useTestNetwork = c.get("team").useTestNetwork ?? false;
 
     let xmlDocument: string | null = null;
     let type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown" = "unknown";
@@ -388,7 +389,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     let additionalPeppolFailureContext = "";
     let additionalEmailFailureContext = "";
 
-    if (isPlayground) {
+    if (isPlayground && !useTestNetwork) {
       await simulateSendAs4({
         senderId: senderAddress,
         receiverId: recipientAddress,
@@ -407,6 +408,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
         countryC1: countryC1,
         body: xmlDocument,
+        useTestNetwork,
       });
       const jsonResponse = await response.json();
       if (!response.ok || !jsonResponse.overallSuccess) {

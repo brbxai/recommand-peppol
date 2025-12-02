@@ -13,7 +13,7 @@ type MinimalCompanyIdentifier = {
   identifier: string;
 }
 
-export async function upsertCompanyRegistrations(companyId: string) {
+export async function upsertCompanyRegistrations({companyId, useTestNetwork}: {companyId: string, useTestNetwork: boolean}) {
   const company = await getCompanyById(companyId);
   if(company && !company.isSmpRecipient){
     return;
@@ -25,40 +25,45 @@ export async function upsertCompanyRegistrations(companyId: string) {
   }
 
   for (const identifier of identifiers) {
-    await registerCompanyIdentifier(company, identifier, documentTypes);
+    await registerCompanyIdentifier({company, identifier, documentTypes, useTestNetwork});
   }
 }
 
-export async function unregisterCompanyRegistrations(companyId: string) {
+export async function unregisterCompanyRegistrations({companyId, useTestNetwork}: {companyId: string, useTestNetwork: boolean}) {
   const identifiers = await getCompanyIdentifiers(companyId);
   if(!identifiers){
     throw new UserFacingError("Identifiers not found, could not unregister company registration");
   }
 
   for (const identifier of identifiers) {
-    await unregisterCompanyIdentifier(identifier);
+    await unregisterCompanyIdentifier({identifier, useTestNetwork});
   }
 }
 
-export async function upsertCompanyRegistration(companyId: string, identifier: MinimalCompanyIdentifier) {
+export async function upsertCompanyRegistration({companyId, identifier, useTestNetwork}: {companyId: string, identifier: MinimalCompanyIdentifier, useTestNetwork: boolean}) {
   const company = await getCompanyById(companyId);
   const documentTypes = await getCompanyDocumentTypes(companyId);
   if(!company || !documentTypes){
     throw new UserFacingError("Company or document types not found, could not upsert company registration");
   }
 
-  await registerCompanyIdentifier(company, identifier, documentTypes);
+  await registerCompanyIdentifier({company, identifier, documentTypes, useTestNetwork});
 }
 
-export async function unregisterCompanyDocumentType(documentType: CompanyDocumentType) {
+export async function unregisterCompanyDocumentType({documentType, useTestNetwork}: {documentType: CompanyDocumentType, useTestNetwork: boolean}) {
   const identifiers = await getCompanyIdentifiers(documentType.companyId);
 
   for (const identifier of identifiers) {
-    await deleteServiceMetadata(identifier.scheme, identifier.identifier, documentType.docTypeId);
+    await deleteServiceMetadata({
+      peppolIdentifierEas: identifier.scheme,
+      peppolIdentifierAddress: identifier.identifier,
+      documentTypeCode: documentType.docTypeId,
+      useTestNetwork,
+    });
   }
 }
 
-export async function registerCompanyIdentifier(company: Company | InsertCompany, identifier: MinimalCompanyIdentifier, documentTypes: CompanyDocumentType[]) {
+export async function registerCompanyIdentifier({company, identifier, documentTypes, useTestNetwork}: {company: Company | InsertCompany, identifier: MinimalCompanyIdentifier, documentTypes: CompanyDocumentType[], useTestNetwork: boolean}) {
 
   if(!company.isSmpRecipient){
     return;
@@ -66,13 +71,22 @@ export async function registerCompanyIdentifier(company: Company | InsertCompany
 
   const address = `${company.address}, ${company.postalCode} ${company.city}, ${company.country}`;
   try{
-    await registerServiceGroup(identifier.scheme, identifier.identifier);
+    await registerServiceGroup({
+      peppolIdentifierEas: identifier.scheme,
+      peppolIdentifierAddress: identifier.identifier,
+      useTestNetwork,
+    });
   }catch(error){
     try{
-      if(identifier.scheme === "0208"){
+      if(identifier.scheme === "0208" && !useTestNetwork){
         // The company might be registered in Hermes already, try to migrate it to our SMP
         const migrationToken = await getMigrationToken(identifier.identifier);
-        await migrateParticipantToOurSMP(identifier.scheme, identifier.identifier, migrationToken);
+        await migrateParticipantToOurSMP({
+          peppolIdentifierEas: identifier.scheme,
+          peppolIdentifierAddress: identifier.identifier,
+          migrationKey: migrationToken,
+          useTestNetwork,
+        });
       } else {
         throw error;
       }
@@ -95,13 +109,31 @@ export async function registerCompanyIdentifier(company: Company | InsertCompany
   }
 
   for (const documentType of documentTypes) {
-    await registerServiceMetadata(identifier.scheme, identifier.identifier, documentType.docTypeId, documentType.processId);
+    await registerServiceMetadata({
+      peppolIdentifierEas: identifier.scheme,
+      peppolIdentifierAddress: identifier.identifier,
+      documentTypeCode: documentType.docTypeId,
+      documentProcessIdCode: documentType.processId,
+      useTestNetwork,
+    });
   }
 
-  await registerBusinessCard(identifier.scheme, identifier.identifier, company.name, company.country, address, company.vatNumber);
+  await registerBusinessCard({
+    peppolIdentifierEas: identifier.scheme,
+    peppolIdentifierAddress: identifier.identifier,
+    name: company.name,
+    countryCode: company.country,
+    geographicalInformation: address,
+    vatNumber: company.vatNumber,
+    useTestNetwork,
+  });
 
 }
 
-export async function unregisterCompanyIdentifier(identifier: CompanyIdentifier) {
-  await deleteServiceGroup(identifier.scheme, identifier.identifier);
+export async function unregisterCompanyIdentifier({identifier, useTestNetwork}: {identifier: CompanyIdentifier, useTestNetwork: boolean}) {
+  await deleteServiceGroup({
+    peppolIdentifierEas: identifier.scheme,
+    peppolIdentifierAddress: identifier.identifier,
+    useTestNetwork,
+  });
 }

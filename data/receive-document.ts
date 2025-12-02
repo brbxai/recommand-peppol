@@ -20,6 +20,7 @@ export async function receiveDocument(options: {
   countryC1: string;
   body: string;
   skipBilling?: boolean;
+  useTestNetwork?: boolean;
   playgroundTeamId?: string;
 }) {
   // The sender and receiver id might start with iso6523-actorid-upis::
@@ -31,7 +32,11 @@ export async function receiveDocument(options: {
     : options.receiverId;
 
   // Get the teamId and companyId from the receiverId
-  const company = await getCompanyByPeppolId(receiverId, options.playgroundTeamId);
+  const company = await getCompanyByPeppolId({
+    peppolId: receiverId,
+    playgroundTeamId: options.playgroundTeamId,
+    useTestNetwork: options.useTestNetwork,
+  });
   if (!company) {
     throw new UserFacingError("Company not found");
   }

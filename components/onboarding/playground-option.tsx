@@ -8,7 +8,6 @@ import { ToyBrick, Users, ChevronRight } from "lucide-react";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { useUserStore } from "@core/lib/user-store";
 import { createPlayground } from "@peppol/lib/client/playgrounds";
-import { Separator } from "@core/components/ui/separator";
 
 interface PlaygroundOptionProps {
   /** Optional custom text for the button */
@@ -42,7 +41,7 @@ export default function PlaygroundOption({
 
     setIsCreating(true);
     try {
-      const response = await createPlayground(playgroundName.trim());
+      const response = await createPlayground(playgroundName.trim(), false);
       if (!response.success) {
         toast.error(stringifyActionFailure(response.errors));
         return;

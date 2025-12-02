@@ -23,7 +23,7 @@ type InternalTokenContext = {
 export function requireInternalToken() {
   return createMiddleware<InternalTokenContext>(async (c, next) => {
     const token = c.req.header("X-Internal-Token");
-    if (!token || token !== process.env.INTERNAL_TOKEN) {
+    if (!token || (token !== process.env.INTERNAL_TOKEN && token !== process.env.INTERNAL_TEST_TOKEN)) {
       return c.json(actionFailure("Unauthorized"), 401);
     }
     c.set("token", token);

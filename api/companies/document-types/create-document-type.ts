@@ -10,6 +10,7 @@ import { companyDocumentTypeResponse } from "./shared";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { createCompanyDocumentType } from "@peppol/data/company-document-types";
 import { UserFacingError } from "@peppol/utils/util";
+import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 
 const server = new Server();
 
@@ -56,7 +57,7 @@ const _createDocumentTypeMinimal = server.post(
 const _createDocumentType = server.post(
     "/:teamId/companies/:companyId/documentTypes",
     requireCompanyAccess(),
-    describeRoute({hide: true}),
+    describeRoute({ hide: true }),
     zodValidator("param", createDocumentTypeParamSchemaWithTeamId),
     zodValidator("json", createDocumentTypeJsonBodySchema),
     _createDocumentTypeImplementation,
@@ -64,10 +65,15 @@ const _createDocumentType = server.post(
 
 async function _createDocumentTypeImplementation(c: CreateDocumentTypeContext) {
     try {
+        const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground: c.var.team.isPlayground, useTestNetwork: c.var.team.useTestNetwork }) || !c.var.company.isSmpRecipient;
         const documentType = await createCompanyDocumentType({
-            ...c.req.valid("json"),
-            companyId: c.req.valid("param").companyId,
-        }, c.var.team.isPlayground || !c.var.company.isSmpRecipient); // Skip SMP registration for playground teams
+            companyDocumentType: {
+                ...c.req.valid("json"),
+                companyId: c.req.valid("param").companyId,
+            },
+            skipSmpRegistration,
+            useTestNetwork: c.var.team.useTestNetwork ?? false,
+        });
 
         return c.json(actionSuccess({ documentType }));
     } catch (error) {

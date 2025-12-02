@@ -1,10 +1,12 @@
 // Extend fetch with the Phase4 token
-export function fetchPhase4Ap(url: string, options: RequestInit) {
-  return fetch("https://ap.net.recommand.com/" + url, {
+export function fetchPhase4Ap(url: string, options: {useTestNetwork?: boolean} & RequestInit) {
+  const endpoint = options.useTestNetwork ? "https://test-ap.net.recommand.com" : "https://ap.net.recommand.com";
+  const token = options.useTestNetwork ? process.env.PHASE4_AP_TEST_TOKEN : process.env.PHASE4_AP_TOKEN;
+  return fetch(endpoint + "/" + url, {
     ...options,
     headers: {
       ...options.headers,
-      "X-Token": process.env.PHASE4_AP_TOKEN!,
+      "X-Token": token!,
     },
   });
 }
@@ -16,6 +18,7 @@ export function sendAs4(options: {
   processId: string;
   countryC1: string;
   body: string; // XML string
+  useTestNetwork: boolean,
 }) {
   const { senderId, receiverId, docTypeId, processId, countryC1, body } = options;
 
@@ -32,5 +35,6 @@ export function sendAs4(options: {
       'Content-Type': 'application/xml',
     },
     body,
+    useTestNetwork: options.useTestNetwork,
   });
 }

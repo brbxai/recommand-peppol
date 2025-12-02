@@ -65,7 +65,7 @@ const _updateCompanyMinimal = server.put(
 const _updateCompany = server.put(
     "/:teamId/companies/:companyId",
     requireTeamAccess(),
-    describeRoute({hide: true}),
+    describeRoute({ hide: true }),
     zodValidator("param", updateCompanyParamSchemaWithTeamId),
     zodValidator("json", updateCompanyJsonBodySchema),
     _updateCompanyImplementation,
@@ -74,23 +74,23 @@ const _updateCompany = server.put(
 async function _updateCompanyImplementation(c: UpdateCompanyContext) {
     try {
         const updateData = c.req.valid("json");
-  
+
         const company = await updateCompany({
-          ...updateData,
-          teamId: c.var.team.id,
-          id: c.req.valid("param").companyId,
+            ...updateData,
+            teamId: c.var.team.id,
+            id: c.req.valid("param").companyId,
         });
         if (!company) {
-          return c.json(actionFailure("Company not found"), 404);
+            return c.json(actionFailure("Company not found"), 404);
         }
         return c.json(actionSuccess({ company }));
-      } catch (error) {
+    } catch (error) {
         if (error instanceof UserFacingError) {
-          return c.json(actionFailure(error), 400);
+            return c.json(actionFailure(error), 400);
         }
         console.error(error);
         return c.json(actionFailure("Could not update company"), 500);
-      }
+    }
 }
 
 export type UpdateCompany = typeof _updateCompany | typeof _updateCompanyMinimal;

@@ -48,10 +48,15 @@ export async function getCompanyDocumentTypeByDocTypeAndProcess(
     .then((rows) => rows[0]);
 }
 
-export async function createCompanyDocumentType(
-  companyDocumentType: InsertCompanyDocumentType,
-  skipSmpRegistration: boolean = false
-): Promise<CompanyDocumentType> {
+export async function createCompanyDocumentType({
+  companyDocumentType,
+  skipSmpRegistration,
+  useTestNetwork,
+}:{
+  companyDocumentType: InsertCompanyDocumentType;
+  skipSmpRegistration: boolean;
+  useTestNetwork: boolean;
+}): Promise<CompanyDocumentType> {
   // Check if there already exists a document type with the same docTypeId and processId for this company
   const existingDocumentType = await getCompanyDocumentTypeByDocTypeAndProcess(
     companyDocumentType.companyId,
@@ -73,7 +78,7 @@ export async function createCompanyDocumentType(
 
   if(!skipSmpRegistration){
     try {
-      await upsertCompanyRegistrations(companyDocumentType.companyId);
+      await upsertCompanyRegistrations({companyId: companyDocumentType.companyId, useTestNetwork});
     } catch (error) {
       // If registration fails, rollback the creation of the document type
       await db.delete(companyDocumentTypes).where(eq(companyDocumentTypes.id, createdDocumentType.id));
@@ -84,10 +89,15 @@ export async function createCompanyDocumentType(
   return createdDocumentType;
 }
 
-export async function updateCompanyDocumentType(
-  companyDocumentType: InsertCompanyDocumentType & { id: string },
-  skipSmpRegistration: boolean = false
-): Promise<CompanyDocumentType> {
+export async function updateCompanyDocumentType({
+  companyDocumentType,
+  skipSmpRegistration,
+  useTestNetwork,
+}:{
+  companyDocumentType: InsertCompanyDocumentType & { id: string };
+  skipSmpRegistration: boolean;
+  useTestNetwork: boolean;
+}): Promise<CompanyDocumentType> {
   const oldDocumentType = await getCompanyDocumentType(
     companyDocumentType.companyId,
     companyDocumentType.id
@@ -129,8 +139,8 @@ export async function updateCompanyDocumentType(
 
   if(!skipSmpRegistration){
     try {
-      await unregisterCompanyDocumentType(oldDocumentType); // Unregister the old document type
-      await upsertCompanyRegistrations(companyDocumentType.companyId); // Register the new document type
+      await unregisterCompanyDocumentType({documentType: oldDocumentType, useTestNetwork}); // Unregister the old document type
+      await upsertCompanyRegistrations({companyId: companyDocumentType.companyId, useTestNetwork}); // Register the new document type
     } catch (error) {
       // If registration fails, rollback the update of the document type
       await db.update(companyDocumentTypes).set(oldDocumentType).where(eq(companyDocumentTypes.id, companyDocumentType.id));
@@ -141,18 +151,24 @@ export async function updateCompanyDocumentType(
   return updatedDocumentType;
 }
 
-export async function deleteCompanyDocumentType(
-  companyId: string,
-  documentTypeId: string,
-  skipSmpRegistration: boolean = false
-): Promise<void> {
+export async function deleteCompanyDocumentType({
+  companyId,
+  documentTypeId,
+  skipSmpRegistration,
+  useTestNetwork,
+}:{
+  companyId: string;
+  documentTypeId: string;
+  skipSmpRegistration: boolean;
+  useTestNetwork: boolean;
+}): Promise<void> {
   const documentType = await getCompanyDocumentType(companyId, documentTypeId);
   if (!documentType) {
     throw new UserFacingError("Company document type not found");
   }
 
   if(!skipSmpRegistration){
-    await unregisterCompanyDocumentType(documentType);
+    await unregisterCompanyDocumentType({documentType, useTestNetwork});
   }
 
   await db

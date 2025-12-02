@@ -18,6 +18,7 @@ const playgroundOpenapiSchema = {
     name: { type: "string", description: "Team name" },
     teamDescription: { type: "string", description: "Team description" },
     isPlayground: { type: "boolean", description: "Whether the team is a playground" },
+    useTestNetwork: { type: "boolean", description: "Whether to use the Peppol Test Network" },
     createdAt: { type: "string", format: "date-time" },
     updatedAt: { type: "string", format: "date-time" },
   },
@@ -83,6 +84,7 @@ const createPlaygroundRouteDescription = describeRoute({
 
 const createPlaygroundJsonBodySchema = z.object({
   name: z.string().min(1).openapi({ description: "Playground name" }),
+  useTestNetwork: z.boolean().default(false).openapi({ description: "Whether to use the Peppol Test Network" }),
 });
 
 type CreatePlaygroundContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof createPlaygroundJsonBodySchema> }, out: { json: z.infer<typeof createPlaygroundJsonBodySchema> } }>;
@@ -101,8 +103,8 @@ async function _createPlaygroundImplementation(c: CreatePlaygroundContext) {
     if (!user?.id) {
       return c.json(actionFailure("Unauthorized"), 401);
     }
-    const { name } = c.req.valid("json");
-    const playground = await createPlayground(user.id, name);
+    const { name, useTestNetwork } = c.req.valid("json");
+    const playground = await createPlayground(user.id, name, "Playground", useTestNetwork);
     return c.json(actionSuccess({ playground }));
   } catch (error) {
     console.error(error);

@@ -25,7 +25,8 @@ export async function getPlayground(
 export async function createPlayground(
   userId: string,
   teamName: string,
-  teamDescription: string = "Playground"
+  teamDescription: string = "Playground",
+  useTestNetwork: boolean = false
 ): Promise<ExtendedTeam> {
   const res = await db.transaction(async (tx) => {
     // Create a new team
@@ -47,6 +48,7 @@ export async function createPlayground(
     const [newExtension] = await tx.insert(teamExtensions).values({
       id: newTeam.id,
       isPlayground: true,
+      useTestNetwork,
     }).returning();
 
     

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@core/components/ui/label";
 import { Input } from "@core/components/ui/input";
 import { Button } from "@core/components/ui/button";
+import { Checkbox } from "@core/components/ui/checkbox";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { useUserStore } from "@core/lib/user-store";
@@ -15,6 +16,7 @@ export default function AddPlayground() {
     const { registerMenuItem } = useMenuItemActions();
     const [isOpen, setIsOpen] = useState(false);
     const [newPlaygroundName, setNewPlaygroundName] = useState("");
+    const [useTestNetwork, setUseTestNetwork] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const fetchUser = useUserStore(x => x.fetchUser);
     const setActiveTeam = useUserStore(x => x.setActiveTeam);
@@ -29,7 +31,7 @@ export default function AddPlayground() {
 
         setIsCreating(true);
         try{
-            const response = await createPlayground(newPlaygroundName.trim());
+            const response = await createPlayground(newPlaygroundName.trim(), useTestNetwork);
             if (!response.success) {
                 toast.error(stringifyActionFailure(response.errors));
                 return;
@@ -42,6 +44,7 @@ export default function AddPlayground() {
 
             setIsOpen(false);
             setNewPlaygroundName("");
+            setUseTestNetwork(false);
             toast.success("Playground created successfully");
         }catch(error){
             toast.error("Failed to create playground");
@@ -81,6 +84,23 @@ export default function AddPlayground() {
                             }
                         }}
                     />
+                </div>
+                <div className="flex items-start gap-3">
+                    <Checkbox 
+                        id="use-test-network"
+                        checked={useTestNetwork}
+                        onCheckedChange={(checked) => setUseTestNetwork(checked === true)}
+                    />
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="use-test-network" className="cursor-pointer">
+                            Use Peppol Test Network
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                            When checked, you are able to send and receive documents over the Peppol Test Network, allowing communication with external Peppol participants.
+                            Do not enable this setting if you are not sure what you are doing.
+                            This setting cannot be changed after playground creation.
+                        </p>
+                    </div>
                 </div>
             </div>
             <DialogFooter>

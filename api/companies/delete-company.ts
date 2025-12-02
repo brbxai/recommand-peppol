@@ -54,7 +54,7 @@ const _deleteCompany = server.delete(
 
 async function _deleteCompanyImplementation(c: DeleteCompanyContext) {
     try {
-        await deleteCompany(c.var.team.id, c.req.valid("param").companyId);
+        await deleteCompany({teamId: c.var.team.id, companyId: c.req.valid("param").companyId});
         return c.json(actionSuccess());
       } catch (error) {
         console.error(error);

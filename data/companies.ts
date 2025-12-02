@@ -8,10 +8,11 @@ import {
   UserFacingError,
 } from "@peppol/utils/util";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
-import { isPlayground } from "./teams";
+import { getTeamExtension } from "./teams";
 import { createCompanyDocumentType } from "./company-document-types";
 import { createCompanyIdentifier } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
+import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -47,10 +48,15 @@ export async function getCompanyById(
  * @param playgroundTeamId The team ID of the playground team, if the company is in a playground team. If no playgroundTeamId is provided, the function will return a production company.
  * @returns The company
  */
-export async function getCompanyByPeppolId(
+export async function getCompanyByPeppolId({
+  peppolId,
+  playgroundTeamId,
+  useTestNetwork,
+}: {
   peppolId: string,
   playgroundTeamId?: string
-): Promise<Company> {
+  useTestNetwork?: boolean;
+}): Promise<Company> {
   let originalPeppolId = peppolId;
   // The peppolId might start with iso6523-actorid-upis::
   if (peppolId.startsWith("iso6523-actorid-upis::")) {
@@ -72,10 +78,13 @@ export async function getCompanyByPeppolId(
       and(
         eq(companyIdentifiers.scheme, scheme.toLowerCase()),
         eq(companyIdentifiers.identifier, identifier.toLowerCase()),
-        playgroundTeamId ? eq(companies.teamId, playgroundTeamId) : or(
-          isNull(teamExtensions.isPlayground),
-          eq(teamExtensions.isPlayground, false)
-        )
+        playgroundTeamId ? eq(companies.teamId, playgroundTeamId) : (
+          useTestNetwork ? eq(teamExtensions.isPlayground, true) : or(
+            isNull(teamExtensions.isPlayground),
+            eq(teamExtensions.isPlayground, false)
+          )
+        ),
+        useTestNetwork ? eq(teamExtensions.useTestNetwork, true) : undefined
       )
     );
   if (results.length === 0) {
@@ -85,7 +94,9 @@ export async function getCompanyByPeppolId(
 }
 
 export async function createCompany(company: InsertCompany): Promise<Company> {
-  const isPlaygroundTeam = await isPlayground(company.teamId);
+  const teamExtension = await getTeamExtension(company.teamId);
+  const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
+  const useTestNetwork = teamExtension?.useTestNetwork ?? false;
 
   const createdCompany = await db
     .insert(companies)
@@ -98,7 +109,7 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
       "Company Created",
       `Company ${createdCompany.name} has been created. It is ${createdCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
     );
-    await setupCompanyDefaults(createdCompany, isPlaygroundTeam);
+    await setupCompanyDefaults({ company: createdCompany, isPlayground: isPlaygroundTeam, useTestNetwork });
   } catch (error) {
     sendSystemAlert(
       "Company Creation Failed",
@@ -116,27 +127,40 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
  * @param company The company to setup defaults for
  * @param isPlayground Whether the company is in a playground team, if so we don't register the company in the SMP
  */
-export async function setupCompanyDefaults(company: Company, isPlayground: boolean): Promise<void> {
+async function setupCompanyDefaults({ company, isPlayground, useTestNetwork }: { company: Company, isPlayground: boolean, useTestNetwork: boolean }): Promise<void> {
+  const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground, useTestNetwork }) || !company.isSmpRecipient;
   await createCompanyDocumentType({
-    companyId: company.id,
-    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
-    processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-  }, isPlayground || !company.isSmpRecipient);
+    companyDocumentType: {
+      companyId: company.id,
+      docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
+      processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+    },
+    skipSmpRegistration,
+    useTestNetwork,
+  });
   await createCompanyDocumentType({
-    companyId: company.id,
-    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
-    processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
-  }, isPlayground || !company.isSmpRecipient);
+    companyDocumentType: {
+      companyId: company.id,
+      docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
+      processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+    },
+    skipSmpRegistration,
+    useTestNetwork,
+  });
 
   const countryInfo = COUNTRIES.find((country) => country.code === company.country);
   const cleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
   if (countryInfo?.defaultEnterpriseNumberScheme && cleanedEnterpriseNumber) {
     try {
       await createCompanyIdentifier({
-        companyId: company.id,
-        scheme: countryInfo.defaultEnterpriseNumberScheme,
-        identifier: cleanedEnterpriseNumber,
-      }, isPlayground || !company.isSmpRecipient);
+        companyIdentifier: {
+          companyId: company.id,
+          scheme: countryInfo.defaultEnterpriseNumberScheme,
+          identifier: cleanedEnterpriseNumber,
+        },
+        skipSmpRegistration,
+        useTestNetwork,
+      });
     } catch (error) {
       console.error(`Failed to create enterprise number identifier for company ${company.id}: ${error}`);
     }
@@ -145,25 +169,27 @@ export async function setupCompanyDefaults(company: Company, isPlayground: boole
   if (countryInfo?.defaultVatScheme && cleanedVatNumber) {
     try {
       await createCompanyIdentifier({
-        companyId: company.id,
-        scheme: countryInfo.defaultVatScheme,
-        identifier: cleanedVatNumber,
-      }, isPlayground || !company.isSmpRecipient);
+        companyIdentifier: {
+          companyId: company.id,
+          scheme: countryInfo.defaultVatScheme,
+          identifier: cleanedVatNumber,
+        },
+        skipSmpRegistration,
+        useTestNetwork,
+      });
     } catch (error) {
       console.error(`Failed to create vat number identifier for company ${company.id}: ${error}`);
     }
   }
 }
 
-export async function updateCompany(
-  company: Partial<InsertCompany> & { id: string; teamId: string }
-): Promise<Company> {
+export async function updateCompany(company: Partial<InsertCompany> & { id: string; teamId: string }): Promise<Company> {
   const oldCompany = await getCompany(company.teamId, company.id);
   if (!oldCompany) {
     throw new UserFacingError("Company not found");
   }
 
-  const isPlaygroundTeam = await isPlayground(company.teamId);
+  const teamExtension = await getTeamExtension(company.teamId);
 
   // Merge with existing company data, only updating provided fields
   const updatedFields = Object.fromEntries(
@@ -179,19 +205,21 @@ export async function updateCompany(
     .returning()
     .then((rows) => rows[0]);
 
-  if (!(await isPlayground(company.teamId)) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient) {
+  const useTestNetwork = teamExtension?.useTestNetwork ?? false;
+  const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
+  if (shouldInteractWithPeppolNetwork({ isPlayground: isPlaygroundTeam, useTestNetwork }) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient) {
     if (updatedCompany.isSmpRecipient) {
       try {
-        await upsertCompanyRegistrations(updatedCompany.id);
+        await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
       } catch (error) {
         // If registration fails, unregister any company registrations that might have been registered
-        await unregisterCompanyRegistrations(updatedCompany.id);
+        await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
         // Also rollback the update of the company
         await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
         throw error;
       }
     } else {
-      await unregisterCompanyRegistrations(updatedCompany.id);
+      await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
     }
   }
 
@@ -205,10 +233,13 @@ export async function updateCompany(
   return updatedCompany;
 }
 
-export async function deleteCompany(
-  teamId: string,
-  companyId: string
-): Promise<void> {
+export async function deleteCompany({
+  teamId,
+  companyId,
+}: {
+  teamId: string;
+  companyId: string;
+}): Promise<void> {
   const company = await db
     .select()
     .from(companies)
@@ -217,8 +248,12 @@ export async function deleteCompany(
   if (!company) {
     throw new Error("Company not found");
   }
-  if (!(await isPlayground(teamId)) && company.isSmpRecipient) {
-    await unregisterCompanyRegistrations(companyId);
+
+  const teamExtension = await getTeamExtension(teamId);
+  const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
+  const useTestNetwork = teamExtension?.useTestNetwork ?? false;
+  if (shouldInteractWithPeppolNetwork({ isPlayground: isPlaygroundTeam, useTestNetwork }) && company.isSmpRecipient) {
+    await unregisterCompanyRegistrations({ companyId, useTestNetwork });
   }
   await db
     .delete(companies)

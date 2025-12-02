@@ -12,6 +12,7 @@ import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/a
 import { companyIdentifierResponse } from "./shared";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { UserFacingError } from "@peppol/utils/util";
+import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 
 const server = new Server();
 
@@ -61,7 +62,7 @@ const _updateIdentifierMinimal = server.put(
 const _updateIdentifier = server.put(
     "/:teamId/companies/:companyId/identifiers/:identifierId",
     requireCompanyAccess(),
-    describeRoute({hide: true}),
+    describeRoute({ hide: true }),
     zodValidator("param", updateIdentifierParamSchemaWithTeamId),
     zodValidator("json", updateIdentifierJsonBodySchema),
     _updateIdentifierImplementation,
@@ -69,11 +70,16 @@ const _updateIdentifier = server.put(
 
 async function _updateIdentifierImplementation(c: UpdateIdentifierContext) {
     try {
+        const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground: c.var.team.isPlayground, useTestNetwork: c.var.team.useTestNetwork }) || !c.var.company.isSmpRecipient;
         const identifier = await updateCompanyIdentifier({
-            ...c.req.valid("json"),
-            companyId: c.req.valid("param").companyId,
-            id: c.req.valid("param").identifierId,
-        }, c.var.team.isPlayground || !c.var.company.isSmpRecipient); // Skip SMP registration for playground teams
+            companyIdentifier: {
+                ...c.req.valid("json"),
+                companyId: c.req.valid("param").companyId,
+                id: c.req.valid("param").identifierId,
+            },
+            skipSmpRegistration,
+            useTestNetwork: c.var.team.useTestNetwork ?? false,
+        });
 
         return c.json(actionSuccess({ identifier }));
     } catch (error) {

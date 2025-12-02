@@ -11,6 +11,7 @@ import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/u
 import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { UserFacingError } from "@peppol/utils/util";
+import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 
 const server = new Server();
 
@@ -57,11 +58,13 @@ const _deleteIdentifier = server.delete(
 
 async function _deleteIdentifierImplementation(c: DeleteIdentifierContext) {
     try {
-        await deleteCompanyIdentifier(
-            c.req.valid("param").companyId,
-            c.req.valid("param").identifierId,
-            c.var.team.isPlayground || !c.var.company.isSmpRecipient // Skip SMP registration for playground teams
-        );
+        const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground: c.var.team.isPlayground, useTestNetwork: c.var.team.useTestNetwork }) || !c.var.company.isSmpRecipient;
+        await deleteCompanyIdentifier({
+            companyId: c.req.valid("param").companyId,
+            identifierId: c.req.valid("param").identifierId,
+            skipSmpRegistration,
+            useTestNetwork: c.var.team.useTestNetwork ?? false,
+        });
 
         return c.json(actionSuccess());
     } catch (error) {

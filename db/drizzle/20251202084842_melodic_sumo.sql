@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_team_extensions" ADD COLUMN "use_test_network" boolean DEFAULT false NOT NULL;

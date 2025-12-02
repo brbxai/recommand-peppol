@@ -9,14 +9,23 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export async function registerBusinessCard(
-  peppolIdentifierEas: string,
-  peppolIdentifierAddress: string,
-  name: string,
-  countryCode: string,
-  geographicalInformation: string,
-  vatNumber?: string | null,
-) {
+export async function registerBusinessCard({
+  peppolIdentifierEas,
+  peppolIdentifierAddress,
+  name,
+  countryCode,
+  geographicalInformation,
+  vatNumber,
+  useTestNetwork,
+}:{
+  peppolIdentifierEas: string;
+  peppolIdentifierAddress: string;
+  name: string;
+  countryCode: string;
+  geographicalInformation: string;
+  vatNumber?: string | null;
+  useTestNetwork: boolean;
+}) {
   const serviceGroupId = `${peppolIdentifierEas}:${peppolIdentifierAddress}`;
 
   // Create the business card XML according to the Peppol Directory specification
@@ -51,7 +60,8 @@ export async function registerBusinessCard(
       headers: {
         "Content-Type": "application/xml"
       },
-      body: builder.build(businessCardXml)
+      body: builder.build(businessCardXml),
+      useTestNetwork,
     }
   );
 

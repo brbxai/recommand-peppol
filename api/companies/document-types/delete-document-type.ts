@@ -9,6 +9,7 @@ import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/a
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { deleteCompanyDocumentType } from "@peppol/data/company-document-types";
 import { UserFacingError } from "@peppol/utils/util";
+import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 
 const server = new Server();
 
@@ -55,11 +56,13 @@ const _deleteDocumentType = server.delete(
 
 async function _deleteDocumentTypeImplementation(c: DeleteDocumentTypeContext) {
     try {
-        await deleteCompanyDocumentType(
-            c.req.valid("param").companyId,
-            c.req.valid("param").documentTypeId,
-            c.var.team.isPlayground || !c.var.company.isSmpRecipient // Skip SMP registration for playground teams
-        );
+        const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground: c.var.team.isPlayground, useTestNetwork: c.var.team.useTestNetwork }) || !c.var.company.isSmpRecipient;
+        await deleteCompanyDocumentType({
+            companyId: c.req.valid("param").companyId,
+            documentTypeId: c.req.valid("param").documentTypeId,
+            skipSmpRegistration,
+            useTestNetwork: c.var.team.useTestNetwork ?? false,
+        });
 
         return c.json(actionSuccess());
     } catch (error) {

@@ -13,9 +13,9 @@ type GetPlaygroundSuccess = Extract<
 
 export type PlaygroundType = GetPlaygroundSuccess["playground"];
 
-export async function createPlayground(name: string) {
+export async function createPlayground(name: string, useTestNetwork: boolean = false) {
   const res = await client.playgrounds.$post({
-    json: { name },
+    json: { name, useTestNetwork },
   });
   return res.json();
 }
@@ -76,4 +76,19 @@ export function useIsPlayground() {
   }, [activeTeam]);
 
   return isPlayground;
+}
+
+export function usePlayground() {
+  const { activeTeam } = useUserStore(x => x);
+  const [playground, setPlayground] = useState<PlaygroundType | null>(null);
+
+  useEffect(() => {
+    if (activeTeam) {
+      getPlayground(activeTeam.id).then(setPlayground);
+    } else {
+      setPlayground(null);
+    }
+  }, [activeTeam]);
+
+  return playground;
 }

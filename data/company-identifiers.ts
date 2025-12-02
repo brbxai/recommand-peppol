@@ -81,10 +81,15 @@ export async function getSendingCompanyIdentifier(companyId: string): Promise<Co
   return identifiers[0];
 }
 
-export async function createCompanyIdentifier(
-  companyIdentifier: InsertCompanyIdentifier,
-  skipSmpRegistration: boolean = false
-): Promise<CompanyIdentifier> {
+export async function createCompanyIdentifier({
+  companyIdentifier,
+  skipSmpRegistration,
+  useTestNetwork,
+}:{
+  companyIdentifier: InsertCompanyIdentifier;
+  skipSmpRegistration: boolean;
+  useTestNetwork: boolean;
+}): Promise<CompanyIdentifier> {
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, undefined, companyIdentifier.companyId);
   if(!canUpsert){
     throw new UserFacingError(
@@ -93,7 +98,7 @@ export async function createCompanyIdentifier(
   }
 
   if(!skipSmpRegistration){
-    await upsertCompanyRegistration(companyIdentifier.companyId, companyIdentifier);
+    await upsertCompanyRegistration({companyId: companyIdentifier.companyId, identifier: companyIdentifier, useTestNetwork: useTestNetwork});
   }
 
   const createdIdentifier = await db
@@ -109,10 +114,15 @@ export async function createCompanyIdentifier(
   return createdIdentifier;
 }
 
-export async function updateCompanyIdentifier(
+export async function updateCompanyIdentifier({
+  companyIdentifier,
+  skipSmpRegistration,
+  useTestNetwork,
+}:{
   companyIdentifier: InsertCompanyIdentifier & { id: string },
-  skipSmpRegistration: boolean = false
-): Promise<CompanyIdentifier> {
+  skipSmpRegistration: boolean,
+  useTestNetwork: boolean,
+}): Promise<CompanyIdentifier> {
   const oldIdentifier = await getCompanyIdentifier(
     companyIdentifier.companyId,
     companyIdentifier.id
@@ -136,8 +146,8 @@ export async function updateCompanyIdentifier(
   }
 
   if(!skipSmpRegistration){
-    await upsertCompanyRegistration(companyIdentifier.companyId, companyIdentifier); // Register the new identifier
-    await unregisterCompanyIdentifier(oldIdentifier); // Unregister the old identifier
+    await upsertCompanyRegistration({companyId: companyIdentifier.companyId, identifier: companyIdentifier, useTestNetwork: useTestNetwork}); // Register the new identifier
+    await unregisterCompanyIdentifier({identifier: oldIdentifier, useTestNetwork: useTestNetwork}); // Unregister the old identifier
   }
 
   const updatedIdentifier = await db
@@ -158,18 +168,24 @@ export async function updateCompanyIdentifier(
   return updatedIdentifier;
 }
 
-export async function deleteCompanyIdentifier(
-  companyId: string,
-  identifierId: string,
-  skipSmpRegistration: boolean = false
-): Promise<void> {
+export async function deleteCompanyIdentifier({
+  companyId,
+  identifierId,
+  skipSmpRegistration,
+  useTestNetwork,
+}:{
+  companyId: string;
+  identifierId: string;
+  skipSmpRegistration: boolean;
+  useTestNetwork: boolean;
+}): Promise<void> {
   const identifier = await getCompanyIdentifier(companyId, identifierId);
   if (!identifier) {
     throw new UserFacingError("Company identifier not found");
   }
 
   if(!skipSmpRegistration){
-    await unregisterCompanyIdentifier(identifier);
+    await unregisterCompanyIdentifier({identifier, useTestNetwork});
   }
 
   await db
@@ -186,7 +202,8 @@ export async function deleteCompanyIdentifier(
 /**
  * Check if a company identifier can be upserted.
  * Whether a company identifier can be upserted depends on whether we're in a playground or production context:
- * - In a playground context, we can upsert a company identifier as long as it doesn't already exist on the same playground team.
+ * - In a playground context without test network, we can upsert a company identifier as long as it doesn't already exist on the same playground team.
+ * - In a playground context with test network, we can upsert a company identifier as long as it is not already registered with any playground company.
  * - In a production context, we can upsert a company identifier as long as it is not already registered with a production company.
  * @param scheme 
  * @param identifier 
@@ -202,6 +219,7 @@ async function canUpsertCompanyIdentifier(scheme: string, identifier: string, cu
     throw new Error("Company is not associated with a team");
   }
   const isPlaygroundTeam = teamInfo.teamExtension?.isPlayground ?? false;
+  const useTestNetwork = teamInfo.teamExtension?.useTestNetwork ?? false;
   return await db
     .select()
     .from(companyIdentifiers)
@@ -213,7 +231,7 @@ async function canUpsertCompanyIdentifier(scheme: string, identifier: string, cu
         or(
           eq(companies.teamId, teamInfo.company.teamId), // Include all companies on the same team
           isPlaygroundTeam
-            ? undefined
+            ? (useTestNetwork ? eq(teamExtensions.useTestNetwork, true) : undefined) // Include all test network companies when on a playground team with test network
             : or(
               // Include all production companies when not on a playground team
               isNull(teamExtensions.isPlayground),
