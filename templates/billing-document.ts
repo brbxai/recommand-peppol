@@ -25,6 +25,10 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
                 <span>&bull;</span>
                 <span>Due date: {{dueDate}}</span>
               {{/dueDate}}
+              {{#buyerReference}}
+                <span>&bull;</span>
+                <span>Buyer reference: {{buyerReference}}</span>
+              {{/buyerReference}}
             </p>
           </div>
         </div>

@@ -53,6 +53,7 @@ type BillingTemplateData = {
   documentNumber?: string | null;
   issueDate?: string | null;
   dueDate?: string | null;
+  buyerReference?: string | null;
   currency?: string | null;
   seller?: TemplateParty | null;
   buyer?: TemplateParty | null;
@@ -92,8 +93,9 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     (isCreditNote && (parsed as any)?.creditNoteNumber) ||
     null;
 
-  const issueDate = (parsed as any)?.issueDate ?? null;
+  const issueDate = parsed?.issueDate ?? null;
   const dueDate = (parsed as any)?.dueDate ?? null;
+  const buyerReference = parsed?.buyerReference && parsed.buyerReference !== documentNumber ? parsed.buyerReference : null;
 
   const sellerRaw = (parsed as any)?.seller;
   const buyerRaw = (parsed as any)?.buyer;
@@ -207,6 +209,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     documentNumber,
     issueDate,
     dueDate,
+    buyerReference,
     currency: (parsed as any)?.currency ?? null,
     seller: toParty(sellerRaw),
     buyer: toParty(buyerRaw),
