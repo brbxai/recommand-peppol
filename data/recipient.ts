@@ -76,6 +76,7 @@ export async function verifyRecipient({recipientAddress, useTestNetwork}: {recip
         parseAttributeValue: true,
         parseTagValue: false,
         trimValues: true,
+        removeNSPrefix: true,
       });
       
       const xmlDoc = parser.parse(data);
