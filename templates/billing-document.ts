@@ -109,6 +109,22 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
               {{totals.taxExclusiveAmount}} {{currency}}
             </span>
           </div>
+          {{#totals.discountAmount}}
+            <div class="flex justify-between py-1">
+              <span class="text-slate-500">Discount</span>
+              <span class="font-mono">
+                -{{totals.discountAmount}} {{currency}}
+              </span>
+            </div>
+          {{/totals.discountAmount}}
+          {{#totals.surchargeAmount}}
+            <div class="flex justify-between py-1">
+              <span class="text-slate-500">Surcharge</span>
+              <span class="font-mono">
+                +{{totals.surchargeAmount}} {{currency}}
+              </span>
+            </div>
+          {{/totals.surchargeAmount}}
           <div class="flex justify-between py-1">
             <span class="text-slate-500">VAT</span>
             <span class="font-mono">
@@ -116,11 +132,27 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             </span>
           </div>
           <div class="flex justify-between py-2 mt-2 border-t border-slate-200 font-semibold">
-            <span>Total</span>
+            <span>Total (incl. VAT)</span>
             <span class="font-mono">
-              {{totals.payableAmount}} {{currency}}
+              {{totals.taxInclusiveAmount}} {{currency}}
             </span>
           </div>
+          {{#totals.paidAmount}}
+            <div class="flex justify-between py-1">
+              <span class="text-slate-500">Amount paid</span>
+              <span class="font-mono">
+                {{totals.paidAmount}} {{currency}}
+              </span>
+            </div>
+          {{/totals.paidAmount}}
+          {{#totals.payableAmount}}
+            <div class="flex justify-between py-1">
+              <span class="text-slate-500">Amount payable</span>
+              <span class="font-mono">
+                {{totals.payableAmount}} {{currency}}
+              </span>
+            </div>
+          {{/totals.payableAmount}}
         </div>
       </div>
     </div>

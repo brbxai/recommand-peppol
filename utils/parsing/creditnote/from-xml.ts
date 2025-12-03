@@ -164,6 +164,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     surchargeAmount: getNullableNumberContent(legalMonetaryTotal.ChargeTotalAmount),
     taxExclusiveAmount: getNumberContent(legalMonetaryTotal.TaxExclusiveAmount),
     taxInclusiveAmount: getNumberContent(legalMonetaryTotal.TaxInclusiveAmount),
+    paidAmount: getNullableNumberContent(legalMonetaryTotal.PrepaidAmount),
     payableAmount: getNumberContent(legalMonetaryTotal.PayableAmount),
   };
 

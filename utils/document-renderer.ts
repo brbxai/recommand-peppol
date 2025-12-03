@@ -32,6 +32,8 @@ type TemplateTotals = {
   taxExclusiveAmount?: string | null;
   taxInclusiveAmount?: string | null;
   vatAmount?: string | null;
+  discountAmount?: string | null;
+  surchargeAmount?: string | null;
   payableAmount?: string | null;
   paidAmount?: string | null;
 };
@@ -141,18 +143,35 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
           vatAmount = vat.toFixed(2);
         }
 
+        const payableAmountRaw =
+          totalsRaw.payableAmount != null
+            ? String(totalsRaw.payableAmount)
+            : totalsRaw.taxInclusiveAmount != null
+              ? String(totalsRaw.taxInclusiveAmount)
+              : null;
+
+        const payableAmount =
+          payableAmountRaw != null &&
+          taxInclusiveAmount != null &&
+          payableAmountRaw !== taxInclusiveAmount
+            ? payableAmountRaw
+            : null;
+
         return {
           taxExclusiveAmount,
           taxInclusiveAmount,
           vatAmount,
-          payableAmount:
-            totalsRaw.payableAmount != null
-              ? String(totalsRaw.payableAmount)
-              : totalsRaw.taxInclusiveAmount != null
-                ? String(totalsRaw.taxInclusiveAmount)
-                : null,
+          discountAmount:
+            totalsRaw.discountAmount != null
+              ? String(totalsRaw.discountAmount)
+              : null,
+          surchargeAmount:
+            totalsRaw.surchargeAmount != null
+              ? String(totalsRaw.surchargeAmount)
+              : null,
+          payableAmount,
           paidAmount:
-            totalsRaw.paidAmount != null
+            totalsRaw.paidAmount != null && totalsRaw.paidAmount !== "0.00"
               ? String(totalsRaw.paidAmount)
               : null,
         };
