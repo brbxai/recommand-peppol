@@ -89,14 +89,14 @@ export function detectDoctypeId(xml: string): string | null {
         // If the document tag is a CreditNote, return the credit note or self billing credit note doctype id, depending on the customization id
         if (parsed.CreditNote) {
             // Get the customization id from the credit note
-            const customizationId = parsed.CreditNote["cbc:CustomizationID"] || defaultCustomizationId;
+            const customizationId = parsed.CreditNote["CustomizationID"] || defaultCustomizationId;
             return `urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##${customizationId}::2.1`; // https://docs.peppol.eu/poacc/billing/3.0/rules/ubl-tc434/ "A UBL invoice should not include the UBLVersionID or it should be 2.1"
         }
 
         // If the document tag is an Invoice, return the invoice or self billing invoice doctype id, depending on the customization id
         if (parsed.Invoice) {
             // Get the customization id from the invoice
-            const customizationId = parsed.Invoice["cbc:CustomizationID"] || defaultCustomizationId;
+            const customizationId = parsed.Invoice["CustomizationID"] || defaultCustomizationId;
             return `urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##${customizationId}::2.1`; // https://docs.peppol.eu/poacc/billing/3.0/rules/ubl-tc434/ "A UBL invoice should not include the UBLVersionID or it should be 2.1"
         }
 
