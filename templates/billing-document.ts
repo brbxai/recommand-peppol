@@ -155,6 +155,26 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
           {{/totals.payableAmount}}
         </div>
       </div>
+
+      {{#paymentMeans}}
+        <div class="px-8 py-6 border-t border-slate-200">
+          <p class="text-xs font-semibold tracking-wide uppercase text-slate-500 mb-3">Payment Information</p>
+          <div class="space-y-3 text-sm">
+            {{#paymentMeans}}
+              <div class="space-y-1">
+                <p class="font-medium text-slate-900">{{paymentMethodName}}</p>
+                <p class="text-slate-600 font-mono">{{iban}}</p>
+                {{#reference}}
+                  <p class="text-xs text-slate-500">Reference: {{reference}}</p>
+                {{/reference}}
+                {{#financialInstitutionBranch}}
+                  <p class="text-xs text-slate-500">BIC/Branch: {{financialInstitutionBranch}}</p>
+                {{/financialInstitutionBranch}}
+              </div>
+            {{/paymentMeans}}
+          </div>
+        </div>
+      {{/paymentMeans}}
     </div>
   </body>
 </html>`;

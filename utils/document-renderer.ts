@@ -1,5 +1,6 @@
 import type { TransmittedDocument } from "@peppol/data/transmitted-documents";
 import { BILLING_DOCUMENT_TEMPLATE } from "@peppol/templates/billing-document";
+import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
 
 type AnyParsedDocument =
   | import("@peppol/utils/parsing/invoice/schemas").Invoice
@@ -38,6 +39,13 @@ type TemplateTotals = {
   paidAmount?: string | null;
 };
 
+type TemplatePaymentMeans = {
+  paymentMethodName: string;
+  reference?: string | null;
+  iban: string;
+  financialInstitutionBranch?: string | null;
+};
+
 type BillingTemplateData = {
   documentId: string;
   documentType: string;
@@ -50,6 +58,7 @@ type BillingTemplateData = {
   buyer?: TemplateParty | null;
   lines: TemplateLine[];
   totals?: TemplateTotals | null;
+  paymentMeans?: TemplatePaymentMeans[] | null;
 };
 
 const RECOMMAND_RENDER_ENDPOINT = "https://render.recommand.dev";
@@ -178,6 +187,19 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
       })()
     : null;
 
+  const paymentMeansRaw = parsed?.paymentMeans;
+  const paymentMeans: TemplatePaymentMeans[] | null = paymentMeansRaw && Array.isArray(paymentMeansRaw) && paymentMeansRaw.length > 0
+    ? paymentMeansRaw.map((payment) => {
+        const paymentMethod = PAYMENT_MEANS.find((pm) => pm.key === payment.paymentMethod);
+        return {
+          paymentMethodName: payment.name || paymentMethod?.name || payment.paymentMethod || "Payment",
+          reference: payment.reference || null,
+          iban: payment.iban || "",
+          financialInstitutionBranch: payment.financialInstitutionBranch || null,
+        };
+      })
+    : null;
+
   return {
     documentId: document.id,
     documentType: document.type,
@@ -190,6 +212,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     buyer: toParty(buyerRaw),
     lines,
     totals,
+    paymentMeans,
   };
 }
 
