@@ -161,6 +161,9 @@ export default function TransmittedDocumentDetailPage() {
           teamId: activeTeam.id,
           documentId: doc.id,
         },
+        query: {
+          generatePdf: "always",
+        },
       });
 
       const blob = await response.blob();

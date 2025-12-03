@@ -210,6 +210,9 @@ export default function Page() {
           teamId: activeTeam.id,
           documentId: id,
         },
+        query: {
+          generatePdf: "always",
+        },
       });
 
       // Create a blob from the response
