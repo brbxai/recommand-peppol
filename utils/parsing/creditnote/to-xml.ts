@@ -341,6 +341,28 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
           "@_currencyID": creditNote.currency,
           "#text": item.netAmount,
         },
+        ...((item.discounts || item.surcharges) && {
+          "cac:AllowanceCharge": [
+            ...(item.discounts && item.discounts.map((discount) => ({
+              "cbc:ChargeIndicator": "false",
+              ...(discount.reasonCode && { "cbc:AllowanceChargeReasonCode": discount.reasonCode }),
+              ...(discount.reason && { "cbc:AllowanceChargeReason": discount.reason }),
+              "cbc:Amount": {
+                "@_currencyID": creditNote.currency,
+                "#text": discount.amount,
+              },
+            })) || []),
+            ...(item.surcharges && item.surcharges.map((surcharge) => ({
+              "cbc:ChargeIndicator": "true",
+              ...(surcharge.reasonCode && { "cbc:AllowanceChargeReasonCode": surcharge.reasonCode }),
+              ...(surcharge.reason && { "cbc:AllowanceChargeReason": surcharge.reason }),
+              "cbc:Amount": {
+                "@_currencyID": creditNote.currency,
+                "#text": surcharge.amount,
+              },
+            })) || []),
+          ],
+        }),
         "cac:Item": {
           ...(item.description && { "cbc:Description": item.description }),
           "cbc:Name": item.name,

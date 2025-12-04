@@ -132,6 +132,16 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
       category: getTextContent(line.Item?.ClassifiedTaxCategory?.ID),
       percentage: getPercentage(line.Item?.ClassifiedTaxCategory?.Percent),
     },
+    discounts: (line.AllowanceCharge || []).filter((discount: any) => discount.ChargeIndicator === "false").map((discount: any) => ({
+      reasonCode: getNullableTextContent(discount.AllowanceChargeReasonCode),
+      reason: getNullableTextContent(discount.AllowanceChargeReason),
+      amount: getNumberContent(discount.Amount),
+    })),
+    surcharges: (line.AllowanceCharge || []).filter((surcharge: any) => surcharge.ChargeIndicator === "true").map((surcharge: any) => ({
+      reasonCode: getNullableTextContent(surcharge.AllowanceChargeReasonCode),
+      reason: getNullableTextContent(surcharge.AllowanceChargeReason),
+      amount: getNumberContent(surcharge.Amount),
+    }))
   }));
 
   // Extract VAT information
