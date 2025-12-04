@@ -25,16 +25,28 @@ const getCompaniesRouteDescription = describeRoute({
     },
 });
 
+const getCompaniesQuerySchema = z.object({
+    enterpriseNumber: z.string().optional().openapi({
+        description: "Filter companies by enterprise number",
+        example: "0123456789",
+    }),
+    vatNumber: z.string().optional().openapi({
+        description: "Filter companies by VAT number",
+        example: "BE0123456789",
+    }),
+});
+
 const getCompaniesParamSchemaWithTeamId = z.object({
     teamId: z.string(),
 });
 
-type GetCompaniesContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getCompaniesParamSchemaWithTeamId> }, out: { param: z.infer<typeof getCompaniesParamSchemaWithTeamId> } }>;
+type GetCompaniesContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getCompaniesParamSchemaWithTeamId>, query: z.input<typeof getCompaniesQuerySchema> }, out: { param: z.infer<typeof getCompaniesParamSchemaWithTeamId>, query: z.infer<typeof getCompaniesQuerySchema> } }>;
 
 const _getCompaniesMinimal = server.get(
     "/companies",
     requireIntegrationSupportedTeamAccess(),
     getCompaniesRouteDescription,
+    zodValidator("query", getCompaniesQuerySchema),
     _getCompaniesImplementation,
 );
 
@@ -43,12 +55,17 @@ const _getCompanies = server.get(
     requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
     zodValidator("param", getCompaniesParamSchemaWithTeamId),
+    zodValidator("query", getCompaniesQuerySchema),
     _getCompaniesImplementation,
 );
 
 async function _getCompaniesImplementation(c: GetCompaniesContext) {
     try {
-        const allCompanies = await getCompanies(c.var.team.id);
+        const { enterpriseNumber, vatNumber } = c.req.valid("query");
+        const allCompanies = await getCompanies(c.var.team.id, {
+            enterpriseNumber,
+            vatNumber,
+        });
         return c.json(actionSuccess({ companies: allCompanies }));
     } catch (error) {
         return c.json(actionFailure("Could not fetch companies"), 500);

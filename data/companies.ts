@@ -17,8 +17,30 @@ import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
 
-export async function getCompanies(teamId: string): Promise<Company[]> {
-  return await db.select().from(companies).where(eq(companies.teamId, teamId));
+export async function getCompanies(
+  teamId: string,
+  filters?: {
+    enterpriseNumber?: string;
+    vatNumber?: string;
+  }
+): Promise<Company[]> {
+  const conditions = [eq(companies.teamId, teamId)];
+  
+  if (filters?.enterpriseNumber) {
+    const cleanedEnterpriseNumber = cleanEnterpriseNumber(filters.enterpriseNumber);
+    if (cleanedEnterpriseNumber) {
+      conditions.push(eq(companies.enterpriseNumber, cleanedEnterpriseNumber));
+    }
+  }
+  
+  if (filters?.vatNumber) {
+    const cleanedVatNumber = cleanVatNumber(filters.vatNumber);
+    if (cleanedVatNumber) {
+      conditions.push(eq(companies.vatNumber, cleanedVatNumber));
+    }
+  }
+  
+  return await db.select().from(companies).where(and(...conditions));
 }
 
 export async function getCompany(
