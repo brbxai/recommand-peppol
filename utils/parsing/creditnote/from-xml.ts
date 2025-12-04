@@ -115,8 +115,10 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
 
   // Extract credit note lines
   const lines = (creditNote.CreditNoteLine || []).map((line: any) => ({
+    id: getTextContent(line.ID),
     name: getTextContent(line.Item?.Name),
     description: getTextContent(line.Item?.Description),
+    note: getNullableTextContent(line.Note),
     buyersId: getNullableTextContent(line.Item?.BuyersItemIdentification?.ID),
     sellersId: getNullableTextContent(line.Item?.SellersItemIdentification?.ID),
     standardId: line.Item?.StandardItemIdentification?.ID ? {

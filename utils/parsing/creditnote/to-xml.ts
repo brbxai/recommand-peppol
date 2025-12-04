@@ -333,6 +333,7 @@ export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: str
       },
       "cac:CreditNoteLine": lines.map((item, index) => ({
         "cbc:ID": item.id === undefined || item.id === null ? (index + 1).toString() : item.id,
+        ...(item.note && { "cbc:Note": item.note }),
         "cbc:CreditedQuantity": {
           "@_unitCode": item.unitCode,
           "#text": item.quantity,

@@ -132,6 +132,7 @@ export const lineSchema = z.object({
   id: z.string().nullish().openapi({ example: "1", description: "A line number. If not provided, it will be calculated automatically." }),
   name: z.string().default("").openapi({ example: "Consulting Services" }),
   description: z.string().nullish().openapi({ example: "Professional consulting services" }),
+  note: z.string().nullish().openapi({ description: "A textual note that gives unstructured information that is relevant to this line." }),
   buyersId: z.string().nullish().openapi({ example: "CS-001", description: "The item identifier of the item as defined by the buyer." }),
   sellersId: z.string().nullish().openapi({ example: "CS-001", description: "The item identifier of the item as defined by the seller. This is typically a product code or SKU." }),
   standardId: z.object({

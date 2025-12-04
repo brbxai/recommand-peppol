@@ -16,8 +16,10 @@ type TemplateLineDiscount = {
 type TemplateLineSurcharge = TemplateLineDiscount;
 
 type TemplateLine = {
+  id?: string | null;
   name: string;
   description?: string | null;
+  note?: string | null;
   quantity: string;
   unitCode: string;
   netPriceAmount: string;
@@ -62,6 +64,7 @@ type BillingTemplateData = {
   issueDate?: string | null;
   dueDate?: string | null;
   buyerReference?: string | null;
+  note?: string | null;
   currency?: string | null;
   seller?: TemplateParty | null;
   buyer?: TemplateParty | null;
@@ -126,8 +129,10 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     : [];
 
   const lines: TemplateLine[] = linesRaw.map((line, index) => ({
+    id: line.id ?? null,
     name: line.name ?? "",
     description: line.description ?? null,
+    note: line.note ?? null,
     quantity: String(line.quantity ?? ""),
     unitCode: line.unitCode ?? "",
     netPriceAmount: String(line.netPriceAmount ?? ""),
@@ -228,6 +233,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     issueDate,
     dueDate,
     buyerReference,
+    note: (parsed as any)?.note ?? null,
     currency: (parsed as any)?.currency ?? null,
     seller: toParty(sellerRaw),
     buyer: toParty(buyerRaw),

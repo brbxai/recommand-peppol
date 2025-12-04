@@ -326,6 +326,7 @@ export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, reci
       },
       "cac:InvoiceLine": lines.map((item, index) => ({
         "cbc:ID": item.id === undefined || item.id === null ? (index + 1).toString() : item.id,
+        ...(item.note && { "cbc:Note": item.note }),
         "cbc:InvoicedQuantity": {
           "@_unitCode": item.unitCode,
           "#text": item.quantity,

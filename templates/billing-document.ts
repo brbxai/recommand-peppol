@@ -34,6 +34,12 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
         </div>
       </div>
 
+      {{#note}}
+        <div class="px-8 py-4 border-b border-slate-200">
+          <p class="text-sm text-slate-700">{{note}}</p>
+        </div>
+      {{/note}}
+
       <div class="px-8 py-6 grid grid-cols-2 gap-8 border-b border-slate-200 text-sm">
         <div>
           <p class="text-xs font-semibold tracking-wide uppercase text-slate-500 mb-1">Seller</p>
@@ -80,12 +86,15 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
           <tbody>
             {{#lines}}
               <tr class="border-b border-slate-100 last:border-0 align-top">
-                <td class="py-2 pr-3 font-mono text-[11px] text-slate-500">{{@indexPlusOne}}</td>
+                <td class="py-2 pr-3 font-mono text-[11px] text-slate-500">{{#id}}{{id}}{{/id}}{{^id}}{{@indexPlusOne}}{{/id}}</td>
                 <td class="py-2 pr-3">
                   <p class="font-medium text-slate-900 leading-tight">{{name}}</p>
                   {{#description}}
                     <p class="mt-0.5 text-[11px] text-slate-500">{{description}}</p>
                   {{/description}}
+                  {{#note}}
+                    <p class="mt-0.5 text-[11px] text-slate-500 italic">{{note}}</p>
+                  {{/note}}
                   {{#discounts}}
                     <p class="mt-0.5 text-[11px] text-slate-500">
                       <span class="text-red-600">Discount:</span>
