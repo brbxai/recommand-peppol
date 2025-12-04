@@ -1220,4 +1220,335 @@ describe("calculateTotals", () => {
             expect(vat.totalVatAmount).toBe("36.47");
         });
     });
+
+    describe("line-level discounts and surcharges", () => {
+        it("should handle invoice with 2 lines, same VAT, different prices/quantities, 2 discounts on line 1, 1 surcharge on line 2", () => {
+            const invoice = createInvoice({
+                lines: [
+                    {
+                        name: "Item 1",
+                        quantity: "3.5",
+                        unitCode: "C62",
+                        netPriceAmount: "50.00",
+                        vat: { category: "S", percentage: "21.00" },
+                        discounts: [
+                            { amount: "10.00", reason: "Early payment discount" },
+                            { amount: "5.00", reason: "Volume discount" },
+                        ],
+                    },
+                    {
+                        name: "Item 2",
+                        quantity: "2.25",
+                        unitCode: "C62",
+                        netPriceAmount: "75.50",
+                        vat: { category: "S", percentage: "21.00" },
+                        surcharges: [
+                            { amount: "8.50", reason: "Handling fee" },
+                        ],
+                    },
+                ],
+            });
+
+            const result = calculateTotals(invoice);
+            const vat = calculateVat(invoice);
+
+            const line1Base = new Decimal("3.5").mul("50.00").toNearest(0.01);
+            const line1Discounts = new Decimal("10.00").plus("5.00").toNearest(0.01);
+            const line1Net = line1Base.minus(line1Discounts).toNearest(0.01);
+
+            const line2Base = new Decimal("2.25").mul("75.50").toNearest(0.01);
+            const line2Surcharges = new Decimal("8.50");
+            const line2Net = line2Base.plus(line2Surcharges).toNearest(0.01);
+
+            const expectedTaxExclusive = line1Net.plus(line2Net).toNearest(0.01);
+            const expectedVat = expectedTaxExclusive.mul("21.00").div(100).toNearest(0.01);
+            const expectedTaxInclusive = expectedTaxExclusive.plus(expectedVat).toNearest(0.01);
+
+            expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe(expectedTaxInclusive.toFixed(2));
+            expect(vat.totalVatAmount).toBe(expectedVat.toFixed(2));
+
+            const taxExclusive = new Decimal(result.taxExclusiveAmount);
+            const totalVat = new Decimal(vat.totalVatAmount);
+            const calculatedTaxInclusive = taxExclusive.plus(totalVat).toNearest(0.01);
+            expect(result.taxInclusiveAmount).toBe(calculatedTaxInclusive.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe("409.44");
+        });
+
+        it("should handle invoice with 3 lines, same VAT, different prices/quantities, discount on line 1, 2 surcharges on line 2, nothing on line 3", () => {
+            const invoice = createInvoice({
+                lines: [
+                    {
+                        name: "Item 1",
+                        quantity: "4",
+                        unitCode: "C62",
+                        netPriceAmount: "25.75",
+                        vat: { category: "S", percentage: "21.00" },
+                        discounts: [
+                            { amount: "12.00", reason: "Promotional discount" },
+                        ],
+                    },
+                    {
+                        name: "Item 2",
+                        quantity: "1.5",
+                        unitCode: "C62",
+                        netPriceAmount: "100.00",
+                        vat: { category: "S", percentage: "21.00" },
+                        surcharges: [
+                            { amount: "5.25", reason: "Shipping fee" },
+                            { amount: "3.75", reason: "Processing fee" },
+                        ],
+                    },
+                    {
+                        name: "Item 3",
+                        quantity: "2",
+                        unitCode: "C62",
+                        netPriceAmount: "60.00",
+                        vat: { category: "S", percentage: "21.00" },
+                    },
+                ],
+            });
+
+            const result = calculateTotals(invoice);
+            const vat = calculateVat(invoice);
+
+            const line1Base = new Decimal("4").mul("25.75").toNearest(0.01);
+            const line1Net = line1Base.minus("12.00").toNearest(0.01);
+
+            const line2Base = new Decimal("1.5").mul("100.00").toNearest(0.01);
+            const line2Surcharges = new Decimal("5.25").plus("3.75").toNearest(0.01);
+            const line2Net = line2Base.plus(line2Surcharges).toNearest(0.01);
+
+            const line3Net = new Decimal("2").mul("60.00").toNearest(0.01);
+
+            const expectedTaxExclusive = line1Net.plus(line2Net).plus(line3Net).toNearest(0.01);
+            const expectedVat = expectedTaxExclusive.mul("21.00").div(100).toNearest(0.01);
+            const expectedTaxInclusive = expectedTaxExclusive.plus(expectedVat).toNearest(0.01);
+
+            expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe(expectedTaxInclusive.toFixed(2));
+            expect(vat.totalVatAmount).toBe(expectedVat.toFixed(2));
+
+            const taxExclusive = new Decimal(result.taxExclusiveAmount);
+            const totalVat = new Decimal(vat.totalVatAmount);
+            const calculatedTaxInclusive = taxExclusive.plus(totalVat).toNearest(0.01);
+            expect(result.taxInclusiveAmount).toBe(calculatedTaxInclusive.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe("447.70");
+        });
+
+        it("should handle invoice with 3 lines, different VAT percentages, different prices/quantities, different discounts and surcharges on each line", () => {
+            const invoice = createInvoice({
+                lines: [
+                    {
+                        name: "Item 1 - Standard rate",
+                        quantity: "2.5",
+                        unitCode: "C62",
+                        netPriceAmount: "80.00",
+                        vat: { category: "S", percentage: "21.00" },
+                        discounts: [
+                            { amount: "15.00", reason: "Early payment" },
+                        ],
+                        surcharges: [
+                            { amount: "5.00", reason: "Express handling" },
+                        ],
+                    },
+                    {
+                        name: "Item 2 - Reduced rate",
+                        quantity: "3",
+                        unitCode: "C62",
+                        netPriceAmount: "45.33",
+                        vat: { category: "S", percentage: "6.00" },
+                        discounts: [
+                            { amount: "8.50", reason: "Volume discount" },
+                            { amount: "2.25", reason: "Loyalty discount" },
+                        ],
+                        surcharges: [
+                            { amount: "1.75", reason: "Special packaging" },
+                        ],
+                    },
+                    {
+                        name: "Item 3 - Zero rate",
+                        quantity: "1.75",
+                        unitCode: "C62",
+                        netPriceAmount: "120.00",
+                        vat: { category: "Z", percentage: "0.00" },
+                        discounts: [
+                            { amount: "10.00", reason: "Bulk discount" },
+                        ],
+                        surcharges: [
+                            { amount: "3.50", reason: "Custom handling" },
+                            { amount: "2.25", reason: "Insurance" },
+                        ],
+                    },
+                ],
+            });
+
+            const result = calculateTotals(invoice);
+            const vat = calculateVat(invoice);
+
+            const line1Base = new Decimal("2.5").mul("80.00").toNearest(0.01);
+            const line1Net = line1Base.minus("15.00").plus("5.00").toNearest(0.01);
+
+            const line2Base = new Decimal("3").mul("45.33").toNearest(0.01);
+            const line2Discounts = new Decimal("8.50").plus("2.25").toNearest(0.01);
+            const line2Net = line2Base.minus(line2Discounts).plus("1.75").toNearest(0.01);
+
+            const line3Base = new Decimal("1.75").mul("120.00").toNearest(0.01);
+            const line3Surcharges = new Decimal("3.50").plus("2.25").toNearest(0.01);
+            const line3Net = line3Base.minus("10.00").plus(line3Surcharges).toNearest(0.01);
+
+            const expectedTaxExclusive = line1Net.plus(line2Net).plus(line3Net).toNearest(0.01);
+
+            expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
+
+            const vatSubtotals = vat.subtotals;
+            const subtotal21 = vatSubtotals.find(s => s.category === "S" && s.percentage === "21.00");
+            const subtotal6 = vatSubtotals.find(s => s.category === "S" && s.percentage === "6.00");
+            const subtotal0 = vatSubtotals.find(s => s.category === "Z" && s.percentage === "0.00");
+
+            expect(subtotal21).toBeDefined();
+            if (subtotal21) {
+                expect(subtotal21.taxableAmount).toBe(line1Net.toFixed(2));
+                const expected21Vat = line1Net.mul("21.00").div(100).toNearest(0.01);
+                expect(subtotal21.vatAmount).toBe(expected21Vat.toFixed(2));
+            }
+
+            expect(subtotal6).toBeDefined();
+            if (subtotal6) {
+                expect(subtotal6.taxableAmount).toBe(line2Net.toFixed(2));
+                const expected6Vat = line2Net.mul("6.00").div(100).toNearest(0.01);
+                expect(subtotal6.vatAmount).toBe(expected6Vat.toFixed(2));
+            }
+
+            expect(subtotal0).toBeDefined();
+            if (subtotal0) {
+                expect(subtotal0.taxableAmount).toBe(line3Net.toFixed(2));
+                expect(subtotal0.vatAmount).toBe("0.00");
+            }
+
+            const calculatedTotalVat = vatSubtotals.reduce(
+                (sum, subtotal) => sum.plus(new Decimal(subtotal.vatAmount)),
+                new Decimal(0)
+            );
+            expect(vat.totalVatAmount).toBe(calculatedTotalVat.toFixed(2));
+
+            const taxExclusive = new Decimal(result.taxExclusiveAmount);
+            const totalVat = new Decimal(vat.totalVatAmount);
+            const expectedTaxInclusive = taxExclusive.plus(totalVat).toNearest(0.01);
+            expect(result.taxInclusiveAmount).toBe(expectedTaxInclusive.toFixed(2));
+            expect(result.taxInclusiveAmount).toBe("570.26");
+        });
+
+        it("should handle extreme rounding scenarios with multiple lines, discounts, and surcharges", () => {
+            const invoice = createInvoice({
+                lines: [
+                    {
+                        name: "Item 1 - High precision",
+                        quantity: "1.333",
+                        unitCode: "C62",
+                        netPriceAmount: "7.499",
+                        vat: { category: "S", percentage: "21.00" },
+                        discounts: [
+                            { amount: "1.111", reason: "Precision discount 1" },
+                            { amount: "0.888", reason: "Precision discount 2" },
+                        ],
+                        surcharges: [
+                            { amount: "0.777", reason: "Precision surcharge" },
+                        ],
+                    },
+                    {
+                        name: "Item 2 - More precision",
+                        quantity: "2.666",
+                        unitCode: "C62",
+                        netPriceAmount: "3.333",
+                        vat: { category: "S", percentage: "21.00" },
+                        discounts: [
+                            { amount: "0.444", reason: "Micro discount" },
+                        ],
+                        surcharges: [
+                            { amount: "1.222", reason: "Micro surcharge 1" },
+                            { amount: "0.555", reason: "Micro surcharge 2" },
+                        ],
+                    },
+                    {
+                        name: "Item 3 - Extreme precision",
+                        quantity: "4.111",
+                        unitCode: "C62",
+                        netPriceAmount: "2.222",
+                        vat: { category: "S", percentage: "21.00" },
+                        discounts: [
+                            { amount: "0.333", reason: "Tiny discount" },
+                            { amount: "0.666", reason: "Another tiny discount" },
+                            { amount: "0.111", reason: "Minimal discount" },
+                        ],
+                        surcharges: [
+                            { amount: "0.999", reason: "Tiny surcharge" },
+                            { amount: "0.123", reason: "Another tiny surcharge" },
+                        ],
+                    },
+                    {
+                        name: "Item 4 - Repeating decimals",
+                        quantity: "3.333",
+                        unitCode: "C62",
+                        netPriceAmount: "6.666",
+                        vat: { category: "S", percentage: "21.00" },
+                        discounts: [
+                            { amount: "2.222", reason: "Repeating discount" },
+                        ],
+                        surcharges: [
+                            { amount: "1.111", reason: "Repeating surcharge" },
+                            { amount: "0.333", reason: "Another repeating surcharge" },
+                        ],
+                    },
+                ],
+            });
+
+            const result = calculateTotals(invoice);
+            const vat = calculateVat(invoice);
+
+            const line1Base = new Decimal("1.333").mul("7.499").toNearest(0.01);
+            const line1Discounts = new Decimal("1.111").plus("0.888").toNearest(0.01);
+            const line1Surcharges = new Decimal("0.777");
+            const line1Net = line1Base.minus(line1Discounts).plus(line1Surcharges).toNearest(0.01);
+
+            const line2Base = new Decimal("2.666").mul("3.333").toNearest(0.01);
+            const line2Discounts = new Decimal("0.444");
+            const line2Surcharges = new Decimal("1.222").plus("0.555").toNearest(0.01);
+            const line2Net = line2Base.minus(line2Discounts).plus(line2Surcharges).toNearest(0.01);
+
+            const line3Base = new Decimal("4.111").mul("2.222").toNearest(0.01);
+            const line3Discounts = new Decimal("0.333").plus("0.666").plus("0.111").toNearest(0.01);
+            const line3Surcharges = new Decimal("0.999").plus("0.123").toNearest(0.01);
+            const line3Net = line3Base.minus(line3Discounts).plus(line3Surcharges).toNearest(0.01);
+
+            const line4Base = new Decimal("3.333").mul("6.666").toNearest(0.01);
+            const line4Discounts = new Decimal("2.222");
+            const line4Surcharges = new Decimal("1.111").plus("0.333").toNearest(0.01);
+            const line4Net = line4Base.minus(line4Discounts).plus(line4Surcharges).toNearest(0.01);
+
+            const expectedTaxExclusive = line1Net.plus(line2Net).plus(line3Net).plus(line4Net).toNearest(0.01);
+
+            expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
+
+            const expectedVat = expectedTaxExclusive.mul("21.00").div(100).toNearest(0.01);
+            const expectedTaxInclusive = expectedTaxExclusive.plus(expectedVat).toNearest(0.01);
+
+            expect(result.taxInclusiveAmount).toBe(expectedTaxInclusive.toFixed(2));
+            expect(vat.totalVatAmount).toBe(expectedVat.toFixed(2));
+
+            const taxExclusive = new Decimal(result.taxExclusiveAmount);
+            const totalVat = new Decimal(vat.totalVatAmount);
+            const calculatedTaxInclusive = taxExclusive.plus(totalVat).toNearest(0.01);
+            expect(result.taxInclusiveAmount).toBe(calculatedTaxInclusive.toFixed(2));
+
+            const vatSubtotals = vat.subtotals;
+            const subtotal21 = vatSubtotals.find(s => s.category === "S" && s.percentage === "21.00");
+            expect(subtotal21).toBeDefined();
+            if (subtotal21) {
+                const expectedTaxable = expectedTaxExclusive;
+                expect(subtotal21.taxableAmount).toBe(expectedTaxable.toFixed(2));
+                expect(subtotal21.vatAmount).toBe(expectedVat.toFixed(2));
+            }
+        });
+    });
 });

@@ -9,6 +9,12 @@ type AnyParsedDocument =
   | import("@peppol/utils/parsing/self-billing-creditnote/schemas").SelfBillingCreditNote
   | null;
 
+type TemplateLineDiscount = {
+  amount: string;
+};
+
+type TemplateLineSurcharge = TemplateLineDiscount;
+
 type TemplateLine = {
   name: string;
   description?: string | null;
@@ -17,6 +23,8 @@ type TemplateLine = {
   netPriceAmount: string;
   vatPercentage: string;
   netAmount: string;
+  discounts?: TemplateLineDiscount[];
+  surcharges?: TemplateLineSurcharge[];
 };
 
 type TemplateParty = {
@@ -127,6 +135,16 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
       ? String(line.vat.percentage)
       : "",
     netAmount: line.netAmount ? String(line.netAmount) : "",
+    discounts: Array.isArray(line.discounts) && line.discounts.length > 0
+      ? line.discounts.map((discount: any) => ({
+          amount: String(discount.amount ?? ""),
+        }))
+      : undefined,
+    surcharges: Array.isArray(line.surcharges) && line.surcharges.length > 0
+      ? line.surcharges.map((surcharge: any) => ({
+          amount: String(surcharge.amount ?? ""),
+        }))
+      : undefined,
     // Mustache doesn't support @index, so we synthesise index+1 when building data
   }));
 

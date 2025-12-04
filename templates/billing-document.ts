@@ -86,6 +86,18 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
                   {{#description}}
                     <p class="mt-0.5 text-[11px] text-slate-500">{{description}}</p>
                   {{/description}}
+                  {{#discounts}}
+                    <p class="mt-0.5 text-[11px] text-slate-500">
+                      <span class="text-red-600">Discount:</span>
+                      <span class="font-mono">-{{amount}} {{currency}}</span>
+                    </p>
+                  {{/discounts}}
+                  {{#surcharges}}
+                    <p class="mt-0.5 text-[11px] text-slate-500">
+                      <span class="text-green-600">Surcharge:</span>
+                      <span class="font-mono">+{{amount}} {{currency}}</span>
+                    </p>
+                  {{/surcharges}}
                 </td>
                 <td class="py-2 pr-3 text-right font-mono text-[11px] whitespace-nowrap">
                   {{quantity}} {{unitCode}}

@@ -7,14 +7,28 @@ import type { SelfBillingCreditNote } from "../self-billing-creditnote/schemas";
 // Vat is always rounded to 2 decimal places per invoice line, discount or surcharge, otherwise we can't guarantee the totals will be correct.
 
 export function calculateLineAmount(line: DocumentLine | DocumentLine) {
-  return new Decimal(line.quantity).mul(line.netPriceAmount).toNearest(0.01).toFixed(2);
+  const beforeDiscountsAndSurcharges = new Decimal(line.quantity).mul(line.netPriceAmount).toNearest(0.01);
+
+  // Discount totals
+  const discountTotalsExcl = line.discounts?.reduce(
+    (sum, discount) => sum.plus(discount.amount),
+    new Decimal(0)
+  ).toNearest(0.01) ?? new Decimal(0);
+
+  // Surcharge totals
+  const surchargeTotalsExcl = line.surcharges?.reduce(
+    (sum, surcharge) => sum.plus(surcharge.amount),
+    new Decimal(0)
+  ).toNearest(0.01) ?? new Decimal(0);
+
+  return beforeDiscountsAndSurcharges.minus(discountTotalsExcl).plus(surchargeTotalsExcl).toNearest(0.01).toFixed(2);
 }
 
 function getNetAmount(line: DocumentLine | DocumentLine) {
   if (line.netAmount) {
     return line.netAmount;
   }
-  return new Decimal(line.quantity).mul(line.netPriceAmount).toNearest(0.01).toFixed(2);
+  return calculateLineAmount(line);
 }
 
 export function calculateTotals(invoice: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote): Totals {

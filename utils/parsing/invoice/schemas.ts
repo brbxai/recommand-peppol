@@ -112,6 +112,22 @@ export const totalsSchema = z.object({
   paidAmount: decimalSchema.nullish().openapi({ description: "The amount paid. If not provided, this will be taxInclusiveAmount - payableAmount. Can be used in combination with payableAmount to indicate partial payment or payment rounding. Rounded to 2 decimal places." }),
 }).openapi({ ref: "Totals", description: "If not provided, the totals will be calculated from the document lines." });
 
+export const lineDiscountSchema = z.object({
+  reasonCode: z.string().nullish().openapi({ example: "95", description: "The reason code for the discount. This must be one of the codes in the [UNCL5189 subset](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL5189/) code list. For example, `95` for regular discounts. Either reason or reasonCode must be provided." }),
+  reason: z.string().nullish().openapi({ example: "Discount", description: "The reason for the discount. This is a free text field. Either reason or reasonCode must be provided." }),
+  amount: decimalSchema,
+})
+.refine((data) => data.reasonCode || data.reason, { message: "Either reason or reasonCode must be provided." })
+.openapi({ ref: "LineDiscount" });
+
+export const lineSurchargeSchema = z.object({
+  reasonCode: z.string().nullish().openapi({ example: "FC", description: "The reason code for the surcharge. This must be one of the codes in the [UNCL7161 subset](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL7161/) code list. For example, `FC` for freight services. Either reason or reasonCode must be provided." }),
+  reason: z.string().nullish().openapi({ example: "Freight services", description: "The reason for the surcharge. This is a free text field. Either reason or reasonCode must be provided." }),
+  amount: decimalSchema,
+})
+.refine((data) => data.reasonCode || data.reason, { message: "Either reason or reasonCode must be provided." })
+.openapi({ ref: "LineSurcharge" });
+
 export const lineSchema = z.object({
   id: z.string().nullish().openapi({ example: "1", description: "A line number. If not provided, it will be calculated automatically." }),
   name: z.string().default("").openapi({ example: "Consulting Services" }),
@@ -126,26 +142,11 @@ export const lineSchema = z.object({
   quantity: unlimitedDecimalSchema.default("1.00"),
   unitCode: z.string().default("C62").openapi({ example: "HUR", description: "Recommended unit codes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNECERec20/)." }),
   netPriceAmount: unlimitedDecimalSchema,
+  discounts: z.array(lineDiscountSchema).nullish().openapi({ description: "Optional discounts for the line" }),
+  surcharges: z.array(lineSurchargeSchema).nullish().openapi({ description: "Optional surcharges for the line" }),
   netAmount: decimalSchema.nullish().openapi({ description: "The total net amount of the line: quantity * netPriceAmount. Rounded to 2 decimal places. If not provided, it will be calculated automatically." }),
   vat: vatSchema,
 }).openapi({ ref: "Line" });
-
-export const vatTotalsSchema = z.object({
-  totalVatAmount: decimalSchema,
-  subtotals: z.array(vatSubtotalSchema),
-}).openapi({ ref: "VatTotals", description: "If not provided, the VAT totals will be calculated from the document lines." });
-
-export const attachmentSchema = z.object({
-  id: z.string().openapi({ example: "ATT-001" }),
-  mimeCode: z.string().default("application/pdf").openapi({
-    example: "application/pdf",
-    description: "MIME type of the document (e.g. application/pdf, text/csv, image/png)"
-  }),
-  filename: z.string().openapi({ example: "contract.pdf" }),
-  description: z.string().nullish().openapi({ example: "Signed contract" }),
-  embeddedDocument: z.string().nullish().openapi({ description: "base64 encoded document" }),
-  url: z.string().nullish().openapi({ example: "https://example.com/contract.pdf" }),
-}).openapi({ ref: "Attachment" });
 
 export const discountSchema = z.object({
   reasonCode: z.string().nullish().openapi({ example: "95", description: "The reason code for the discount. This must be one of the codes in the [UNCL5189 subset](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL5189/) code list. For example, `95` for regular discounts. Either reason or reasonCode must be provided." }),
@@ -164,6 +165,23 @@ export const surchargeSchema = z.object({
 })
 .refine((data) => data.reasonCode || data.reason, { message: "Either reason or reasonCode must be provided." })
 .openapi({ ref: "Surcharge" });
+
+export const vatTotalsSchema = z.object({
+  totalVatAmount: decimalSchema,
+  subtotals: z.array(vatSubtotalSchema),
+}).openapi({ ref: "VatTotals", description: "If not provided, the VAT totals will be calculated from the document lines." });
+
+export const attachmentSchema = z.object({
+  id: z.string().openapi({ example: "ATT-001" }),
+  mimeCode: z.string().default("application/pdf").openapi({
+    example: "application/pdf",
+    description: "MIME type of the document (e.g. application/pdf, text/csv, image/png)"
+  }),
+  filename: z.string().openapi({ example: "contract.pdf" }),
+  description: z.string().nullish().openapi({ example: "Signed contract" }),
+  embeddedDocument: z.string().nullish().openapi({ description: "base64 encoded document" }),
+  url: z.string().nullish().openapi({ example: "https://example.com/contract.pdf" }),
+}).openapi({ ref: "Attachment" });
 
 export const _invoiceSchema = z.object({
   invoiceNumber: z.string().openapi({ example: "INV-2024-001" }),
