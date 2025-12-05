@@ -139,6 +139,14 @@ export async function deleteTransmittedDocument(
     .where(and(eq(transmittedDocuments.id, documentId), eq(transmittedDocuments.teamId, teamId)));
 }
 
+export async function deleteAllTransmittedDocuments(
+  teamId: string
+): Promise<void> {
+  await db
+    .delete(transmittedDocuments)
+    .where(eq(transmittedDocuments.teamId, teamId));
+}
+
 export async function getInbox(
   teamId: string,
   companyId?: string

@@ -14,6 +14,7 @@ import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
 import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X } from "lucide-react";
+import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -37,6 +38,7 @@ import {
 } from "@core/components/ui/popover";
 import type { Label } from "@peppol/types/label";
 import { Link } from "react-router-dom";
+import { ConfirmDialog } from "@core/components/confirm-dialog";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -56,6 +58,8 @@ export default function Page() {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
   const activeTeam = useActiveTeam();
+  const isPlayground = useIsPlayground();
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const fetchCompanies = useCallback(async () => {
     if (!activeTeam?.id) {
@@ -66,6 +70,7 @@ export default function Page() {
     try {
       const response = await companiesClient[":teamId"]["companies"].$get({
         param: { teamId: activeTeam.id },
+        query: {},
       });
       const json = await response.json();
 
@@ -198,6 +203,27 @@ export default function Page() {
       fetchDocuments();
     } catch (error) {
       toast.error("Failed to delete document");
+    }
+  };
+
+  const handleDeleteAllDocuments = async () => {
+    if (!activeTeam?.id || !isPlayground) return;
+
+    setIsDeletingAll(true);
+    try {
+      const response = await client[":teamId"]["documents"]["all"].$delete({
+        param: { teamId: activeTeam.id },
+      });
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+      toast.success("All documents deleted successfully");
+      fetchDocuments();
+    } catch (error) {
+      toast.error("Failed to delete all documents");
+    } finally {
+      setIsDeletingAll(false);
     }
   };
 
@@ -690,6 +716,35 @@ export default function Page() {
     <PageTemplate
       breadcrumbs={[{ label: "Peppol" }, { label: "Sent and received documents" }]}
       description="View and manage your transmitted Peppol documents."
+      buttons={
+        isPlayground
+          ? [
+              <ConfirmDialog
+                key="delete-all"
+                title="Delete All Documents"
+                description="Are you sure you want to delete all documents? This action cannot be undone. All documents in this playground will be permanently removed."
+                confirmButtonText="Delete All"
+                onConfirm={handleDeleteAllDocuments}
+                isLoading={isDeletingAll}
+                trigger={
+                  <Button variant="destructive" disabled={isDeletingAll}>
+                    {isDeletingAll ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete All
+                      </>
+                    )}
+                  </Button>
+                }
+              />,
+            ]
+          : undefined
+      }
     >
       <div className="space-y-6">
         {isLoading ? (
