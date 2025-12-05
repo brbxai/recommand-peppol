@@ -170,12 +170,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
             ? String(totalsRaw.taxInclusiveAmount)
             : null;
 
-        let vatAmount: string | null = null;
-        if (taxExclusiveAmount != null && taxInclusiveAmount != null) {
-          const vat =
-            Number(taxInclusiveAmount) - Number(taxExclusiveAmount);
-          vatAmount = vat.toFixed(2);
-        }
+        let vatAmount: string | null = String(parsed?.vat?.totalVatAmount ?? "");
 
         const payableAmountRaw =
           totalsRaw.payableAmount != null
