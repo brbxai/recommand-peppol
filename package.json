@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@mollie/api-client": "^4.2.0",
+    "@scalar/openapi-to-markdown": "^0.3.5",
     "@types/jszip": "^3.4.1",
     "croner": "^9.1.0",
     "date-fns": "^4.1.0",

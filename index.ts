@@ -8,13 +8,14 @@ import labelsServer from "./api/labels";
 import sendDocumentServer from "./api/send-document";
 import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/documents";
-import { openAPISpecs } from "hono-openapi";
+import { generateSpecs, openAPISpecs, type OpenApiSpecsOptions } from "hono-openapi";
 import webhooksServer from "./api/webhooks";
 import integrationsServer from "./api/integrations";
 import recipientServer from "./api/recipients";
 import playgroundsServer from "./api/playgrounds";
 import suppliersServer from "./api/suppliers";
 import { initializeIntegrationCronJobs } from "./data/integrations/cron";
+import { createMarkdownFromOpenApi } from '@scalar/openapi-to-markdown'
 
 export let logger: Logger;
 
@@ -33,9 +34,7 @@ export async function init(app: RecommandApp, server: Server) {
   ];
 
   // Add OpenAPI documentation
-server.get(
-  "/openapi",
-  openAPISpecs(server, {
+  const specsOptions: OpenApiSpecsOptions = {
     exclude,
     documentation: {
       info: {
@@ -137,8 +136,16 @@ For additional support or questions, don't hesitate to contact our support team.
         },
       ],
     },
-  })
-);
+  };
+  server.get(
+    "/openapi",
+    openAPISpecs(server, specsOptions)
+  );
+  server.get("/llms.txt", async (c) => {
+    const specs = await generateSpecs(server, specsOptions, undefined, c);
+    const markdown = await createMarkdownFromOpenApi(specs);
+    return c.text(markdown)
+  });
 }
 
 for(const prefix of ["/peppol/", "/v1/"]) {
