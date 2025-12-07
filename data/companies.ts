@@ -236,13 +236,31 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
         await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
       } catch (error) {
         // If registration fails, unregister any company registrations that might have been registered
-        await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+        try{
+          await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+        } catch (error) {
+          // If this fails, we can't do much about it, we at least want to rollback the update of the company
+          console.error(`Failed to unregister company registrations for company ${updatedCompany.id} after registration failed: ${error}`);
+        }
         // Also rollback the update of the company
         await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
         throw error;
       }
     } else {
-      await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+      try{
+        await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+      } catch (error) {
+        // If unregistration fails, register all company registrations that might have been unregistered
+        try{
+          await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+        }catch(error){
+          // If this fails, we can't do much about it, we at least want to rollback the update of the company
+          console.error(`Failed to register company registrations for company ${updatedCompany.id} after unregistration failed: ${error}`);
+        }
+        // Also rollback the update of the company
+        await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
+        throw error;
+      }
     }
   }
 
