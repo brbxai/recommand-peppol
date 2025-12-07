@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import "zod-openapi/extend";
-import { attachmentSchema, deliverySchema, discountSchema, lineSchema, partySchema, paymentMeansSchema, surchargeSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
+import { attachmentSchema, deliverySchema, discountSchema, lineSchema, partySchema, paymentMeansSchema, sendVatTotalsSchema, surchargeSchema, totalsSchema, vatTotalsSchema } from '../invoice/schemas';
 import { CURRENCIES, zCurrencies } from '@peppol/utils/currencies';
 
 const creditNoteInvoiceReferenceSchema = z.object({
@@ -38,6 +38,7 @@ export const _sendCreditNoteSchema = creditNoteSchema.extend({
   issueDate: z.string().date().nullish().openapi({ example: "2024-03-20", description: "If not provided, the issue date will be the current date." }),
   dueDate: z.string().date().nullish().openapi({ example: "2024-04-20", description: "If not provided, the due date will be 1 month from the issue date." }),
   seller: partySchema.nullish().openapi({ description: "If not provided, the seller will be the company that is sending the credit note." }),
+  vat: sendVatTotalsSchema.nullish().openapi({ description: "If not provided, the VAT totals will be calculated from the document lines." }),
 })
 
 export const sendCreditNoteSchema = _sendCreditNoteSchema.openapi({ ref: "SendCreditNote", title: "Credit Note to send", description: "Credit note to send to a recipient" });

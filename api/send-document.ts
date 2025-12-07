@@ -159,11 +159,12 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           { representation: "date" }
         );
       }
-      const ublInvoice = invoiceToUBL(
+      const ublInvoice = invoiceToUBL({
         invoice,
         senderAddress,
-        recipientAddress
-      );
+        recipientAddress,
+        isDocumentValidationEnforced: company.isOutgoingDocumentValidationEnforced,
+      });
       xmlDocument = ublInvoice;
       type = "invoice";
 
@@ -208,11 +209,12 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           representation: "date",
         });
       }
-      const ublCreditNote = creditNoteToUBL(
+      const ublCreditNote = creditNoteToUBL({
         creditNote,
         senderAddress,
-        recipientAddress
-      );
+        recipientAddress,
+        isDocumentValidationEnforced: company.isOutgoingDocumentValidationEnforced,
+      });
       xmlDocument = ublCreditNote;
       type = "creditNote";
       doctypeId =
@@ -263,11 +265,12 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           { representation: "date" }
         );
       }
-      const ublInvoice = selfBillingInvoiceToUBL(
-        invoice,
+      const ublInvoice = selfBillingInvoiceToUBL({
+        selfBillingInvoice: invoice,
         senderAddress,
-        recipientAddress
-      );
+        recipientAddress,
+        isDocumentValidationEnforced: company.isOutgoingDocumentValidationEnforced,
+      });
       xmlDocument = ublInvoice;
       type = "selfBillingInvoice";
       doctypeId =
@@ -314,11 +317,12 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           representation: "date",
         });
       }
-      const ublSelfBillingCreditNote = selfBillingCreditNoteToUBL(
+      const ublSelfBillingCreditNote = selfBillingCreditNoteToUBL({
         selfBillingCreditNote,
         senderAddress,
-        recipientAddress
-      );
+        recipientAddress,
+        isDocumentValidationEnforced: company.isOutgoingDocumentValidationEnforced,
+      });
       xmlDocument = ublSelfBillingCreditNote;
       type = "selfBillingCreditNote";
       doctypeId =

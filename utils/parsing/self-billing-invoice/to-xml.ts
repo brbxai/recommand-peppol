@@ -9,12 +9,19 @@ const builder = new XMLBuilder({
 });
 
 export function selfBillingInvoiceToUBL(
-  selfBillingInvoice: SelfBillingInvoice,
-  senderAddress: string,
-  recipientAddress: string
-): string {
+  {
+    selfBillingInvoice,
+    senderAddress,
+    recipientAddress,
+    isDocumentValidationEnforced,
+  }: {
+    selfBillingInvoice: SelfBillingInvoice;
+    senderAddress: string;
+    recipientAddress: string;
+    isDocumentValidationEnforced: boolean;
+  }): string {
   // The self billing invoice is the same as the invoice with a different invoice type code (389 instead of 380)
-  const ublInvoice = prebuildInvoiceUBL(selfBillingInvoice, senderAddress, recipientAddress);
+  const ublInvoice = prebuildInvoiceUBL({invoice: selfBillingInvoice, senderAddress, recipientAddress, isDocumentValidationEnforced});
 
   // Set the CustomizationID
   ublInvoice.Invoice["cbc:CustomizationID"] = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0";

@@ -449,7 +449,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1Net = new Decimal("3.333").mul("1.499").toNearest(0.01);
             const line2Net = new Decimal("7.777").mul("0.999").toNearest(0.01);
@@ -473,7 +473,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             expect(result.taxExclusiveAmount).toBe("66.67");
             expect(result.discountAmount).toBe("33.33");
@@ -495,7 +495,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const lineTotal = new Decimal("99.99");
             const surchargeTotal = new Decimal("6.66");
@@ -517,7 +517,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1Net = new Decimal("1.111").mul("9.999").toNearest(0.01);
             const line2Net = new Decimal("2.222").mul("4.444").toNearest(0.01);
@@ -544,7 +544,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1Net = new Decimal("1.234").mul("5.678").toNearest(0.01);
             const line2Net = new Decimal("9.876").mul("3.210").toNearest(0.01);
@@ -595,7 +595,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const taxExclusive = new Decimal(result.taxExclusiveAmount);
             const totalVat = new Decimal(vat.totalVatAmount);
@@ -620,7 +620,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1 = new Decimal("0.333").mul("0.997").toNearest(0.01);
             const line2 = new Decimal("0.667").mul("0.998").toNearest(0.01);
@@ -645,7 +645,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const lineNet = new Decimal("12.345").mul("6.789").toNearest(0.01);
             expect(result.taxExclusiveAmount).toBe(lineNet.toFixed(2));
@@ -667,7 +667,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const expectedTaxExclusive = new Decimal("10.01").plus("10.02").plus("10.03").toNearest(0.01);
             expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
@@ -690,7 +690,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const expectedTaxExclusive = new Decimal("50.00").minus("75.00").toNearest(0.01);
             expect(result.taxExclusiveAmount).toBe(expectedTaxExclusive.toFixed(2));
@@ -740,7 +740,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             // Calculate expected line totals manually
             const line1Net = new Decimal("1.333").mul("7.499").toNearest(0.01);
@@ -869,7 +869,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             // Validate that all amounts are properly rounded to 2 decimal places
             expect(result.taxExclusiveAmount).toMatch(/^\d+\.\d{2}$/);
@@ -1172,7 +1172,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const lineNet = new Decimal("1").mul("9.9174").toNearest(0.01);
             const expectedTaxExclusive = lineNet.mul(45).toNearest(0.01);
@@ -1201,7 +1201,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const lineNet = new Decimal("1").mul("173.69").toNearest(0.01);
             const expectedVat = lineNet.mul("21.00").div(100).toNearest(0.01);
@@ -1250,7 +1250,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1Base = new Decimal("3.5").mul("50.00").toNearest(0.01);
             const line1Discounts = new Decimal("10.00").plus("5.00").toNearest(0.01);
@@ -1310,7 +1310,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1Base = new Decimal("4").mul("25.75").toNearest(0.01);
             const line1Net = line1Base.minus("12.00").toNearest(0.01);
@@ -1384,7 +1384,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1Base = new Decimal("2.5").mul("80.00").toNearest(0.01);
             const line1Net = line1Base.minus("15.00").plus("5.00").toNearest(0.01);
@@ -1504,7 +1504,7 @@ describe("calculateTotals", () => {
             });
 
             const result = calculateTotals(invoice);
-            const vat = calculateVat(invoice);
+            const vat = calculateVat({document: invoice, isDocumentValidationEnforced: false});
 
             const line1Base = new Decimal("1.333").mul("7.499").toNearest(0.01);
             const line1Discounts = new Decimal("1.111").plus("0.888").toNearest(0.01);

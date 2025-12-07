@@ -15,18 +15,24 @@ const builder = new XMLBuilder({
   suppressBooleanAttributes: true,
 });
 
-export function invoiceToUBL(
-  invoice: Invoice,
-  senderAddress: string,
-  recipientAddress: string
-): string {
-  const ublInvoice = prebuildInvoiceUBL(invoice, senderAddress, recipientAddress);
+export function invoiceToUBL({
+  invoice,
+  senderAddress,
+  recipientAddress,
+  isDocumentValidationEnforced,
+}: {
+  invoice: Invoice;
+  senderAddress: string;
+  recipientAddress: string;
+  isDocumentValidationEnforced: boolean;
+}): string {
+  const ublInvoice = prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced});
   return builder.build(ublInvoice);
 }
 
-export function prebuildInvoiceUBL(invoice: Invoice, senderAddress: string, recipientAddress: string) {
+export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced}: {invoice: Invoice, senderAddress: string, recipientAddress: string, isDocumentValidationEnforced: boolean}) {
   const totals = calculateTotals(invoice);
-  const vat = invoice.vat || calculateVat(invoice);
+  const vat = (invoice.vat && "subtotals" in invoice.vat && "totalVatAmount" in invoice.vat) ? invoice.vat : calculateVat({document: invoice, isDocumentValidationEnforced});
   const lines = invoice.lines.map((line) => ({
     ...line,
     netAmount: line.netAmount || calculateLineAmount(line),

@@ -9,12 +9,19 @@ const builder = new XMLBuilder({
 });
 
 export function selfBillingCreditNoteToUBL(
-  selfBillingCreditNote: SelfBillingCreditNote,
-  senderAddress: string,
-  recipientAddress: string
-): string {
+  {
+    selfBillingCreditNote,
+    senderAddress,
+    recipientAddress,
+    isDocumentValidationEnforced,
+  }: {
+    selfBillingCreditNote: SelfBillingCreditNote;
+    senderAddress: string;
+    recipientAddress: string;
+    isDocumentValidationEnforced: boolean;
+  }): string {
   // The self billing credit note is the same as the credit note with a different invoice type code (389 instead of 380)
-  const ublCreditNote = prebuildCreditNoteUBL(selfBillingCreditNote, senderAddress, recipientAddress);
+  const ublCreditNote = prebuildCreditNoteUBL({creditNote: selfBillingCreditNote, senderAddress, recipientAddress, isDocumentValidationEnforced});
 
   // Set the CustomizationID
   ublCreditNote.CreditNote["cbc:CustomizationID"] = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0";
@@ -22,6 +29,6 @@ export function selfBillingCreditNoteToUBL(
   ublCreditNote.CreditNote["cbc:ProfileID"] = "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0";
   // Set the invoice type code to 389
   ublCreditNote.CreditNote["cbc:CreditNoteTypeCode"] = "261";
-  
+
   return builder.build(ublCreditNote);
 }

@@ -16,17 +16,24 @@ const builder = new XMLBuilder({
 });
 
 export function creditNoteToUBL(
-  creditNote: CreditNote,
-  senderAddress: string,
-  recipientAddress: string
-): string {
-  const ublCreditNote = prebuildCreditNoteUBL(creditNote, senderAddress, recipientAddress);
+  {
+    creditNote,
+    senderAddress,
+    recipientAddress,
+    isDocumentValidationEnforced,
+  }: {
+    creditNote: CreditNote;
+    senderAddress: string;
+    recipientAddress: string;
+    isDocumentValidationEnforced: boolean;
+  }): string {
+  const ublCreditNote = prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddress, isDocumentValidationEnforced});
   return builder.build(ublCreditNote);
 }
 
-export function prebuildCreditNoteUBL(creditNote: CreditNote, senderAddress: string, recipientAddress: string) {
+export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddress, isDocumentValidationEnforced}: {creditNote: CreditNote, senderAddress: string, recipientAddress: string, isDocumentValidationEnforced: boolean}) {
   const totals = calculateTotals(creditNote);
-  const vat = creditNote.vat || calculateVat(creditNote);
+  const vat = (creditNote.vat && "subtotals" in creditNote.vat && "totalVatAmount" in creditNote.vat) ? creditNote.vat : calculateVat({document: creditNote, isDocumentValidationEnforced});
   const lines = creditNote.lines.map((line) => ({
     ...line,
     netAmount: line.netAmount || calculateLineAmount(line),

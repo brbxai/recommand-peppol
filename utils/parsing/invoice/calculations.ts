@@ -3,6 +3,7 @@ import type { Invoice, DocumentLine, VatCategory, Totals } from "./schemas";
 import type { CreditNote } from "../creditnote/schemas";
 import type { SelfBillingInvoice } from "../self-billing-invoice/schemas";
 import type { SelfBillingCreditNote } from "../self-billing-creditnote/schemas";
+import { UserFacingError } from "@peppol/utils/util";
 
 // Vat is always rounded to 2 decimal places per invoice line, discount or surcharge, otherwise we can't guarantee the totals will be correct.
 
@@ -31,41 +32,41 @@ function getNetAmount(line: DocumentLine | DocumentLine) {
   return calculateLineAmount(line);
 }
 
-export function calculateTotals(invoice: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote): Totals {
+export function calculateTotals(document: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote): Totals {
 
   // Line totals
-  const lineTotalsExcl = invoice.lines.reduce(
+  const lineTotalsExcl = document.lines.reduce(
     (sum, line) => sum.plus(getNetAmount(line)),
     new Decimal(0)
   ).toNearest(0.01);
 
   // Discount totals
-  const discountTotalsExcl = invoice.discounts?.reduce(
+  const discountTotalsExcl = document.discounts?.reduce(
     (sum, discount) => sum.plus(discount.amount),
     new Decimal(0)
   ).toNearest(0.01) ?? new Decimal(0);
 
   // Surcharge totals
-  const surchargeTotalsExcl = invoice.surcharges?.reduce(
+  const surchargeTotalsExcl = document.surcharges?.reduce(
     (sum, surcharge) => sum.plus(surcharge.amount),
     new Decimal(0)
   ).toNearest(0.01) ?? new Decimal(0);
 
   // Vat totals
-  const vatTotals = calculateVat(invoice);
+  const vatTotals = calculateVat({document, isDocumentValidationEnforced: false}); // Do not enforce validation here, as this will fail when subtotals have been provided manually and exemption reasons are required
 
   // Totals
   const taxExclusiveAmount = new Decimal(lineTotalsExcl).minus(discountTotalsExcl).plus(surchargeTotalsExcl).toNearest(0.01);
   const taxInclusiveAmount = taxExclusiveAmount.plus(new Decimal(vatTotals.totalVatAmount));
 
   return {
-    linesAmount: invoice.totals?.linesAmount ?? lineTotalsExcl.toFixed(2),
-    discountAmount: invoice.totals?.discountAmount ?? (discountTotalsExcl.eq(0) ? null : discountTotalsExcl.toFixed(2)),
-    surchargeAmount: invoice.totals?.surchargeAmount ?? (surchargeTotalsExcl.eq(0) ? null : surchargeTotalsExcl.toFixed(2)),
-    taxExclusiveAmount: invoice.totals?.taxExclusiveAmount ?? taxExclusiveAmount.toFixed(2),
-    taxInclusiveAmount: invoice.totals?.taxInclusiveAmount ?? taxInclusiveAmount.toFixed(2),
-    payableAmount: invoice.totals?.payableAmount ?? taxInclusiveAmount.toFixed(2),
-    paidAmount: invoice.totals?.paidAmount ?? "0.00",
+    linesAmount: document.totals?.linesAmount ?? lineTotalsExcl.toFixed(2),
+    discountAmount: document.totals?.discountAmount ?? (discountTotalsExcl.eq(0) ? null : discountTotalsExcl.toFixed(2)),
+    surchargeAmount: document.totals?.surchargeAmount ?? (surchargeTotalsExcl.eq(0) ? null : surchargeTotalsExcl.toFixed(2)),
+    taxExclusiveAmount: document.totals?.taxExclusiveAmount ?? taxExclusiveAmount.toFixed(2),
+    taxInclusiveAmount: document.totals?.taxInclusiveAmount ?? taxInclusiveAmount.toFixed(2),
+    payableAmount: document.totals?.payableAmount ?? taxInclusiveAmount.toFixed(2),
+    paidAmount: document.totals?.paidAmount ?? "0.00",
   };
 }
 
@@ -123,19 +124,19 @@ export function extractTotals(totals: Totals): Totals & { paidAmount: string, pa
   
 }
 
-export function calculateVat(invoice: Invoice | CreditNote) {
+export function calculateVat({document, isDocumentValidationEnforced}: {document: Invoice | CreditNote, isDocumentValidationEnforced: boolean}) {
 
   const getKey = (category: VatCategory, percentage: string) => `${category}-${percentage}`;
 
   // Collect all vat categories and percentages
   const vatInfo = new Set<{ category: VatCategory; percentage: string }>();
-  for(const line of invoice.lines) {
+  for(const line of document.lines) {
     vatInfo.add({ category: line.vat.category, percentage: line.vat.percentage });
   }
-  for(const discount of invoice.discounts ?? []) {
+  for(const discount of document.discounts ?? []) {
     vatInfo.add({ category: discount.vat.category, percentage: discount.vat.percentage });
   }
-  for(const surcharge of invoice.surcharges ?? []) {
+  for(const surcharge of document.surcharges ?? []) {
     vatInfo.add({ category: surcharge.vat.category, percentage: surcharge.vat.percentage });
   }
 
@@ -150,31 +151,49 @@ export function calculateVat(invoice: Invoice | CreditNote) {
   }
 
   // Add invoice lines
-  for(const line of invoice.lines) {
+  for(const line of document.lines) {
     const taxableAmount = new Decimal(getNetAmount(line));
     addToSubtotals(line.vat.category, line.vat.percentage, taxableAmount);
   }
 
   // Add global discounts
-  for(const discount of invoice.discounts ?? []) {
+  for(const discount of document.discounts ?? []) {
     const taxableAmount = new Decimal(discount.amount);
     addToSubtotals(discount.vat.category, discount.vat.percentage, taxableAmount.neg());
   }
 
   // Add global surcharges
-  for(const surcharge of invoice.surcharges ?? []) {
+  for(const surcharge of document.surcharges ?? []) {
     const taxableAmount = new Decimal(surcharge.amount);
     addToSubtotals(surcharge.vat.category, surcharge.vat.percentage, taxableAmount);
   }
 
-  const subtotals = Array.from(subtotalsByKey.values()).map(subtotal => ({
-    taxableAmount: subtotal.taxableAmount.toNearest(0.01).toFixed(2),
-    vatAmount: subtotal.taxableAmount.mul(subtotal.percentage).div(100).toNearest(0.01).toFixed(2),
-    category: subtotal.category,
-    percentage: subtotal.percentage,
-    exemptionReasonCode: null as string | null,
-    exemptionReason: null as string | null,
-  }));
+  // Add exemption reason if required
+  const exemptionReasonCode: null | string = (document.vat && "exemptionReasonCode" in document.vat && document.vat.exemptionReasonCode) ? (document.vat.exemptionReasonCode as string) : null;
+  const exemptionReason: null | string = (document.vat && "exemptionReason" in document.vat && document.vat.exemptionReason) ? (document.vat.exemptionReason as string) : null;
+
+  const subtotals = Array.from(subtotalsByKey.values()).map(subtotal => {
+
+    let subtotalExemptionReasonCode: null | string = null;
+    let subtotalExemptionReason: null | string = null;
+    if(isTaxExemptionReasonRequired(subtotal.category)) {
+      if(exemptionReasonCode || exemptionReason) {
+        subtotalExemptionReasonCode = exemptionReasonCode;
+        subtotalExemptionReason = exemptionReason;
+      }else if(isDocumentValidationEnforced){
+        throw new UserFacingError("Exemption reason code or reason is required for tax category " + subtotal.category);
+      }
+    }
+
+    return {
+      taxableAmount: subtotal.taxableAmount.toNearest(0.01).toFixed(2),
+      vatAmount: subtotal.taxableAmount.mul(subtotal.percentage).div(100).toNearest(0.01).toFixed(2),
+      category: subtotal.category,
+      percentage: subtotal.percentage,
+      exemptionReasonCode: subtotalExemptionReasonCode,
+      exemptionReason: subtotalExemptionReason,
+    };
+  });
 
   const totalVatAmount = subtotals.reduce(
     (sum, subtotal) => sum.plus(new Decimal(subtotal.vatAmount)),
@@ -183,3 +202,12 @@ export function calculateVat(invoice: Invoice | CreditNote) {
 
   return { totalVatAmount, subtotals };
 } 
+
+function isTaxExemptionReasonRequired(category: VatCategory): boolean {
+  // AE: VAT reverse charge
+  // E: Exempt from VAT
+  // G: Export outside EU
+  // O: Not subject to VAT
+  // K: Intra-community supply
+  return ["AE", "E", "G", "O", "K"].includes(category);
+}

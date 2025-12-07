@@ -117,7 +117,7 @@ describe("invoiceToUBL", () => {
     const senderAddress = "0208:0428643097";
     const recipientAddress = "0208:0598726857";
 
-    const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+    const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
 
     checkInvoiceXML(xml, invoice);
 
@@ -227,7 +227,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "line-level discounts and surcharges");
       
@@ -292,7 +292,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "line totals preservation");
       
@@ -352,7 +352,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "global discounts and surcharges");
       
@@ -447,7 +447,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "combined line-level and global discounts/surcharges");
       
@@ -534,7 +534,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "document totals preservation with line and global discounts/surcharges");
       
@@ -604,7 +604,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "totals with different VAT rates on discounts and surcharges");
       
@@ -665,7 +665,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "rounding scenarios with discounts and surcharges");
       
@@ -711,7 +711,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "invoice with only line discounts");
       
@@ -746,7 +746,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "invoice with only line surcharges");
       
@@ -798,7 +798,7 @@ describe("invoiceToUBL", () => {
 
       const senderAddress = "0208:0428643097";
       const recipientAddress = "0208:0598726857";
-      const xml = invoiceToUBL(invoice, senderAddress, recipientAddress);
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
       await validateInvoiceXML(xml, "invoice with reasonCode only");
       
@@ -808,6 +808,153 @@ describe("invoiceToUBL", () => {
       expect(parsed.lines[0].surcharges?.[0].reasonCode).toBe("FC");
       expect(parsed.discounts?.[0].reasonCode).toBe("95");
       expect(parsed.surcharges?.[0].reasonCode).toBe("FC");
+    });
+  });
+
+  describe("precalculated vs auto-calculated VAT subtotals", () => {
+    it("should produce identical totals and VAT subtotals with precalculated vs simplified VAT object", async () => {
+      const baseLines = [
+        {
+          name: "Item 1 - Standard 21%",
+          quantity: "2",
+          unitCode: "C62",
+          netPriceAmount: "100.00",
+          netAmount: null,
+          vat: { category: "S" as const, percentage: "21.00" },
+          buyersId: null,
+          sellersId: null,
+          standardId: null,
+          description: null,
+          originCountry: null,
+        },
+        {
+          name: "Item 2 - Standard 6%",
+          quantity: "3",
+          unitCode: "C62",
+          netPriceAmount: "50.00",
+          netAmount: null,
+          vat: { category: "S" as const, percentage: "6.00" },
+          buyersId: null,
+          sellersId: null,
+          standardId: null,
+          description: null,
+          originCountry: null,
+        },
+        {
+          name: "Item 3 - Reverse Charge 21%",
+          quantity: "1",
+          unitCode: "C62",
+          netPriceAmount: "200.00",
+          netAmount: null,
+          vat: { category: "AE" as const, percentage: "0.00" },
+          buyersId: null,
+          sellersId: null,
+          standardId: null,
+          description: null,
+          originCountry: null,
+        },
+        {
+          name: "Item 4 - Reverse Charge 0%",
+          quantity: "4",
+          unitCode: "C62",
+          netPriceAmount: "75.00",
+          netAmount: null,
+          vat: { category: "AE" as const, percentage: "0.00" },
+          buyersId: null,
+          sellersId: null,
+          standardId: null,
+          description: null,
+          originCountry: null,
+        },
+      ];
+
+      const invoiceWithPrecalculatedVat = createBaseInvoice({
+        lines: baseLines,
+        vat: {
+          totalVatAmount: "51.00",
+          subtotals: [
+            {
+              taxableAmount: "200.00",
+              vatAmount: "42.00",
+              category: "S",
+              percentage: "21.00",
+            },
+            {
+              taxableAmount: "150.00",
+              vatAmount: "9.00",
+              category: "S",
+              percentage: "6.00",
+            },
+            {
+              taxableAmount: "500.00",
+              vatAmount: "0.00",
+              category: "AE",
+              percentage: "0.00",
+              exemptionReason: "VAT Reverse Charge applies",
+            },
+          ],
+        },
+      });
+
+      const invoiceWithSimplifiedVat = createBaseInvoice({
+        lines: baseLines,
+        vat: {
+          exemptionReason: "VAT Reverse Charge applies",
+        } as any,
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+
+      const xml1 = invoiceToUBL({
+        invoice: invoiceWithPrecalculatedVat,
+        senderAddress,
+        recipientAddress,
+        isDocumentValidationEnforced: true,
+      });
+
+      const xml2 = invoiceToUBL({
+        invoice: invoiceWithSimplifiedVat,
+        senderAddress,
+        recipientAddress,
+        isDocumentValidationEnforced: true,
+      });
+
+      await validateInvoiceXML(xml1, "invoice with precalculated VAT");
+      await validateInvoiceXML(xml2, "invoice with simplified VAT");
+
+      const parsed1 = parseInvoiceFromXML(xml1);
+      const parsed2 = parseInvoiceFromXML(xml2);
+
+      expect(parsed1.totals?.taxExclusiveAmount).toBe("850.00");
+      expect(parsed1.totals?.taxExclusiveAmount).toBe(parsed2.totals?.taxExclusiveAmount);
+      expect(parsed1.totals?.taxInclusiveAmount).toBe(parsed2.totals?.taxInclusiveAmount);
+      expect(parsed1.totals?.payableAmount).toBe(parsed2.totals?.payableAmount);
+      expect(parsed1.totals?.linesAmount).toBe(parsed2.totals?.linesAmount);
+
+      expect(parsed1.vat?.totalVatAmount).toBe(parsed2.vat?.totalVatAmount);
+      expect(parsed1.vat?.subtotals.length).toBe(parsed2.vat?.subtotals.length);
+
+      const sortedSubtotals1 = [...(parsed1.vat?.subtotals || [])].sort((a, b) => {
+        const keyA = `${a.category}-${a.percentage}`;
+        const keyB = `${b.category}-${b.percentage}`;
+        return keyA.localeCompare(keyB);
+      });
+
+      const sortedSubtotals2 = [...(parsed2.vat?.subtotals || [])].sort((a, b) => {
+        const keyA = `${a.category}-${a.percentage}`;
+        const keyB = `${b.category}-${b.percentage}`;
+        return keyA.localeCompare(keyB);
+      });
+
+      for (let i = 0; i < sortedSubtotals1.length; i++) {
+        expect(sortedSubtotals1[i].taxableAmount).toBe(sortedSubtotals2[i].taxableAmount);
+        expect(sortedSubtotals1[i].vatAmount).toBe(sortedSubtotals2[i].vatAmount);
+        expect(sortedSubtotals1[i].category).toBe(sortedSubtotals2[i].category);
+        expect(sortedSubtotals1[i].percentage).toBe(sortedSubtotals2[i].percentage);
+        expect(sortedSubtotals1[i].exemptionReason).toBe(sortedSubtotals2[i].exemptionReason);
+        expect(sortedSubtotals1[i].exemptionReasonCode).toBe(sortedSubtotals2[i].exemptionReasonCode);
+      }
     });
   });
 });
