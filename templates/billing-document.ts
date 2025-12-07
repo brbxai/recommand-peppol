@@ -156,6 +156,24 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
               {{totals.vatAmount}} {{currency}}
             </span>
           </div>
+          {{#vatSubtotals}}
+            {{#vatSubtotals}}
+              {{#exemptionReasonCode}}
+                <div class="py-1 pl-4 text-[11px] text-slate-500">
+                  <span class="font-medium">{{percentage}}% {{category}}:</span>
+                  <span class="ml-2">Exemption code: {{exemptionReasonCode}}</span>
+                </div>
+              {{/exemptionReasonCode}}
+              {{^exemptionReasonCode}}
+                {{#exemptionReason}}
+                  <div class="py-1 pl-4 text-[11px] text-slate-500">
+                    <span class="font-medium">{{percentage}}% {{category}}:</span>
+                    <span class="ml-2">{{exemptionReason}}</span>
+                  </div>
+                {{/exemptionReason}}
+              {{/exemptionReasonCode}}
+            {{/vatSubtotals}}
+          {{/vatSubtotals}}
           <div class="flex justify-between py-2 mt-2 border-t border-slate-200 font-semibold">
             <span>Total (incl. VAT)</span>
             <span class="font-mono">

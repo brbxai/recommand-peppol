@@ -56,6 +56,16 @@ type TemplatePaymentMeans = {
   financialInstitutionBranch?: string | null;
 };
 
+type TemplateVatSubtotal = {
+  taxableAmount: string;
+  vatAmount: string;
+  category: string;
+  percentage: string;
+  exemptionReasonCode?: string | null;
+  exemptionReason?: string | null;
+  currency?: string | null;
+};
+
 type BillingTemplateData = {
   documentId: string;
   documentType: string;
@@ -70,6 +80,7 @@ type BillingTemplateData = {
   buyer?: TemplateParty | null;
   lines: TemplateLine[];
   totals?: TemplateTotals | null;
+  vatSubtotals?: TemplateVatSubtotal[] | null;
   paymentMeans?: TemplatePaymentMeans[] | null;
 };
 
@@ -220,6 +231,20 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
       })
     : null;
 
+  const currency = (parsed as any)?.currency ?? null;
+  const vatSubtotalsRaw = (parsed as any)?.vat?.subtotals;
+  const vatSubtotals: TemplateVatSubtotal[] | null = vatSubtotalsRaw && Array.isArray(vatSubtotalsRaw) && vatSubtotalsRaw.length > 0
+    ? vatSubtotalsRaw.map((subtotal: any) => ({
+        taxableAmount: String(subtotal.taxableAmount ?? ""),
+        vatAmount: String(subtotal.vatAmount ?? ""),
+        category: String(subtotal.category ?? ""),
+        percentage: String(subtotal.percentage ?? ""),
+        exemptionReasonCode: subtotal.exemptionReasonCode ?? null,
+        exemptionReason: subtotal.exemptionReason ?? null,
+        currency,
+      }))
+    : null;
+
   return {
     documentId: document.id,
     documentType: document.type,
@@ -234,6 +259,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     buyer: toParty(buyerRaw),
     lines,
     totals,
+    vatSubtotals,
     paymentMeans,
   };
 }
