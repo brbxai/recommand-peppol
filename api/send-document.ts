@@ -43,6 +43,7 @@ import type z from "zod";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { validateXmlDocument } from "@peppol/data/validation/client";
 import type { ValidationResponse } from "@peppol/types/validation";
+import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, getDocumentTypeInfo, INVOICE_DOCUMENT_TYPE_INFO, SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO, SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
 
 const server = new Server();
 
@@ -112,7 +113,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     let xmlDocument: string | null = null;
     let type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown" = "unknown";
     let parsedDocument: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | null = null;
-    let doctypeId: string = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
+    let doctypeId: string = INVOICE_DOCUMENT_TYPE_INFO.docTypeId;
 
     // Get senderId, countryC1 from company
     const company = c.var.company;
@@ -217,8 +218,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       });
       xmlDocument = ublCreditNote;
       type = "creditNote";
-      doctypeId =
-        "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1";
+      doctypeId = CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId;
 
       const parsed = parseDocument(
         doctypeId,
@@ -273,8 +273,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       });
       xmlDocument = ublInvoice;
       type = "selfBillingInvoice";
-      doctypeId =
-        "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
+      doctypeId = SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO.docTypeId;
 
       const parsed = parseDocument(
         doctypeId,
@@ -325,8 +324,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       });
       xmlDocument = ublSelfBillingCreditNote;
       type = "selfBillingCreditNote";
-      doctypeId =
-        "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1";
+      doctypeId = SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId;
 
       const parsed = parseDocument(
         doctypeId,
@@ -393,12 +391,14 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     let additionalPeppolFailureContext = "";
     let additionalEmailFailureContext = "";
 
+    const processId = getDocumentTypeInfo(type).processId;
+
     if (isPlayground && !useTestNetwork) {
       await simulateSendAs4({
         senderId: senderAddress,
         receiverId: recipientAddress,
         docTypeId: doctypeId,
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+        processId,
         countryC1: countryC1,
         body: xmlDocument,
         playgroundTeamId: c.var.team.id, // Must be the same as the sender team: we don't support cross-team sending
@@ -409,7 +409,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         senderId: senderAddress,
         receiverId: recipientAddress,
         docTypeId: doctypeId,
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+        processId,
         countryC1: countryC1,
         body: xmlDocument,
         useTestNetwork,
@@ -493,7 +493,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         senderId: senderAddress,
         receiverId: recipientAddress,
         docTypeId: doctypeId,
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+        processId,
         countryC1: countryC1,
         xml: xmlDocument,
 

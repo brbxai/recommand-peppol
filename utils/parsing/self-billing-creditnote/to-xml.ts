@@ -1,3 +1,4 @@
+import { SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
 import { prebuildCreditNoteUBL } from "../creditnote/to-xml";
 import type { SelfBillingCreditNote } from "./schemas";
 import { XMLBuilder } from "fast-xml-parser";
@@ -26,7 +27,7 @@ export function selfBillingCreditNoteToUBL(
   // Set the CustomizationID
   ublCreditNote.CreditNote["cbc:CustomizationID"] = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0";
   // Set the ProfileID
-  ublCreditNote.CreditNote["cbc:ProfileID"] = "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0";
+  ublCreditNote.CreditNote["cbc:ProfileID"] = SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO.processId;
   // Set the invoice type code to 389
   ublCreditNote.CreditNote["cbc:CreditNoteTypeCode"] = "261";
 

@@ -11,29 +11,7 @@ import { rc } from "@recommand/lib/client";
 import type { CompanyDocumentTypes } from "@peppol/api/companies/document-types";
 import type { CompanyDocumentType } from "@peppol/data/company-document-types";
 import { stringifyActionFailure } from "@recommand/lib/utils";
-
-const DOCUMENT_TYPE_PRESETS = [
-    {
-        title: "Invoice",
-        docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
-    },
-    {
-        title: "Credit Note",
-        docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
-        processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
-    },
-    {
-        title: "Self Billing Invoice",
-        docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1",
-        processId: "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0"
-    },
-    {
-        title: "Self Billing Credit Note",
-        docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0::2.1",
-        processId: "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0"
-    }
-]
+import { DOCUMENT_TYPE_PRESETS } from "@peppol/utils/document-types";
 
 const client = rc<CompanyDocumentTypes>("peppol");
 

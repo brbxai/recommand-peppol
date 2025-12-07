@@ -13,6 +13,7 @@ import { createCompanyDocumentType } from "./company-document-types";
 import { createCompanyIdentifier } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
 import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
+import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -154,8 +155,8 @@ async function setupCompanyDefaults({ company, isPlayground, useTestNetwork }: {
   await createCompanyDocumentType({
     companyDocumentType: {
       companyId: company.id,
-      docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
-      processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+      docTypeId: INVOICE_DOCUMENT_TYPE_INFO.docTypeId,
+      processId: INVOICE_DOCUMENT_TYPE_INFO.processId,
     },
     skipSmpRegistration,
     useTestNetwork,
@@ -163,8 +164,8 @@ async function setupCompanyDefaults({ company, isPlayground, useTestNetwork }: {
   await createCompanyDocumentType({
     companyDocumentType: {
       companyId: company.id,
-      docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
-      processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+      docTypeId: CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId,
+      processId: CREDIT_NOTE_DOCUMENT_TYPE_INFO.processId,
     },
     skipSmpRegistration,
     useTestNetwork,
