@@ -15,9 +15,10 @@ type CompanyFormProps = {
     onSubmit: () => Promise<void>;
     onCancel: () => void;
     isEditing?: boolean;
+    showEnterpriseNumberForBelgianCompanies?: boolean;
 };
 
-export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing = false }: CompanyFormProps) {
+export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing = false, showEnterpriseNumberForBelgianCompanies = false }: CompanyFormProps) {
     return (
         <div className="space-y-4">
             <div className="space-y-2">
@@ -85,7 +86,7 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                 />
                 {company.country === "BE" && <p className="text-xs text-pretty text-muted-foreground">For Belgian businesses, the VAT number will be used to infer the enterprise number.</p>}
             </div>
-            {company.country !== "BE" && <div className="space-y-1">
+            {(company.country !== "BE" || showEnterpriseNumberForBelgianCompanies) && <div className="space-y-1">
                 <div className="space-y-2">
                     <Label htmlFor="enterpriseNumber">Enterprise Number (Optional)</Label>
                     <Input

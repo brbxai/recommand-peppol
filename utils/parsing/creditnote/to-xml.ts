@@ -396,7 +396,8 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
           }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,
-            "cbc:Percent": item.vat.percentage,
+            // An Invoice line (BG-25) where the VAT category code (BT-151) is "Not subject to VAT" shall not contain an Invoiced item VAT rate (BT-152).	
+            ...(item.vat.category !== "O" && { "cbc:Percent": item.vat.percentage }),
             "cac:TaxScheme": {
               "cbc:ID": "VAT",
             },

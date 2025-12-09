@@ -85,6 +85,7 @@ export default function Page() {
     try {
       const response = await client[":teamId"]["companies"].$get({
         param: { teamId: activeTeam.id },
+        query: {},
       });
       const json = await response.json();
 

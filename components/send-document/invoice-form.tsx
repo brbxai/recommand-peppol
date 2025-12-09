@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
@@ -17,6 +17,7 @@ import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import { useActiveTeam } from "@core/hooks/user";
 import { AttachmentsEditor } from "./attachments-editor";
+import { isTaxExemptionReasonRequired } from "@peppol/utils/parsing/invoice/calculations";
 
 const companiesClient = rc<Companies>("peppol");
 
@@ -98,6 +99,33 @@ export function InvoiceForm({
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
+
+  const requiresExemptionReason = useMemo(() => {
+    return (invoice.lines || []).some(
+      (line) => line.vat && isTaxExemptionReasonRequired(line.vat.category)
+    );
+  }, [invoice.lines]);
+
+  useEffect(() => {
+    if (!requiresExemptionReason && invoice.vat && typeof invoice.vat === "object" && "exemptionReason" in invoice.vat) {
+      setInvoice((prev) => {
+        const { vat, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [requiresExemptionReason]);
+
+  const handleVatExemptionReasonChange = (value: string) => {
+    setInvoice((prev) => ({
+      ...prev,
+      vat: value.trim() ? ({ exemptionReason: value } as any) : undefined,
+    }));
+  };
+
+  const vatExemptionReason =
+    invoice.vat && typeof invoice.vat === "object" && "exemptionReason" in invoice.vat
+      ? (invoice.vat.exemptionReason as string) || ""
+      : "";
 
   return (
     <div className="space-y-6">
@@ -202,6 +230,20 @@ export function InvoiceForm({
           />
         </CollapsibleContent>
       </Collapsible>
+
+      {requiresExemptionReason && (
+        <div>
+          <Label htmlFor="vatExemptionReason">VAT Exemption Reason *</Label>
+          <Textarea
+            id="vatExemptionReason"
+            value={vatExemptionReason}
+            onChange={(e) => handleVatExemptionReasonChange(e.target.value)}
+            placeholder="Reason why the invoice is exempt from VAT"
+            rows={3}
+            required
+          />
+        </div>
+      )}
 
       <Collapsible open={openSections.attachments}>
         <CollapsibleTrigger
