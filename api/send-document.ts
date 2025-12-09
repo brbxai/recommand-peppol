@@ -144,6 +144,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       if (!invoice.seller) {
         invoice.seller = {
           vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
           name: c.var.company.name,
           street: c.var.company.address,
           city: c.var.company.city,
@@ -198,6 +199,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       if (!creditNote.seller) {
         creditNote.seller = {
           vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
           name: c.var.company.name,
           street: c.var.company.address,
           city: c.var.company.city,
@@ -249,6 +251,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       if (!invoice.buyer) {
         invoice.buyer = {
           vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
           name: c.var.company.name,
           street: c.var.company.address,
           city: c.var.company.city,
@@ -304,6 +307,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       if (!selfBillingCreditNote.buyer) {
         selfBillingCreditNote.buyer = {
           vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
           name: c.var.company.name,
           street: c.var.company.address,
           city: c.var.company.city,
