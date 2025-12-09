@@ -75,7 +75,6 @@ export default function CompanyDetailPage() {
         },
         json: {
           ...formData,
-          vatNumber: formData.vatNumber || undefined,
         },
       });
 

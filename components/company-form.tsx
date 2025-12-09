@@ -92,7 +92,7 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                     <Input
                         id="enterpriseNumber"
                         value={company.enterpriseNumber || ""}
-                        onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value })}
+                        onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value || null })}
                     />
                 </div>
             </div>}
