@@ -22,7 +22,12 @@ export function selfBillingCreditNoteToUBL(
     isDocumentValidationEnforced: boolean;
   }): string {
   // The self billing credit note is the same as the credit note with a different invoice type code (389 instead of 380)
-  const ublCreditNote = prebuildCreditNoteUBL({creditNote: selfBillingCreditNote, senderAddress, recipientAddress, isDocumentValidationEnforced});
+  const ublCreditNote = prebuildCreditNoteUBL({
+    creditNote: selfBillingCreditNote,
+    supplierAddress: recipientAddress,
+    customerAddress: senderAddress,
+    isDocumentValidationEnforced,
+  });
 
   // Set the CustomizationID
   ublCreditNote.CreditNote["cbc:CustomizationID"] = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0";

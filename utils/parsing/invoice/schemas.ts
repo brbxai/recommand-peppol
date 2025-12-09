@@ -49,6 +49,7 @@ export const unlimitedDecimalSchema = z.union([z.number(), z.string()])
 
 export const partySchema = z.object({
   vatNumber: z.string().nullish().openapi({ example: "BE0123456789" }),
+  enterpriseNumber: z.string().nullish().openapi({ example: "0123456789" }),
   name: z.string().openapi({ example: "Example Company" }),
   street: z.string().openapi({ example: "Example Street 1" }),
   street2: z.string().nullish().openapi({ example: "Suite 100" }),

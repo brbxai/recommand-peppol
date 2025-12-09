@@ -27,11 +27,16 @@ export function invoiceToUBL({
   recipientAddress: string;
   isDocumentValidationEnforced: boolean;
 }): string {
-  const ublInvoice = prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced});
+  const ublInvoice = prebuildInvoiceUBL({
+    invoice,
+    supplierAddress: senderAddress,
+    customerAddress: recipientAddress,
+    isDocumentValidationEnforced,
+  });
   return builder.build(ublInvoice);
 }
 
-export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced}: {invoice: Invoice, senderAddress: string, recipientAddress: string, isDocumentValidationEnforced: boolean}) {
+export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, isDocumentValidationEnforced}: {invoice: Invoice, supplierAddress: string, customerAddress: string, isDocumentValidationEnforced: boolean}) {
   const totals = calculateTotals(invoice);
   const vat = (invoice.vat && "subtotals" in invoice.vat && "totalVatAmount" in invoice.vat) ? invoice.vat : calculateVat({document: invoice, isDocumentValidationEnforced});
   const lines = invoice.lines.map((line) => ({
@@ -41,8 +46,8 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
 
   const extractedTotals = extractTotals(totals);
 
-  const sender = parsePeppolAddress(senderAddress);
-  const recipient = parsePeppolAddress(recipientAddress);
+  const supplier = parsePeppolAddress(supplierAddress);
+  const customer = parsePeppolAddress(customerAddress);
   return {
     Invoice: {
       "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
@@ -106,8 +111,8 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
       "cac:AccountingSupplierParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": sender.schemeId,
-            "#text": sender.identifier,
+            "@_schemeID": supplier.schemeId,
+            "#text": supplier.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": invoice.seller.name,
@@ -133,14 +138,15 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.seller.name,
+            ...(invoice.seller.enterpriseNumber && { "cbc:CompanyID": invoice.seller.enterpriseNumber }),
           },
         },
       },
       "cac:AccountingCustomerParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": recipient.schemeId,
-            "#text": recipient.identifier,
+            "@_schemeID": customer.schemeId,
+            "#text": customer.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": invoice.buyer.name,
@@ -166,6 +172,7 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.buyer.name,
+            ...(invoice.buyer.enterpriseNumber && { "cbc:CompanyID": invoice.buyer.enterpriseNumber }),
           },
         },
       },

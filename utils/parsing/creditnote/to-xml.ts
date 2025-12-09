@@ -28,11 +28,16 @@ export function creditNoteToUBL(
     recipientAddress: string;
     isDocumentValidationEnforced: boolean;
   }): string {
-  const ublCreditNote = prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddress, isDocumentValidationEnforced});
+  const ublCreditNote = prebuildCreditNoteUBL({
+    creditNote,
+    supplierAddress: senderAddress,
+    customerAddress: recipientAddress,
+    isDocumentValidationEnforced,
+  });
   return builder.build(ublCreditNote);
 }
 
-export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddress, isDocumentValidationEnforced}: {creditNote: CreditNote, senderAddress: string, recipientAddress: string, isDocumentValidationEnforced: boolean}) {
+export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddress, isDocumentValidationEnforced}: {creditNote: CreditNote, supplierAddress: string, customerAddress: string, isDocumentValidationEnforced: boolean}) {
   const totals = calculateTotals(creditNote);
   const vat = (creditNote.vat && "subtotals" in creditNote.vat && "totalVatAmount" in creditNote.vat) ? creditNote.vat : calculateVat({document: creditNote, isDocumentValidationEnforced});
   const lines = creditNote.lines.map((line) => ({
@@ -42,8 +47,8 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
 
   const extractedTotals = extractTotals(totals);
 
-  const sender = parsePeppolAddress(senderAddress);
-  const recipient = parsePeppolAddress(recipientAddress);
+  const supplier = parsePeppolAddress(supplierAddress);
+  const buyer = parsePeppolAddress(customerAddress);
   return {
     CreditNote: {
       "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
@@ -114,8 +119,8 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
       "cac:AccountingSupplierParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": sender.schemeId,
-            "#text": sender.identifier,
+            "@_schemeID": supplier.schemeId,
+            "#text": supplier.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": creditNote.seller.name,
@@ -141,14 +146,15 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.seller.name,
+            ...(creditNote.seller.enterpriseNumber && { "cbc:CompanyID": creditNote.seller.enterpriseNumber }),
           },
         },
       },
       "cac:AccountingCustomerParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": recipient.schemeId,
-            "#text": recipient.identifier,
+            "@_schemeID": buyer.schemeId,
+            "#text": buyer.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": creditNote.buyer.name,
@@ -174,6 +180,7 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.buyer.name,
+            ...(creditNote.buyer.enterpriseNumber && { "cbc:CompanyID": creditNote.buyer.enterpriseNumber }),
           },
         },
       },

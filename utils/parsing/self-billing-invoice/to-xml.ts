@@ -22,7 +22,12 @@ export function selfBillingInvoiceToUBL(
     isDocumentValidationEnforced: boolean;
   }): string {
   // The self billing invoice is the same as the invoice with a different invoice type code (389 instead of 380)
-  const ublInvoice = prebuildInvoiceUBL({invoice: selfBillingInvoice, senderAddress, recipientAddress, isDocumentValidationEnforced});
+  const ublInvoice = prebuildInvoiceUBL({
+    invoice: selfBillingInvoice,
+    supplierAddress: recipientAddress,
+    customerAddress: senderAddress,
+    isDocumentValidationEnforced,
+  });
 
   // Set the CustomizationID
   ublInvoice.Invoice["cbc:CustomizationID"] = "urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0";
