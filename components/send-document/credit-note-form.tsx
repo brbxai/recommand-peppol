@@ -26,12 +26,14 @@ interface CreditNoteFormProps {
   document: any;
   onChange: (document: any) => void;
   companyId: string;
+  isSelfBilling?: boolean;
 }
 
 export function CreditNoteForm({
   document,
   onChange,
   companyId,
+  isSelfBilling = false,
 }: CreditNoteFormProps) {
   const [creditNote, setCreditNote] = useState<Partial<CreditNote>>({
     creditNoteNumber: "",
@@ -52,7 +54,7 @@ export function CreditNoteForm({
   });
   const activeTeam = useActiveTeam();
 
-  // Auto-populate seller info when company changes
+  // Auto-populate company info when company changes
   useEffect(() => {
     const loadCompanyInfo = async () => {
       if (!companyId || !activeTeam?.id) return;
@@ -67,16 +69,20 @@ export function CreditNoteForm({
 
         if (json.success && json.company) {
           const company = json.company;
+          const companyInfo = {
+            vatNumber: company.vatNumber || "",
+            name: company.name,
+            street: company.address,
+            city: company.city,
+            postalZone: company.postalCode,
+            country: company.country,
+          };
+          
           setCreditNote((prev) => ({
             ...prev,
-            seller: {
-              vatNumber: company.vatNumber || "",
-              name: company.name,
-              street: company.address,
-              city: company.city,
-              postalZone: company.postalCode,
-              country: company.country,
-            },
+            ...(isSelfBilling
+              ? { buyer: companyInfo }
+              : { seller: companyInfo }),
           }));
         }
       } catch (error) {
@@ -85,7 +91,7 @@ export function CreditNoteForm({
     };
 
     loadCompanyInfo();
-  }, [companyId, activeTeam?.id]);
+  }, [companyId, activeTeam?.id, isSelfBilling]);
 
   useEffect(() => {
     onChange(creditNote);
@@ -239,7 +245,7 @@ export function CreditNoteForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("buyer")}
         >
-          <span>Buyer Information *</span>
+          <span>{isSelfBilling ? "Buyer Information (Auto-populated)" : "Buyer Information *"}</span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
           />
@@ -248,7 +254,8 @@ export function CreditNoteForm({
           <PartyForm
             party={creditNote.buyer || {}}
             onChange={(buyer) => handleFieldChange("buyer", buyer)}
-            required
+            required={!isSelfBilling}
+            disabled={isSelfBilling}
           />
         </CollapsibleContent>
       </Collapsible>
@@ -258,7 +265,7 @@ export function CreditNoteForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("seller")}
         >
-          <span>Seller Information (Auto-populated)</span>
+          <span>{isSelfBilling ? "Seller Information *" : "Seller Information (Auto-populated)"}</span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
           />
@@ -267,7 +274,8 @@ export function CreditNoteForm({
           <PartyForm
             party={creditNote.seller || {}}
             onChange={(seller) => handleFieldChange("seller", seller)}
-            disabled
+            required={isSelfBilling}
+            disabled={!isSelfBilling}
           />
         </CollapsibleContent>
       </Collapsible>

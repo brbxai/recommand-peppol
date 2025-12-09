@@ -5,6 +5,7 @@ import { toast } from "@core/components/ui/sonner";
 import { rc } from "@recommand/lib/client";
 import type { SendDocument } from "@peppol/utils/parsing/send-document";
 import type { SendDocument as SendDocumentAPI } from "@peppol/api/send-document";
+import { DocumentType } from "@peppol/utils/parsing/send-document";
 import { InvoiceForm } from "./invoice-form";
 import { CreditNoteForm } from "./credit-note-form";
 import { XmlForm } from "./xml-form";
@@ -138,6 +139,7 @@ export function DocumentForm({
             document={formData.document || {}}
             onChange={handleDocumentChange}
             companyId={selectedCompanyId}
+            isSelfBilling={formData.documentType === DocumentType.SELF_BILLING_INVOICE}
           />
         )}
         {type === "creditNote" && (
@@ -145,6 +147,7 @@ export function DocumentForm({
             document={formData.document || {}}
             onChange={handleDocumentChange}
             companyId={selectedCompanyId}
+            isSelfBilling={formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE}
           />
         )}
         {type === "xml" && (
