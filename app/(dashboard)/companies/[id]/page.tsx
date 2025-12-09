@@ -201,6 +201,7 @@ export default function CompanyDetailPage() {
               onSubmit={handleCompanyUpdate}
               onCancel={() => navigate("/companies")}
               isEditing={true}
+              showEnterpriseNumberForBelgianCompanies={true}
             />
           </CardContent>
         </Card>
