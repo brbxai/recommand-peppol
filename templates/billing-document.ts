@@ -36,7 +36,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
 
       {{#note}}
         <div class="px-8 py-4 border-b border-slate-200">
-          <p class="text-sm text-slate-700">{{note}}</p>
+          <p class="text-sm text-slate-700 whitespace-pre-wrap">{{note}}</p>
         </div>
       {{/note}}
 
@@ -90,10 +90,10 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
                 <td class="py-2 pr-3">
                   <p class="font-medium text-slate-900 leading-tight">{{name}}</p>
                   {{#description}}
-                    <p class="mt-0.5 text-[11px] text-slate-500">{{description}}</p>
+                    <p class="mt-0.5 text-[11px] text-slate-500 whitespace-pre-wrap">{{description}}</p>
                   {{/description}}
                   {{#note}}
-                    <p class="mt-0.5 text-[11px] text-slate-500 italic">{{note}}</p>
+                    <p class="mt-0.5 text-[11px] text-slate-500 italic whitespace-pre-wrap">{{note}}</p>
                   {{/note}}
                   {{#discounts}}
                     <p class="mt-0.5 text-[11px] text-slate-500">
