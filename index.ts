@@ -141,7 +141,7 @@ For additional support or questions, don't hesitate to contact our support team.
     "/openapi",
     openAPISpecs(server, specsOptions)
   );
-  server.get("/llms.txt", async (c) => {
+  server.get("/llms-full.txt", async (c) => {
     const specs = await generateSpecs(server, specsOptions, undefined, c);
     const markdown = await createMarkdownFromOpenApi(specs);
     return c.text(markdown)
