@@ -11,6 +11,9 @@ import { getBillingProfile } from "@peppol/data/billing-profile";
 import { getCompanyById, type Company } from "@peppol/data/companies";
 import { verifyIntegrationJwt } from "@peppol/data/integrations/auth";
 import { getExtendedTeam, type ExtendedTeam } from "@peppol/data/teams";
+import { getActiveSubscription } from "@peppol/data/subscriptions";
+import { isPlayground } from "@peppol/data/teams";
+import { canUseIntegrations } from "@peppol/utils/plan-validation";
 import { actionFailure } from "@recommand/lib/utils";
 import { createMiddleware } from "hono/factory";
 
@@ -167,4 +170,29 @@ export function requireIntegrationSupportedCompanyAccess() {
   return requireCompanyAccess({
     extensions: integrationSupportedAuthExtensions,
   });
+}
+
+export function requireIntegrationAccess() {
+  return createMiddleware<AuthenticatedUserContext & AuthenticatedTeamContext>(
+    async (c, next) => {
+      const team = c.var.team;
+      if (!team) {
+        return c.json(actionFailure("Team not found"), 404);
+      }
+
+      const teamIsPlayground = await isPlayground(team.id);
+      const subscription = await getActiveSubscription(team.id);
+
+      if (!canUseIntegrations(teamIsPlayground, subscription)) {
+        return c.json(
+          actionFailure(
+            "Integrations are only available on Starter, Professional, or Enterprise plans. Please upgrade your subscription to use integrations."
+          ),
+          403
+        );
+      }
+
+      await next();
+    }
+  );
 }

@@ -357,7 +357,7 @@ export const activatedIntegrations = pgTable("activated_integrations", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   manifest: jsonb("manifest").$type<IntegrationManifest>().notNull(),
-  configuration: jsonb("configuration").$type<IntegrationConfiguration>().notNull(),
+  configuration: jsonb("configuration").$type<IntegrationConfiguration>(),
   state: jsonb("state").$type<IntegrationState>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),

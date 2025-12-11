@@ -10,11 +10,18 @@ export const configurationAuthSchema = z.object({
     token: z.string().min(1),
   }).strict();
   
-  export const configurationFieldSchema = z.object({
-    id: z.string().min(1).regex(/^[a-zA-Z0-9_]+$/),
-    type: z.enum(["string"]),
-    value: z.string().min(1),
-  }).strict();
+  export const configurationFieldSchema = z.discriminatedUnion("type", [
+    z.object({
+      id: z.string().min(1).regex(/^[a-zA-Z0-9_]+$/),
+      type: z.literal("string"),
+      value: z.string().min(1),
+    }).strict(),
+    z.object({
+      id: z.string().min(1).regex(/^[a-zA-Z0-9_]+$/),
+      type: z.literal("boolean"),
+      value: z.boolean(),
+    }).strict(),
+  ]);
   
   export const configurationCapabilitySchema = z.object({
     event: integrationEventSchema,

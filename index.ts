@@ -130,10 +130,10 @@ For additional support or questions, don't hesitate to contact our support team.
           name: "Suppliers",
           description: "You can manage all suppliers (supporting data) for a team. Suppliers are used to organize and categorize your supporting data.",
         },
-        {
-          name: "Integrations",
-          description: "You can manage all activated integrations for a team. Integrations allow you to connect external services and automate workflows.",
-        },
+        // {
+        //   name: "Integrations",
+        //   description: "You can manage all activated integrations for a team. Integrations allow you to connect external services and automate workflows.",
+        // },
       ],
     },
   };

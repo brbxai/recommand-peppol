@@ -1,18 +1,21 @@
 import { activatedIntegrations, integrationTaskLogs } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNotNull, desc, asc } from "drizzle-orm";
 import { configurationSchema } from "@peppol/types/integration/configuration";
 import { stateSchema } from "@peppol/types/integration/state";
 import { type IntegrationManifest, type IntegrationConfiguration, type IntegrationState, type IntegrationEvent, taskLogSchema } from "@peppol/types/integration";
 import { UserFacingError } from "@peppol/utils/util";
 import { getCompany } from "@peppol/data/companies";
+import { getActiveSubscription } from "@peppol/data/subscriptions";
+import { isPlayground } from "@peppol/data/teams";
+import { canUseIntegrations } from "@peppol/utils/plan-validation";
 import { getIntegrationManifestFromUrl, validateManifest, postToIntegration } from "./client";
 
 export type ActivatedIntegration = typeof activatedIntegrations.$inferSelect;
 export type InsertActivatedIntegration = typeof activatedIntegrations.$inferInsert;
 
 export async function getIntegrations(teamId: string): Promise<ActivatedIntegration[]> {
-  return await db.select().from(activatedIntegrations).where(eq(activatedIntegrations.teamId, teamId));
+  return await db.select().from(activatedIntegrations).where(eq(activatedIntegrations.teamId, teamId)).orderBy(asc(sql`${activatedIntegrations.manifest}->>'name'`), asc(activatedIntegrations.createdAt));
 }
 
 export async function getIntegration(
@@ -35,7 +38,8 @@ export async function getIntegrationsByCompany(
     .from(activatedIntegrations)
     .where(
       and(eq(activatedIntegrations.teamId, teamId), eq(activatedIntegrations.companyId, companyId))
-    );
+    )
+    .orderBy(asc(sql`${activatedIntegrations.manifest}->>'name'`), asc(activatedIntegrations.createdAt));
 }
 
 function validateConfiguration(configuration: unknown): IntegrationConfiguration {
@@ -52,6 +56,39 @@ function validateState(state: unknown): IntegrationState {
     throw new UserFacingError(`Invalid state: ${result.error.errors.map(e => e.message).join(", ")}`);
   }
   return result.data;
+}
+
+function enableRequiredCapabilities(
+  manifest: IntegrationManifest,
+  configuration: IntegrationConfiguration
+): IntegrationConfiguration {
+  const requiredCapabilityEvents = new Set(
+    manifest.capabilities.filter(c => c.required).map(c => c.event)
+  );
+
+  if (requiredCapabilityEvents.size === 0) {
+    return configuration;
+  }
+
+  const capabilitiesMap = new Map(
+    configuration.capabilities.map(c => [c.event, c])
+  );
+
+  for (const requiredEvent of requiredCapabilityEvents) {
+    const existingCapability = capabilitiesMap.get(requiredEvent);
+    if (existingCapability) {
+      if (!existingCapability.enabled) {
+        capabilitiesMap.set(requiredEvent, { event: requiredEvent, enabled: true });
+      }
+    } else {
+      capabilitiesMap.set(requiredEvent, { event: requiredEvent, enabled: true });
+    }
+  }
+
+  return {
+    ...configuration,
+    capabilities: Array.from(capabilitiesMap.values()),
+  };
 }
 
 function validateConfigurationCompatibility(
@@ -125,35 +162,57 @@ export async function createIntegration(
     throw new UserFacingError("Either 'manifest' or 'url' must be provided");
   }
 
-  const configuration = validateConfiguration(integration.configuration);
+  let configuration: IntegrationConfiguration | null;
+  if (integration.configuration) {
+    configuration = validateConfiguration(integration.configuration);
+    configuration = enableRequiredCapabilities(manifest, configuration);
+    validateConfigurationCompatibility(manifest, configuration);  
+  } else {
+    configuration = null;
+  }
+  
+  const { url: _, ...integrationData } = integration;
   const state = validateState({});
 
-  validateConfigurationCompatibility(manifest, configuration);
-
-  const { url: _, ...integrationData } = integration;
-  return await db
+  const createdIntegration = await db
     .insert(activatedIntegrations)
     .values({ ...integrationData, manifest, configuration, state })
     .returning()
     .then((rows) => rows[0]);
+
+  if (configuration !== null && configuration !== undefined) {
+    try {
+      await postToIntegration({ integration: createdIntegration, event: "integration.setup" });
+    } catch (error) {
+      console.error("Failed to trigger integration.setup event after creation:", error);
+    }
+  }
+
+  return createdIntegration;
 }
 
 export async function updateIntegration(
   integration: Omit<InsertActivatedIntegration, "state"> & { id: string; }
 ): Promise<ActivatedIntegration> {
   const { id, teamId, ...updateFields } = integration;
-  
+
   const company = await getCompany(teamId, updateFields.companyId);
   if (!company) {
     throw new UserFacingError("Company not found or does not belong to the team");
   }
-  
+
+  const existingIntegration = await getIntegration(teamId, id);
+  if (!existingIntegration) {
+    throw new UserFacingError("Integration not found");
+  }
+
   const manifest = validateManifest(updateFields.manifest);
-  const configuration = validateConfiguration(updateFields.configuration);
-  
+  let configuration = validateConfiguration(updateFields.configuration);
+
+  configuration = enableRequiredCapabilities(manifest, configuration);
   validateConfigurationCompatibility(manifest, configuration);
-  
-  return await db
+
+  const updatedIntegration = await db
     .update(activatedIntegrations)
     .set({ ...updateFields, manifest, configuration })
     .where(
@@ -161,6 +220,19 @@ export async function updateIntegration(
     )
     .returning()
     .then((rows) => rows[0]);
+
+  const wasConfigurationNull = existingIntegration.configuration === null;
+  const isConfigurationNotNull = configuration !== null && configuration !== undefined;
+
+  if (wasConfigurationNull && isConfigurationNotNull) {
+    try {
+      await postToIntegration({ integration: updatedIntegration, event: "integration.setup" });
+    } catch (error) {
+      console.error("Failed to trigger integration.setup event after update:", error);
+    }
+  }
+
+  return updatedIntegration;
 }
 
 export async function updateIntegrationState(
@@ -208,7 +280,10 @@ export async function getIntegrationsWithCronEnabled(
     .select()
     .from(activatedIntegrations)
     .where(
-      sql`${activatedIntegrations.configuration}->'capabilities' @> ${sql.raw(`'${capabilityJson.replace(/'/g, "''")}'`)}::jsonb`
+      and(
+        isNotNull(activatedIntegrations.configuration),
+        sql`${activatedIntegrations.configuration}->'capabilities' @> ${sql.raw(`'${capabilityJson.replace(/'/g, "''")}'`)}::jsonb`
+      )
     );
 }
 
@@ -219,9 +294,50 @@ export async function executeCronJob(event: IntegrationEvent): Promise<void> {
 
   for (const integration of integrations) {
     try {
+      const teamIsPlayground = await isPlayground(integration.teamId);
+      const subscription = await getActiveSubscription(integration.teamId);
+      if (!canUseIntegrations(teamIsPlayground, subscription)) {
+        console.warn(`Skipping cron job ${event} for integration ${integration.id}: team does not have access to integrations`);
+        continue;
+      }
       await postToIntegration({ integration, event });
     } catch (error) {
       console.error("Failed to execute cron job", event, integration.id, error);
     }
   }
+}
+
+export type IntegrationTaskLog = typeof integrationTaskLogs.$inferSelect;
+
+export async function getIntegrationTaskLogs(
+  teamId: string,
+  integrationId: string,
+  options: {
+    page?: number;
+    limit?: number;
+  } = {}
+): Promise<{ logs: IntegrationTaskLog[]; total: number }> {
+  const { page = 1, limit = 10 } = options;
+  const offset = (page - 1) * limit;
+
+  const integration = await getIntegration(teamId, integrationId);
+  if (!integration) {
+    throw new UserFacingError("Integration not found");
+  }
+
+  const total = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(integrationTaskLogs)
+    .where(eq(integrationTaskLogs.integrationId, integrationId))
+    .then((rows) => rows[0].count);
+
+  const logs = await db
+    .select()
+    .from(integrationTaskLogs)
+    .where(eq(integrationTaskLogs.integrationId, integrationId))
+    .orderBy(desc(integrationTaskLogs.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return { logs, total };
 }
