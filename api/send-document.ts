@@ -11,7 +11,7 @@ import {
   sendInvoiceSchema,
   type Invoice,
 } from "@peppol/utils/parsing/invoice/schemas";
-import { sendAs4 } from "@peppol/data/phase4-ap/client";
+import { sendAs4, type SendAs4Response } from "@peppol/data/phase4-ap/client";
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import {
@@ -105,8 +105,8 @@ const _sendDocumentMinimal = server.post(
 
 async function _sendDocumentImplementation(c: SendDocumentContext) {
   try {
-    const jsonBody = c.req.valid("json");
-    const document = jsonBody.document;
+    const input = c.req.valid("json");
+    const document = input.document;
     const isPlayground = c.get("team").isPlayground;
     const useTestNetwork = c.get("team").useTestNetwork ?? false;
 
@@ -122,13 +122,13 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     const countryC1 = company.country;
 
     // Parse recipient
-    let recipientAddress = jsonBody.recipient;
+    let recipientAddress = input.recipient;
     if (!recipientAddress.includes(":")) {
       const numberOnlyRecipient = recipientAddress.replace(/[^0-9]/g, "");
       recipientAddress = "0208:" + numberOnlyRecipient;
     }
 
-    if (jsonBody.documentType === DocumentType.INVOICE) {
+    if (input.documentType === DocumentType.INVOICE) {
       const invoice = document as Invoice;
 
       // Check the invoice corresponds to the required zod schema
@@ -183,7 +183,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       } else {
         parsedDocument = invoice;
       }
-    } else if (jsonBody.documentType === DocumentType.CREDIT_NOTE) {
+    } else if (input.documentType === DocumentType.CREDIT_NOTE) {
       const creditNote = document as CreditNote;
 
       // Check the credit note corresponds to the required zod schema
@@ -235,7 +235,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       } else {
         parsedDocument = creditNote;
       }
-    } else if (jsonBody.documentType === DocumentType.SELF_BILLING_INVOICE) {
+    } else if (input.documentType === DocumentType.SELF_BILLING_INVOICE) {
       const invoice = document as SelfBillingInvoice;
 
       // Check the invoice corresponds to the required zod schema
@@ -291,7 +291,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       } else {
         parsedDocument = invoice;
       }
-    } else if (jsonBody.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE) {
+    } else if (input.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE) {
       const selfBillingCreditNote = document as SelfBillingCreditNote;
 
       // Check the credit note corresponds to the required zod schema
@@ -343,10 +343,10 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       } else {
         parsedDocument = selfBillingCreditNote;
       }
-    } else if (jsonBody.documentType === DocumentType.XML) {
+    } else if (input.documentType === DocumentType.XML) {
       xmlDocument = document as string;
-      if (jsonBody.doctypeId) {
-        doctypeId = jsonBody.doctypeId;
+      if (input.doctypeId) {
+        doctypeId = input.doctypeId;
       } else {
         doctypeId = detectDoctypeId(xmlDocument) || "";
         if (!doctypeId) {
@@ -397,6 +397,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
 
     const processId = getDocumentTypeInfo(type).processId;
 
+    let as4Response: SendAs4Response | null = null;
     if (isPlayground && !useTestNetwork) {
       await simulateSendAs4({
         senderId: senderAddress,
@@ -409,7 +410,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       });
       sentPeppol = true;
     } else {
-      const response = await sendAs4({
+      as4Response = await sendAs4({
         senderId: senderAddress,
         receiverId: recipientAddress,
         docTypeId: doctypeId,
@@ -418,25 +419,18 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         body: xmlDocument,
         useTestNetwork,
       });
-      const jsonResponse = await response.json();
-      if (!response.ok || !jsonResponse.overallSuccess) {
+      if (!as4Response.ok) {
         sendSystemAlert(
           "Document Sending Failed",
-          `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(jsonResponse, null, 2)}\n\`\`\``,
+          `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(as4Response, null, 2)}\n\`\`\``,
           "error"
         );
-        try {
-          // Extract sendingException.message from jsonResponse
-          const sendingException = jsonResponse.sendingException;
-          additionalPeppolFailureContext = sendingException.message;
-        } catch (error) {
-          console.error("Failed to extract sending exception message:", error);
-          additionalPeppolFailureContext =
-            "No additional context available, please contact support@recommand.eu if you could use our help.";
-        }
+        // Extract sendingException.message from jsonResponse
+        const sendingException = as4Response.sendingException;
+        additionalPeppolFailureContext = sendingException?.message ?? "No additional context available, please contact support@recommand.eu if you could use our help.";
 
         // If send over email is disabled, return an error
-        if (!jsonBody.email) {
+        if (!input.email) {
           return c.json(
             actionFailure(
               `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
@@ -450,13 +444,13 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     }
 
     // If send over email is enabled, send the email
-    if (jsonBody.email && (jsonBody.email.when === "always" || !sentPeppol)) {
-      for (const recipient of jsonBody.email.to) {
+    if (input.email && (input.email.when === "always" || !sentPeppol)) {
+      for (const recipient of input.email.to) {
         try {
           await sendDocumentEmail({
             to: recipient,
-            subject: jsonBody.email.subject,
-            htmlBody: jsonBody.email.htmlBody,
+            subject: input.email.subject,
+            htmlBody: input.email.htmlBody,
             xmlDocument: xmlDocument,
             type,
             parsedDocument: parsedDocument,
@@ -508,6 +502,10 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         type,
         parsed: parsedDocument,
         validation,
+
+        peppolMessageId: as4Response?.peppolMessageId ?? null,
+        peppolConversationId: as4Response?.peppolConversationId ?? null,
+        receivedPeppolSignalMessage: as4Response?.receivedPeppolSignalMessage ?? null,
       })
       .returning({ id: transmittedDocuments.id })
       .then((rows) => rows[0]);

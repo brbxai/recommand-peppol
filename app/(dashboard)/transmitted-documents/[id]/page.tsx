@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
-import { Loader2, Trash2, FolderArchive, ArrowDown, ArrowUp, Copy } from "lucide-react";
+import { Loader2, Trash2, FolderArchive, ArrowDown, ArrowUp, Copy, ChevronDown } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -28,6 +28,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@core/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@core/components/ui/collapsible";
 import { SyntaxHighlighter } from "@peppol/components/send-document/syntax-highlighter";
 import { ValidationDetails } from "@peppol/components/validation-details";
 import type { ValidationResponse } from "@peppol/types/validation";
@@ -644,6 +649,74 @@ export default function TransmittedDocumentDetailPage() {
                         </div>
                       )}
                     </div>
+                    {(doc.peppolMessageId || doc.peppolConversationId || doc.receivedPeppolSignalMessage) && (
+                      <Collapsible>
+                        <CollapsibleTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="w-full font-normal [&[data-state=open]>svg]:rotate-180"
+                          >
+                            <span className="text-sm font-medium">Advanced</span>
+                            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
+                            {doc.peppolMessageId && (
+                              <div className="space-y-1">
+                                <div className="text-muted-foreground">Peppol Message ID</div>
+                                <div className="font-mono text-xs break-all">{doc.peppolMessageId}</div>
+                              </div>
+                            )}
+                            {doc.peppolConversationId && (
+                              <div className="space-y-1">
+                                <div className="text-muted-foreground">Peppol Conversation ID</div>
+                                <div className="font-mono text-xs break-all">{doc.peppolConversationId}</div>
+                              </div>
+                            )}
+                            {doc.receivedPeppolSignalMessage && (
+                              <div className="space-y-1">
+                                <div className="text-muted-foreground">Received Peppol Signal Message</div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (!doc.receivedPeppolSignalMessage) return;
+                                      const blob = new Blob([doc.receivedPeppolSignalMessage], { type: "application/xml" });
+                                      const url = window.URL.createObjectURL(blob);
+                                      const link = window.document.createElement("a");
+                                      link.href = url;
+                                      link.download = `received-peppol-signal-message-${doc.id}.xml`;
+                                      window.document.body.appendChild(link);
+                                      link.click();
+                                      window.document.body.removeChild(link);
+                                      window.URL.revokeObjectURL(url);
+                                      toast.success("XML downloaded");
+                                    }}
+                                  >
+                                    <ArrowDown className="h-4 w-4 mr-2" />
+                                    Download XML
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (!doc.receivedPeppolSignalMessage) return;
+                                      navigator.clipboard.writeText(doc.receivedPeppolSignalMessage);
+                                      toast.success("XML copied to clipboard");
+                                    }}
+                                  >
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy XML
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                   </div>
                   </TabsContent>
                   <TabsContent value="json">

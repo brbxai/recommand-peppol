@@ -273,6 +273,10 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   parsed: jsonb("parsed").$type<Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote>(),
   validation: jsonb("validation").$type<z.infer<typeof validationResponse>>(),
 
+  peppolMessageId: text("peppol_message_id"),
+  peppolConversationId: text("peppol_conversation_id"),
+  receivedPeppolSignalMessage: text("received_peppol_signal_message"),
+
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),
