@@ -1,7 +1,7 @@
 import { UserFacingError } from "./util";
 
 type DocumentTypeInfo = {
-    type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote";
+    type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "invoiceResponseTransaction" | "messageLevelResponseTransaction";
     title: string;
     docTypeId: string;
     processId: string;
@@ -36,11 +36,27 @@ export const SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
     processId: "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0"
 };
 
+export const INVOICE_RESPONSE_TRANSACTION_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
+    type: "invoiceResponseTransaction",
+    title: "Invoice Response Transaction",
+    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:ApplicationResponse-2::ApplicationResponse##urn:fdc:peppol.eu:poacc:trns:invoice_response:3::2.1",
+    processId: "urn:fdc:peppol.eu:poacc:bis:invoice_response:3"
+};
+
+export const MESSAGE_LEVEL_RESPONSE_TRANSACTION_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
+    type: "messageLevelResponseTransaction",
+    title: "Message Level Response Transaction",
+    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:ApplicationResponse-2::ApplicationResponse##urn:fdc:peppol.eu:poacc:trns:mlr:3::2.1",
+    processId: "urn:fdc:peppol.eu:poacc:bis:mlr:3"
+};
+
 export const DOCUMENT_TYPE_PRESETS: DocumentTypeInfo[] = [
     INVOICE_DOCUMENT_TYPE_INFO,
     CREDIT_NOTE_DOCUMENT_TYPE_INFO,
     SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO,
     SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO,
+    INVOICE_RESPONSE_TRANSACTION_DOCUMENT_TYPE_INFO,
+    MESSAGE_LEVEL_RESPONSE_TRANSACTION_DOCUMENT_TYPE_INFO,
 ];
 
 
