@@ -1,6 +1,7 @@
 import type { TransmittedDocument } from "@peppol/data/transmitted-documents";
 import { BILLING_DOCUMENT_TEMPLATE } from "@peppol/templates/billing-document";
 import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
+import { getUnitCodeName } from "@peppol/utils/unit-codes";
 
 type AnyParsedDocument =
   | import("@peppol/utils/parsing/invoice/schemas").Invoice
@@ -22,6 +23,7 @@ type TemplateLine = {
   note?: string | null;
   quantity: string;
   unitCode: string;
+  unitCodeName: string;
   netPriceAmount: string;
   vatPercentage: string;
   netAmount: string;
@@ -139,30 +141,34 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     ? (parsed as any).lines
     : [];
 
-  const lines: TemplateLine[] = linesRaw.map((line, index) => ({
-    id: line.id ?? null,
-    name: line.name ?? "",
-    description: line.description ?? null,
-    note: line.note ?? null,
-    quantity: String(line.quantity ?? ""),
-    unitCode: line.unitCode ?? "",
-    netPriceAmount: String(line.netPriceAmount ?? ""),
-    vatPercentage: line.vat?.percentage
-      ? String(line.vat.percentage)
-      : "",
-    netAmount: line.netAmount ? String(line.netAmount) : "",
-    discounts: Array.isArray(line.discounts) && line.discounts.length > 0
-      ? line.discounts.map((discount: any) => ({
-          amount: String(discount.amount ?? ""),
-        }))
-      : undefined,
-    surcharges: Array.isArray(line.surcharges) && line.surcharges.length > 0
-      ? line.surcharges.map((surcharge: any) => ({
-          amount: String(surcharge.amount ?? ""),
-        }))
-      : undefined,
-    // Mustache doesn't support @index, so we synthesise index+1 when building data
-  }));
+  const lines: TemplateLine[] = linesRaw.map((line, index) => {
+    const unitCode = line.unitCode ?? "";
+    return {
+      id: line.id ?? null,
+      name: line.name ?? "",
+      description: line.description ?? null,
+      note: line.note ?? null,
+      quantity: String(line.quantity ?? ""),
+      unitCode,
+      unitCodeName: getUnitCodeName(unitCode),
+      netPriceAmount: String(line.netPriceAmount ?? ""),
+      vatPercentage: line.vat?.percentage
+        ? String(line.vat.percentage)
+        : "",
+      netAmount: line.netAmount ? String(line.netAmount) : "",
+      discounts: Array.isArray(line.discounts) && line.discounts.length > 0
+        ? line.discounts.map((discount: any) => ({
+            amount: String(discount.amount ?? ""),
+          }))
+        : undefined,
+      surcharges: Array.isArray(line.surcharges) && line.surcharges.length > 0
+        ? line.surcharges.map((surcharge: any) => ({
+            amount: String(surcharge.amount ?? ""),
+          }))
+        : undefined,
+      // Mustache doesn't support @index, so we synthesise index+1 when building data
+    };
+  });
 
   // Inject index+1 into each line for template display
   (lines as any).forEach((line: any, index: number) => {

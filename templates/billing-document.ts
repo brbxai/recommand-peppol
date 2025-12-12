@@ -109,7 +109,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
                   {{/surcharges}}
                 </td>
                 <td class="py-2 pr-3 text-right font-mono text-[11px] whitespace-nowrap">
-                  {{quantity}} {{unitCode}}
+                  {{quantity}} {{unitCodeName}}
                 </td>
                 <td class="py-2 pr-3 text-right font-mono text-[11px] whitespace-nowrap">
                   {{netPriceAmount}}
