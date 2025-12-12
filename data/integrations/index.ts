@@ -192,7 +192,7 @@ export async function createIntegration(
 }
 
 export async function updateIntegration(
-  integration: Omit<InsertActivatedIntegration, "state"> & { id: string; }
+  integration: Partial<Omit<InsertActivatedIntegration, "state">> & { id: string; teamId: string; companyId: string; configuration: IntegrationConfiguration}
 ): Promise<ActivatedIntegration> {
   const { id, teamId, ...updateFields } = integration;
 
@@ -206,7 +206,7 @@ export async function updateIntegration(
     throw new UserFacingError("Integration not found");
   }
 
-  const manifest = validateManifest(updateFields.manifest);
+  const manifest = updateFields.manifest ? validateManifest(updateFields.manifest) : existingIntegration.manifest;
   let configuration = validateConfiguration(updateFields.configuration);
 
   configuration = enableRequiredCapabilities(manifest, configuration);

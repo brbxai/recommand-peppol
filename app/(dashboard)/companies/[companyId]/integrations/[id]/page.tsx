@@ -172,7 +172,6 @@ export default function IntegrationDetailPage() {
         },
         json: {
           companyId: integration.companyId,
-          manifest: integration.manifest as any,
           configuration: integration.configuration,
         },
       });

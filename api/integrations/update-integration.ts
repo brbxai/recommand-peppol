@@ -36,7 +36,6 @@ const updateIntegrationParamSchema = z.object({
 
 const updateIntegrationJsonBodySchema = z.object({
     companyId: z.string(),
-    manifest: manifestSchema,
     configuration: configurationSchema,
 }).strict();
 
