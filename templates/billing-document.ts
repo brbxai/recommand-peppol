@@ -158,20 +158,24 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
           </div>
           {{#vatSubtotals}}
             {{#vatSubtotals}}
-              {{#exemptionReasonCode}}
-                <div class="py-1 pl-4 text-[11px] text-slate-500">
-                  <span class="font-medium">{{percentage}}% {{category}}:</span>
-                  <span class="ml-2">Exemption code: {{exemptionReasonCode}}</span>
+              <div class="py-1 pl-4 text-[11px]">
+                <div class="flex justify-between">
+                  <span class="text-slate-500">
+                    <span class="font-medium">{{percentage}}% {{category}}</span>
+                    {{#exemptionReasonCode}}
+                      <span class="ml-2 text-slate-400">(Exemption: {{exemptionReasonCode}})</span>
+                    {{/exemptionReasonCode}}
+                    {{^exemptionReasonCode}}
+                      {{#exemptionReason}}
+                        <span class="ml-2 text-slate-400">({{exemptionReason}})</span>
+                      {{/exemptionReason}}
+                    {{/exemptionReasonCode}}
+                  </span>
+                  <span class="font-mono text-slate-500">
+                    {{vatAmount}} {{currency}}
+                  </span>
                 </div>
-              {{/exemptionReasonCode}}
-              {{^exemptionReasonCode}}
-                {{#exemptionReason}}
-                  <div class="py-1 pl-4 text-[11px] text-slate-500">
-                    <span class="font-medium">{{percentage}}% {{category}}:</span>
-                    <span class="ml-2">{{exemptionReason}}</span>
-                  </div>
-                {{/exemptionReason}}
-              {{/exemptionReasonCode}}
+              </div>
             {{/vatSubtotals}}
           {{/vatSubtotals}}
           <div class="flex justify-between py-2 mt-2 border-t border-slate-200 font-semibold">
