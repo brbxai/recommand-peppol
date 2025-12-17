@@ -359,6 +359,12 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
           "@_currencyID": invoice.currency,
           "#text": item.netAmount,
         },
+        ...(item.documentReference && {
+          "cac:DocumentReference": {
+            "cbc:ID": item.documentReference,
+            "cbc:DocumentTypeCode": "130",
+          },
+        }),
         ...((item.discounts || item.surcharges) && {
           "cac:AllowanceCharge": [
             ...(item.discounts && item.discounts.map((discount) => ({
@@ -411,6 +417,12 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
               "cbc:ID": "VAT",
             },
           },
+          ...((item.additionalItemProperties && item.additionalItemProperties.length > 0) && {
+            "cac:AdditionalItemProperty": item.additionalItemProperties.map((property) => ({
+              "cbc:Name": property.name,
+              "cbc:Value": property.value,
+            })),
+          }),
         },
         "cac:Price": {
           "cbc:PriceAmount": {

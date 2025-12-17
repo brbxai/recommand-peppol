@@ -134,6 +134,11 @@ export const lineSurchargeSchema = z.object({
 .refine((data) => data.reasonCode || data.reason, { message: "Either reason or reasonCode must be provided." })
 .openapi({ ref: "LineSurcharge" });
 
+export const additionalItemPropertySchema = z.object({
+  name: z.string().openapi({ example: "Color" }),
+  value: z.string().openapi({ example: "Red" }),
+}).openapi({ ref: "AdditionalItemProperty" });
+
 export const lineSchema = z.object({
   id: z.string().nullish().openapi({ example: "1", description: "A line number. If not provided, it will be calculated automatically." }),
   name: z.string().default("").openapi({ example: "Consulting Services" }),
@@ -145,6 +150,8 @@ export const lineSchema = z.object({
     scheme: z.string().openapi({ example: "0160" }),
     identifier: z.string().openapi({ example: "10986700" }),
   }).nullish().openapi({ description: "The standard identifier of the item based on a registered scheme. Schemes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/ICD/)." }),
+  documentReference: z.string().nullish().openapi({ example: "INV-2024-001", description: "A reference to a related document, mostly used to refer to a related invoice." }),
+  additionalItemProperties: z.array(additionalItemPropertySchema).nullish().openapi({ description: "Optional additional item properties" }),
   originCountry: z.string().length(2, 'Country code must be in ISO 3166-1:Alpha2 format').nullish().openapi({ example: "BE", description: "The country of origin of the item." }),
   quantity: unlimitedDecimalSchema.default("1.00"),
   unitCode: z.string().default("C62").openapi({ example: "HUR", description: "Recommended unit codes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNECERec20/)." }),

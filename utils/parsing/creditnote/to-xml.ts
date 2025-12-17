@@ -367,6 +367,12 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
           "@_currencyID": creditNote.currency,
           "#text": item.netAmount,
         },
+        ...(item.documentReference && {
+          "cac:DocumentReference": {
+            "cbc:ID": item.documentReference,
+            "cbc:DocumentTypeCode": "130",
+          },
+        }),
         ...((item.discounts || item.surcharges) && {
           "cac:AllowanceCharge": [
             ...(item.discounts && item.discounts.map((discount) => ({
@@ -419,6 +425,12 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
               "cbc:ID": "VAT",
             },
           },
+          ...((item.additionalItemProperties && item.additionalItemProperties.length > 0) && {
+            "cac:AdditionalItemProperty": item.additionalItemProperties.map((property) => ({
+              "cbc:Name": property.name,
+              "cbc:Value": property.value,
+            })),
+          }),
         },
         "cac:Price": {
           "cbc:PriceAmount": {

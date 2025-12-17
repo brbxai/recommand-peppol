@@ -13,7 +13,8 @@ const parser = new XMLParser({
       name === "TaxSubtotal" ||
       name === "PartyIdentification" ||
       name === "AdditionalDocumentReference" ||
-      name === "AllowanceCharge";
+      name === "AllowanceCharge" ||
+      name === "AdditionalItemProperty";
   },
   parseAttributeValue: false,
   parseTagValue: false,
@@ -125,6 +126,11 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
       scheme: getTextContent(line.Item.StandardItemIdentification.ID["@_schemeID"]),
       identifier: getTextContent(line.Item.StandardItemIdentification.ID["#text"]),
     } : null,
+    documentReference: getNullableTextContent(line.DocumentReference?.ID),
+    additionalItemProperties: (line.Item?.AdditionalItemProperty || []).map((property: any) => ({
+      name: getTextContent(property.Name),
+      value: getTextContent(property.Value),
+    })),
     originCountry: getNullableTextContent(line.Item?.OriginCountry?.IdentificationCode),
     quantity: getNumberContent(line.InvoicedQuantity),
     unitCode: getTextContent(line.InvoicedQuantity?.["@_unitCode"]),
