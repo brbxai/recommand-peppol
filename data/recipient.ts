@@ -3,6 +3,7 @@ import { PARTICIPANT_SCHEME, DOCUMENT_SCHEME } from "./phoss-smp/service-metadat
 import { XMLParser } from "fast-xml-parser";
 import { base32Encode } from "@peppol/utils/base32";
 import { resolveNaptr } from "@peppol/utils/naptr";
+import { getDocumentTypeInfo } from "@peppol/utils/document-types";
 
 const SML_ZONE = "edelivery.tech.ec.europa.eu";
 const SML_TEST_ZONE = "acc.edelivery.tech.ec.europa.eu";
@@ -127,6 +128,12 @@ export async function verifyRecipient({recipientAddress, useTestNetwork}: {recip
 
 export async function verifyDocumentSupport({recipientAddress, documentType, useTestNetwork}: {recipientAddress: string, documentType: string, useTestNetwork: boolean}) {
   const smpUrl = await getSmpUrl({recipientAddress, useTestNetwork});
+
+  // Map the document type to the Peppol document type code, if not possible, just use the document type as is
+  try{
+    const peppolDocumentTypeInfo = getDocumentTypeInfo(documentType);
+    documentType = peppolDocumentTypeInfo?.docTypeId;
+  } catch (error) {}
 
   // Encode the document type for URL safety
   const encodedDocumentType = encodeURIComponent(documentType);
