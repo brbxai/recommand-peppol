@@ -34,6 +34,10 @@ const markAsReadParamSchema = z.object({
     }),
 });
 
+const markAsReadParamSchemaWithTeamId = markAsReadParamSchema.extend({
+    teamId: z.string(),
+});
+
 const markAsReadJsonBodySchema = z.object({
     read: z.boolean().optional().default(true).openapi({
         description: "Whether to mark the document as read (true) or unread (false). If not provided, defaults to true.",
@@ -41,7 +45,7 @@ const markAsReadJsonBodySchema = z.object({
     }),
 }).optional();
 
-type MarkAsReadContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof markAsReadParamSchema>, json: z.input<typeof markAsReadJsonBodySchema> }, out: { param: z.infer<typeof markAsReadParamSchema>, json: z.infer<typeof markAsReadJsonBodySchema> } }>;
+type MarkAsReadContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof markAsReadParamSchemaWithTeamId>, json: z.input<typeof markAsReadJsonBodySchema> }, out: { param: z.infer<typeof markAsReadParamSchemaWithTeamId>, json: z.infer<typeof markAsReadJsonBodySchema> } }>;
 
 const _markAsReadMinimal = server.post(
     "/documents/:documentId/mark-as-read",
@@ -56,11 +60,7 @@ const _markAsRead = server.post(
     "/:teamId/documents/:documentId/markAsRead",
     requireIntegrationSupportedTeamAccess(),
     describeRoute({hide: true}),
-    zodValidator("param", markAsReadParamSchema.extend({
-        teamId: z.string().openapi({
-            description: "The ID of the team",
-        })
-    })),
+    zodValidator("param", markAsReadParamSchemaWithTeamId),
     zodValidator("json", markAsReadJsonBodySchema),
     _markAsReadImplementation,
 );

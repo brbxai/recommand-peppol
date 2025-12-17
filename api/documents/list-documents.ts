@@ -64,6 +64,18 @@ const getTransmittedDocumentsQuerySchema = z.object({
     description: "Filter documents by type",
     example: "invoice",
   }),
+  from: z.coerce.date().optional().openapi({
+    description: "Filter documents created from this timestamp (inclusive). ISO 8601 format.",
+    example: "2024-01-01T00:00:00Z",
+  }),
+  to: z.coerce.date().optional().openapi({
+    description: "Filter documents created until this timestamp (exclusive). ISO 8601 format.",
+    example: "2024-12-31T23:59:59Z",
+  }),
+  isUnread: z.enum(["true", "false"]).optional().openapi({
+    description: "Filter documents by read status: true for unread documents (readAt is null), false for read documents.",
+    example: "true",
+  }),
 });
 
 type GetTransmittedDocumentsContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, {in: { query: z.input<typeof getTransmittedDocumentsQuerySchema> }, out: { query: z.infer<typeof getTransmittedDocumentsQuerySchema> } }>;
@@ -86,7 +98,7 @@ const _transmittedDocuments = server.get(
 
 async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocumentsContext) {
   try {
-    const { page, limit, companyId, direction, search, type } = c.req.valid("query");
+    const { page, limit, companyId, direction, search, type, from, to, isUnread } = c.req.valid("query");
     const { documents, total } = await getTransmittedDocuments(
       c.var.team.id,
       {
@@ -100,6 +112,9 @@ async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocuments
         direction,
         search,
         type,
+        from,
+        to,
+        isUnread: isUnread === "true" ? true : isUnread === "false" ? false : undefined,
       }
     );
 
