@@ -110,18 +110,15 @@ export default function TransmittedDocumentDetailPage() {
       try {
         setIsPreviewLoading(true);
         const previewResponse =
-          await client[":teamId"]["documents"][":documentId"]["render"].$get({
+          await client[":teamId"]["documents"][":documentId"]["render"][":type"].$get({
             param: {
               teamId: activeTeam.id,
               documentId: doc.id,
+              type: "html",
             },
           });
-        const previewJson = await previewResponse.json();
-        if (previewJson.success && typeof previewJson.html === "string") {
-          setPreviewHtml(previewJson.html);
-        } else {
-          setPreviewHtml(null);
-        }
+        const html = await previewResponse.text();
+        setPreviewHtml(html);
       } catch (error) {
         console.error("Failed to load rendered document HTML:", error);
         setPreviewHtml(null);
