@@ -140,6 +140,11 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
             "cbc:RegistrationName": invoice.seller.name,
             ...(invoice.seller.enterpriseNumber && { "cbc:CompanyID": invoice.seller.enterpriseNumber }),
           },
+          "cac:Contact": {
+            "cbc:Name": invoice.seller.name,
+            ...(invoice.seller.phone && { "cbc:Telephone": invoice.seller.phone }),
+            ...(invoice.seller.email && { "cbc:ElectronicMail": invoice.seller.email }),
+          },
         },
       },
       "cac:AccountingCustomerParty": {
@@ -173,6 +178,11 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.buyer.name,
             ...(invoice.buyer.enterpriseNumber && { "cbc:CompanyID": invoice.buyer.enterpriseNumber }),
+          },
+          "cac:Contact": {
+            "cbc:Name": invoice.buyer.name,
+            ...(invoice.buyer.phone && { "cbc:Telephone": invoice.buyer.phone }),
+            ...(invoice.buyer.email && { "cbc:ElectronicMail": invoice.buyer.email }),
           },
         },
       },

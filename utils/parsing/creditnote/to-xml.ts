@@ -148,6 +148,11 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
             "cbc:RegistrationName": creditNote.seller.name,
             ...(creditNote.seller.enterpriseNumber && { "cbc:CompanyID": creditNote.seller.enterpriseNumber }),
           },
+          "cac:Contact": {
+            "cbc:Name": creditNote.seller.name,
+            ...(creditNote.seller.phone && { "cbc:Telephone": creditNote.seller.phone }),
+            ...(creditNote.seller.email && { "cbc:ElectronicMail": creditNote.seller.email }),
+          },
         },
       },
       "cac:AccountingCustomerParty": {
@@ -181,6 +186,11 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.buyer.name,
             ...(creditNote.buyer.enterpriseNumber && { "cbc:CompanyID": creditNote.buyer.enterpriseNumber }),
+          },
+          "cac:Contact": {
+            "cbc:Name": creditNote.buyer.name,
+            ...(creditNote.buyer.phone && { "cbc:Telephone": creditNote.buyer.phone }),
+            ...(creditNote.buyer.email && { "cbc:ElectronicMail": creditNote.buyer.email }),
           },
         },
       },

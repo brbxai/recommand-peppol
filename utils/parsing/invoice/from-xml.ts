@@ -61,6 +61,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     postalZone: getTextContent(sellerParty.PostalAddress?.PostalZone),
     country: getTextContent(sellerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: sellerParty.PartyTaxScheme?.CompanyID ? getTextContent(sellerParty.PartyTaxScheme?.CompanyID) : null,
+    email: getNullableTextContent(sellerParty.Contact?.ElectronicMail),
+    phone: getNullableTextContent(sellerParty.Contact?.Telephone),
   };
 
   // Extract buyer information
@@ -77,6 +79,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     postalZone: getTextContent(buyerParty.PostalAddress?.PostalZone),
     country: getTextContent(buyerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: buyerParty.PartyTaxScheme?.CompanyID ? getTextContent(buyerParty.PartyTaxScheme?.CompanyID) : null,
+    email: getNullableTextContent(buyerParty.Contact?.ElectronicMail),
+    phone: getNullableTextContent(buyerParty.Contact?.Telephone),
   };
 
   // Extract delivery information
