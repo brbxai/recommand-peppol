@@ -58,9 +58,12 @@ export const partySchema = z.object({
   country: z.string().length(2, 'Country code must be in ISO 3166-1:Alpha2 format').openapi({ example: "BE" }),
   email: z.string().email().nullish().openapi({ example: "email@example.com", description: "The email address of the party. If not provided, the email address will not be included in the document." }),
   phone: z.string()
-    .regex(/^\d+$/, { message: "The phone number should only contain digits" })
+    .refine(
+      (val) => (val.match(/\d/g) || []).length >= 3,
+      { message: "The phone number should contain at least 3 digits" }
+    )
     .nullish()
-    .openapi({ example: "0032123456789", description: "The phone number of the party, digits only. If not provided, the phone number will not be included in the document." }),
+    .openapi({example: "887 654 321", description: "The phone number of the party. Must contain at least 3 digits. If not provided, the phone number will not be included in the document."}),
 }).openapi({ ref: "Party" });
 
 export const deliverySchema = z.object({
