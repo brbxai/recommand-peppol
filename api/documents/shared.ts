@@ -29,4 +29,7 @@ export const transmittedDocumentResponse = z.object({
     sentOverEmail: z.boolean(),
     emailRecipients: z.array(z.string()),
     labels: z.array(labelResponse.omit({ teamId: true, createdAt: true, updatedAt: true })),
+    peppolMessageId: z.string().nullable(),
+    peppolConversationId: z.string().nullable(),
+    receivedPeppolSignalMessage: z.string().nullable(),
 });

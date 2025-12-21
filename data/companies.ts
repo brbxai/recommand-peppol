@@ -1,6 +1,6 @@
 import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, or, isNull } from "drizzle-orm";
+import { eq, and, or, isNull, asc } from "drizzle-orm";
 import { unregisterCompanyRegistrations, upsertCompanyRegistrations } from "./phoss-smp";
 import {
   cleanEnterpriseNumber,
@@ -41,7 +41,7 @@ export async function getCompanies(
     }
   }
   
-  return await db.select().from(companies).where(and(...conditions));
+  return await db.select().from(companies).where(and(...conditions)).orderBy(asc(companies.name));
 }
 
 export async function getCompany(

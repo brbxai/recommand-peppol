@@ -14,7 +14,8 @@ const parser = new XMLParser({
            name === "PartyIdentification" ||
            name === "AdditionalDocumentReference" ||
            name === "BillingReference" ||
-           name === "AllowanceCharge";
+           name === "AllowanceCharge" ||
+           name === "AdditionalItemProperty";
   },
   parseAttributeValue: false,
   parseTagValue: false,
@@ -65,6 +66,8 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     postalZone: getTextContent(sellerParty.PostalAddress?.PostalZone),
     country: getTextContent(sellerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: sellerParty.PartyTaxScheme?.CompanyID ? getTextContent(sellerParty.PartyTaxScheme?.CompanyID) : null,
+    email: getNullableTextContent(sellerParty.Contact?.ElectronicMail),
+    phone: getNullableTextContent(sellerParty.Contact?.Telephone),
   };
 
   // Extract buyer information
@@ -81,6 +84,8 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     postalZone: getTextContent(buyerParty.PostalAddress?.PostalZone),
     country: getTextContent(buyerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: buyerParty.PartyTaxScheme?.CompanyID ? getTextContent(buyerParty.PartyTaxScheme?.CompanyID) : null,
+    email: getNullableTextContent(buyerParty.Contact?.ElectronicMail),
+    phone: getNullableTextContent(buyerParty.Contact?.Telephone),
   };
 
   // Extract delivery information
@@ -125,6 +130,11 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
       scheme: getTextContent(line.Item.StandardItemIdentification.ID["@_schemeID"]),
       identifier: getTextContent(line.Item.StandardItemIdentification.ID["#text"]),
     } : null,
+    documentReference: getNullableTextContent(line.DocumentReference?.ID),
+    additionalItemProperties: (line.Item?.AdditionalItemProperty || []).map((property: any) => ({
+      name: getTextContent(property.Name),
+      value: getTextContent(property.Value),
+    })),
     originCountry: getNullableTextContent(line.Item?.OriginCountry?.IdentificationCode),
     quantity: getNumberContent(line.CreditedQuantity),
     unitCode: getTextContent(line.CreditedQuantity?.["@_unitCode"]),

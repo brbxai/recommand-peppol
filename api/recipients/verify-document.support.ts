@@ -8,7 +8,7 @@ import { describeRoute } from "hono-openapi";
 import {
     describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
-import { requireIntegrationSupportedAuth, requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { verifyDocumentSupport } from "@peppol/data/recipient";
 import { getTeamExtension } from "@peppol/data/teams";
 
@@ -29,7 +29,7 @@ const verifyDocumentSupportRouteDescription = describeRoute({
 
 const verifyDocumentSupportJsonBodySchema = z.object({
     peppolAddress: z.string().openapi({ description: "The Peppol address of the recipient to verify.", example: "0208:987654321" }),
-    documentType: z.string().openapi({ description: "The document type to verify.", example: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1" }),
+    documentType: z.string().openapi({ description: "The document type to verify. You can use a full document type ID, or the simplified versions (e.g. \"invoice\", \"creditNote\", \"selfBillingInvoice\", \"selfBillingCreditNote\", ...).", example: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1" }),
 });
 
 type VerifyDocumentSupportContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { json: z.input<typeof verifyDocumentSupportJsonBodySchema> }, out: { json: z.infer<typeof verifyDocumentSupportJsonBodySchema> } }>;

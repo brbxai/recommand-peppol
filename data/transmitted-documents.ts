@@ -1,6 +1,6 @@
 import { supportedDocumentTypeEnum, transmittedDocuments, transmittedDocumentLabels, labels } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, sql, desc, isNull, inArray, or, ilike, SQL } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, isNotNull, inArray, or, ilike, SQL, gte, lt } from "drizzle-orm";
 import type { Label } from "./labels";
 
 export type TransmittedDocument = typeof transmittedDocuments.$inferSelect;
@@ -55,9 +55,12 @@ export async function getTransmittedDocuments(
     direction?: "incoming" | "outgoing";
     search?: string;
     type?: (typeof supportedDocumentTypeEnum.enumValues)[number];
+    from?: Date;
+    to?: Date;
+    isUnread?: boolean;
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
-  const { page = 1, limit = 10, companyId, direction, search, type } = options;
+  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread } = options;
   const offset = (page - 1) * limit;
 
   // Build the where clause
@@ -82,6 +85,19 @@ export async function getTransmittedDocuments(
         ilike(transmittedDocuments.countryC1, `%${search}%`)
       ) as SQL
     );
+  }
+  if (from) {
+    whereClause.push(gte(transmittedDocuments.createdAt, from));
+  }
+  if (to) {
+    whereClause.push(lt(transmittedDocuments.createdAt, to));
+  }
+  if (isUnread !== undefined) {
+    if (isUnread) {
+      whereClause.push(isNull(transmittedDocuments.readAt));
+    } else {
+      whereClause.push(isNotNull(transmittedDocuments.readAt));
+    }
   }
 
   // Get total count
@@ -112,6 +128,9 @@ export async function getTransmittedDocuments(
       emailRecipients: transmittedDocuments.emailRecipients,
       parsed: transmittedDocuments.parsed,
       validation: transmittedDocuments.validation,
+      peppolMessageId: transmittedDocuments.peppolMessageId,
+      peppolConversationId: transmittedDocuments.peppolConversationId,
+      receivedPeppolSignalMessage: transmittedDocuments.receivedPeppolSignalMessage,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
@@ -181,6 +200,9 @@ export async function getInbox(
       sentOverEmail: transmittedDocuments.sentOverEmail,
       emailRecipients: transmittedDocuments.emailRecipients,
       validation: transmittedDocuments.validation,
+      peppolMessageId: transmittedDocuments.peppolMessageId,
+      peppolConversationId: transmittedDocuments.peppolConversationId,
+      receivedPeppolSignalMessage: transmittedDocuments.receivedPeppolSignalMessage,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))

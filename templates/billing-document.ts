@@ -36,7 +36,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
 
       {{#note}}
         <div class="px-8 py-4 border-b border-slate-200">
-          <p class="text-sm text-slate-700">{{note}}</p>
+          <p class="text-sm text-slate-700 whitespace-pre-wrap">{{note}}</p>
         </div>
       {{/note}}
 
@@ -90,10 +90,10 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
                 <td class="py-2 pr-3">
                   <p class="font-medium text-slate-900 leading-tight">{{name}}</p>
                   {{#description}}
-                    <p class="mt-0.5 text-[11px] text-slate-500">{{description}}</p>
+                    <p class="mt-0.5 text-[11px] text-slate-500 whitespace-pre-wrap">{{description}}</p>
                   {{/description}}
                   {{#note}}
-                    <p class="mt-0.5 text-[11px] text-slate-500 italic">{{note}}</p>
+                    <p class="mt-0.5 text-[11px] text-slate-500 italic whitespace-pre-wrap">{{note}}</p>
                   {{/note}}
                   {{#discounts}}
                     <p class="mt-0.5 text-[11px] text-slate-500">
@@ -109,7 +109,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
                   {{/surcharges}}
                 </td>
                 <td class="py-2 pr-3 text-right font-mono text-[11px] whitespace-nowrap">
-                  {{quantity}} {{unitCode}}
+                  {{quantity}} {{unitCodeName}}
                 </td>
                 <td class="py-2 pr-3 text-right font-mono text-[11px] whitespace-nowrap">
                   {{netPriceAmount}}
@@ -158,20 +158,24 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
           </div>
           {{#vatSubtotals}}
             {{#vatSubtotals}}
-              {{#exemptionReasonCode}}
-                <div class="py-1 pl-4 text-[11px] text-slate-500">
-                  <span class="font-medium">{{percentage}}% {{category}}:</span>
-                  <span class="ml-2">Exemption code: {{exemptionReasonCode}}</span>
+              <div class="py-1 pl-4 text-[11px]">
+                <div class="flex justify-between">
+                  <span class="text-slate-500">
+                    <span class="font-medium">{{percentage}}% {{category}}</span>
+                    {{#exemptionReasonCode}}
+                      <span class="ml-2 text-slate-400">(Exemption: {{exemptionReasonCode}})</span>
+                    {{/exemptionReasonCode}}
+                    {{^exemptionReasonCode}}
+                      {{#exemptionReason}}
+                        <span class="ml-2 text-slate-400">({{exemptionReason}})</span>
+                      {{/exemptionReason}}
+                    {{/exemptionReasonCode}}
+                  </span>
+                  <span class="font-mono text-slate-500">
+                    {{vatAmount}} {{currency}}
+                  </span>
                 </div>
-              {{/exemptionReasonCode}}
-              {{^exemptionReasonCode}}
-                {{#exemptionReason}}
-                  <div class="py-1 pl-4 text-[11px] text-slate-500">
-                    <span class="font-medium">{{percentage}}% {{category}}:</span>
-                    <span class="ml-2">{{exemptionReason}}</span>
-                  </div>
-                {{/exemptionReason}}
-              {{/exemptionReasonCode}}
+              </div>
             {{/vatSubtotals}}
           {{/vatSubtotals}}
           <div class="flex justify-between py-2 mt-2 border-t border-slate-200 font-semibold">

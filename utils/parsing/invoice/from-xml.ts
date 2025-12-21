@@ -13,7 +13,8 @@ const parser = new XMLParser({
       name === "TaxSubtotal" ||
       name === "PartyIdentification" ||
       name === "AdditionalDocumentReference" ||
-      name === "AllowanceCharge";
+      name === "AllowanceCharge" ||
+      name === "AdditionalItemProperty";
   },
   parseAttributeValue: false,
   parseTagValue: false,
@@ -61,6 +62,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     postalZone: getTextContent(sellerParty.PostalAddress?.PostalZone),
     country: getTextContent(sellerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: sellerParty.PartyTaxScheme?.CompanyID ? getTextContent(sellerParty.PartyTaxScheme?.CompanyID) : null,
+    email: getNullableTextContent(sellerParty.Contact?.ElectronicMail),
+    phone: getNullableTextContent(sellerParty.Contact?.Telephone),
   };
 
   // Extract buyer information
@@ -77,6 +80,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     postalZone: getTextContent(buyerParty.PostalAddress?.PostalZone),
     country: getTextContent(buyerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: buyerParty.PartyTaxScheme?.CompanyID ? getTextContent(buyerParty.PartyTaxScheme?.CompanyID) : null,
+    email: getNullableTextContent(buyerParty.Contact?.ElectronicMail),
+    phone: getNullableTextContent(buyerParty.Contact?.Telephone),
   };
 
   // Extract delivery information
@@ -121,6 +126,11 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
       scheme: getTextContent(line.Item.StandardItemIdentification.ID["@_schemeID"]),
       identifier: getTextContent(line.Item.StandardItemIdentification.ID["#text"]),
     } : null,
+    documentReference: getNullableTextContent(line.DocumentReference?.ID),
+    additionalItemProperties: (line.Item?.AdditionalItemProperty || []).map((property: any) => ({
+      name: getTextContent(property.Name),
+      value: getTextContent(property.Value),
+    })),
     originCountry: getNullableTextContent(line.Item?.OriginCountry?.IdentificationCode),
     quantity: getNumberContent(line.InvoicedQuantity),
     unitCode: getTextContent(line.InvoicedQuantity?.["@_unitCode"]),

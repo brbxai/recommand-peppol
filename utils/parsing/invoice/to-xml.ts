@@ -27,11 +27,16 @@ export function invoiceToUBL({
   recipientAddress: string;
   isDocumentValidationEnforced: boolean;
 }): string {
-  const ublInvoice = prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced});
+  const ublInvoice = prebuildInvoiceUBL({
+    invoice,
+    supplierAddress: senderAddress,
+    customerAddress: recipientAddress,
+    isDocumentValidationEnforced,
+  });
   return builder.build(ublInvoice);
 }
 
-export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced}: {invoice: Invoice, senderAddress: string, recipientAddress: string, isDocumentValidationEnforced: boolean}) {
+export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, isDocumentValidationEnforced}: {invoice: Invoice, supplierAddress: string, customerAddress: string, isDocumentValidationEnforced: boolean}) {
   const totals = calculateTotals(invoice);
   const vat = (invoice.vat && "subtotals" in invoice.vat && "totalVatAmount" in invoice.vat) ? invoice.vat : calculateVat({document: invoice, isDocumentValidationEnforced});
   const lines = invoice.lines.map((line) => ({
@@ -41,8 +46,8 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
 
   const extractedTotals = extractTotals(totals);
 
-  const sender = parsePeppolAddress(senderAddress);
-  const recipient = parsePeppolAddress(recipientAddress);
+  const supplier = parsePeppolAddress(supplierAddress);
+  const customer = parsePeppolAddress(customerAddress);
   return {
     Invoice: {
       "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2",
@@ -106,8 +111,8 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
       "cac:AccountingSupplierParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": sender.schemeId,
-            "#text": sender.identifier,
+            "@_schemeID": supplier.schemeId,
+            "#text": supplier.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": invoice.seller.name,
@@ -133,14 +138,20 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.seller.name,
+            ...(invoice.seller.enterpriseNumber && { "cbc:CompanyID": invoice.seller.enterpriseNumber }),
+          },
+          "cac:Contact": {
+            "cbc:Name": invoice.seller.name,
+            ...(invoice.seller.phone && { "cbc:Telephone": invoice.seller.phone }),
+            ...(invoice.seller.email && { "cbc:ElectronicMail": invoice.seller.email }),
           },
         },
       },
       "cac:AccountingCustomerParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": recipient.schemeId,
-            "#text": recipient.identifier,
+            "@_schemeID": customer.schemeId,
+            "#text": customer.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": invoice.buyer.name,
@@ -166,6 +177,12 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.buyer.name,
+            ...(invoice.buyer.enterpriseNumber && { "cbc:CompanyID": invoice.buyer.enterpriseNumber }),
+          },
+          "cac:Contact": {
+            "cbc:Name": invoice.buyer.name,
+            ...(invoice.buyer.phone && { "cbc:Telephone": invoice.buyer.phone }),
+            ...(invoice.buyer.email && { "cbc:ElectronicMail": invoice.buyer.email }),
           },
         },
       },
@@ -342,6 +359,12 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
           "@_currencyID": invoice.currency,
           "#text": item.netAmount,
         },
+        ...(item.documentReference && {
+          "cac:DocumentReference": {
+            "cbc:ID": item.documentReference,
+            "cbc:DocumentTypeCode": "130",
+          },
+        }),
         ...((item.discounts || item.surcharges) && {
           "cac:AllowanceCharge": [
             ...(item.discounts && item.discounts.map((discount) => ({
@@ -388,11 +411,18 @@ export function prebuildInvoiceUBL({invoice, senderAddress, recipientAddress, is
           }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,
-            "cbc:Percent": item.vat.percentage,
+            // An Invoice line (BG-25) where the VAT category code (BT-151) is "Not subject to VAT" shall not contain an Invoiced item VAT rate (BT-152).	
+            ...(item.vat.category !== "O" && { "cbc:Percent": item.vat.percentage }),
             "cac:TaxScheme": {
               "cbc:ID": "VAT",
             },
           },
+          ...((item.additionalItemProperties && item.additionalItemProperties.length > 0) && {
+            "cac:AdditionalItemProperty": item.additionalItemProperties.map((property) => ({
+              "cbc:Name": property.name,
+              "cbc:Value": property.value,
+            })),
+          }),
         },
         "cac:Price": {
           "cbc:PriceAmount": {

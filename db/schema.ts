@@ -281,6 +281,10 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   parsed: jsonb("parsed").$type<Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote>(),
   validation: jsonb("validation").$type<z.infer<typeof validationResponse>>(),
 
+  peppolMessageId: text("peppol_message_id"),
+  peppolConversationId: text("peppol_conversation_id"),
+  receivedPeppolSignalMessage: text("received_peppol_signal_message"),
+
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),
@@ -361,7 +365,7 @@ export const activatedIntegrations = pgTable("activated_integrations", {
     .references(() => companies.id, { onDelete: "cascade" })
     .notNull(),
   manifest: jsonb("manifest").$type<IntegrationManifest>().notNull(),
-  configuration: jsonb("configuration").$type<IntegrationConfiguration>().notNull(),
+  configuration: jsonb("configuration").$type<IntegrationConfiguration>(),
   state: jsonb("state").$type<IntegrationState>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),

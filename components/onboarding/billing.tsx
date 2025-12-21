@@ -7,12 +7,14 @@ import { useActiveTeam } from "@core/hooks/user";
 import type { BillingProfileData } from "@peppol/api/billing-profile";
 import PlaygroundOption from "./playground-option";
 import { CreateTeamButton } from "@core/components/create-team-button";
+import { AsyncButton } from "@core/components/async-button";
 
 export default function BillingOnboarding({ onComplete }: { onComplete: () => Promise<void> }) {
     const [profileForm, setProfileForm] = useState<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
     const [billingProfile, setBillingProfile] = useState<BillingProfileData | null>(null);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const activeTeam = useActiveTeam();
-    
+
     const profileFormRef = useRef<BillingProfileFormData>(DEFAULT_BILLING_PROFILE_FORM_DATA);
     profileFormRef.current = profileForm;
 
@@ -65,16 +67,26 @@ export default function BillingOnboarding({ onComplete }: { onComplete: () => Pr
             </div>
         )}
         <div className="flex justify-end">
-            <Button onClick={async () => {
-                await updateBillingProfile(activeTeam.id, profileForm);
-                // Don't call onComplete here, it should only be called when payment has been set up
-            }}>
+            <AsyncButton
+                disabled={isProcessingPayment}
+                onClick={async () => {
+                    setIsProcessingPayment(true);
+                    try {
+                        await updateBillingProfile(activeTeam.id, profileForm);
+                    } catch (error) {
+                        console.error(error);
+                    } finally {
+                        setIsProcessingPayment(false);
+                    }
+                    // Don't call onComplete here, it should only be called when payment has been set up
+                }}
+            >
                 Setup Payment Method
-            </Button>
+            </AsyncButton>
         </div>
-        <PlaygroundOption 
-          buttonText="Skip Billing" 
-          description="Skip billing setup by creating a playground to test your Peppol API integrations without billing requirements, or switch to another team."
+        <PlaygroundOption
+            buttonText="Skip Billing"
+            description="Skip billing setup by creating a playground to test your Peppol API integrations without billing requirements, or switch to another team."
         />
     </div>;
 }

@@ -15,3 +15,15 @@ export const integrationResponse = z.object({
     updatedAt: z.string().datetime(),
 });
 
+export const integrationTaskLogResponse = z.object({
+    id: z.string(),
+    integrationId: z.string(),
+    event: z.string(),
+    task: z.string(),
+    success: z.boolean(),
+    message: z.string(),
+    context: z.string(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+});
+

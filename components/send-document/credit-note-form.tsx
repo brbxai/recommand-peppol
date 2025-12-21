@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
@@ -18,6 +18,7 @@ import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import { useActiveTeam } from "@core/hooks/user";
 import { AttachmentsEditor } from "./attachments-editor";
+import { isTaxExemptionReasonRequired } from "@peppol/utils/parsing/invoice/calculations";
 
 const companiesClient = rc<Companies>("peppol");
 
@@ -25,12 +26,14 @@ interface CreditNoteFormProps {
   document: any;
   onChange: (document: any) => void;
   companyId: string;
+  isSelfBilling?: boolean;
 }
 
 export function CreditNoteForm({
   document,
   onChange,
   companyId,
+  isSelfBilling = false,
 }: CreditNoteFormProps) {
   const [creditNote, setCreditNote] = useState<Partial<CreditNote>>({
     creditNoteNumber: "",
@@ -51,7 +54,7 @@ export function CreditNoteForm({
   });
   const activeTeam = useActiveTeam();
 
-  // Auto-populate seller info when company changes
+  // Auto-populate company info when company changes
   useEffect(() => {
     const loadCompanyInfo = async () => {
       if (!companyId || !activeTeam?.id) return;
@@ -66,16 +69,20 @@ export function CreditNoteForm({
 
         if (json.success && json.company) {
           const company = json.company;
+          const companyInfo = {
+            vatNumber: company.vatNumber || "",
+            name: company.name,
+            street: company.address,
+            city: company.city,
+            postalZone: company.postalCode,
+            country: company.country,
+          };
+          
           setCreditNote((prev) => ({
             ...prev,
-            seller: {
-              vatNumber: company.vatNumber || "",
-              name: company.name,
-              street: company.address,
-              city: company.city,
-              postalZone: company.postalCode,
-              country: company.country,
-            },
+            ...(isSelfBilling
+              ? { buyer: companyInfo }
+              : { seller: companyInfo }),
           }));
         }
       } catch (error) {
@@ -84,7 +91,7 @@ export function CreditNoteForm({
     };
 
     loadCompanyInfo();
-  }, [companyId, activeTeam?.id]);
+  }, [companyId, activeTeam?.id, isSelfBilling]);
 
   useEffect(() => {
     onChange(creditNote);
@@ -97,6 +104,33 @@ export function CreditNoteForm({
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
+
+  const requiresExemptionReason = useMemo(() => {
+    return (creditNote.lines || []).some(
+      (line) => line.vat && isTaxExemptionReasonRequired(line.vat.category)
+    );
+  }, [creditNote.lines]);
+
+  useEffect(() => {
+    if (!requiresExemptionReason && creditNote.vat && typeof creditNote.vat === "object" && "exemptionReason" in creditNote.vat) {
+      setCreditNote((prev) => {
+        const { vat, ...rest } = prev;
+        return rest;
+      });
+    }
+  }, [requiresExemptionReason]);
+
+  const handleVatExemptionReasonChange = (value: string) => {
+    setCreditNote((prev) => ({
+      ...prev,
+      vat: value.trim() ? ({ exemptionReason: value } as any) : undefined,
+    }));
+  };
+
+  const vatExemptionReason =
+    creditNote.vat && typeof creditNote.vat === "object" && "exemptionReason" in creditNote.vat
+      ? (creditNote.vat.exemptionReason as string) || ""
+      : "";
 
   return (
     <div className="space-y-6">
@@ -211,7 +245,7 @@ export function CreditNoteForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("buyer")}
         >
-          <span>Buyer Information *</span>
+          <span>{isSelfBilling ? "Buyer Information (Auto-populated)" : "Buyer Information *"}</span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
           />
@@ -220,7 +254,8 @@ export function CreditNoteForm({
           <PartyForm
             party={creditNote.buyer || {}}
             onChange={(buyer) => handleFieldChange("buyer", buyer)}
-            required
+            required={!isSelfBilling}
+            disabled={isSelfBilling}
           />
         </CollapsibleContent>
       </Collapsible>
@@ -230,7 +265,7 @@ export function CreditNoteForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("seller")}
         >
-          <span>Seller Information (Auto-populated)</span>
+          <span>{isSelfBilling ? "Seller Information *" : "Seller Information (Auto-populated)"}</span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
           />
@@ -239,7 +274,8 @@ export function CreditNoteForm({
           <PartyForm
             party={creditNote.seller || {}}
             onChange={(seller) => handleFieldChange("seller", seller)}
-            disabled
+            required={isSelfBilling}
+            disabled={!isSelfBilling}
           />
         </CollapsibleContent>
       </Collapsible>
@@ -262,6 +298,20 @@ export function CreditNoteForm({
           />
         </CollapsibleContent>
       </Collapsible>
+
+      {requiresExemptionReason && (
+        <div>
+          <Label htmlFor="vatExemptionReason">VAT Exemption Reason *</Label>
+          <Textarea
+            id="vatExemptionReason"
+            value={vatExemptionReason}
+            onChange={(e) => handleVatExemptionReasonChange(e.target.value)}
+            placeholder="Reason why the credit note is exempt from VAT"
+            rows={3}
+            required
+          />
+        </div>
+      )}
 
       <Collapsible open={openSections.payment}>
         <CollapsibleTrigger

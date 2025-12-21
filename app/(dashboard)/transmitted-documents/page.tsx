@@ -13,7 +13,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X, CheckCheck, Mail, MailOpen } from "lucide-react";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
@@ -107,6 +107,9 @@ export default function Page() {
     const typeFilter = columnFilters.find((f) => f.id === "type");
     const filteredTypeValues = typeFilter?.value as string[] ?? [];
 
+    const isUnreadFilter = columnFilters.find((f) => f.id === "isUnread");
+    const filteredIsUnreadValues = isUnreadFilter?.value as string[] ?? [];
+
     try {
       const response = await client[":teamId"]["documents"].$get({
         param: { teamId: activeTeam.id },
@@ -117,6 +120,7 @@ export default function Page() {
           direction: ((filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0]) as "incoming" | "outgoing", // When no or all options are selected, don't filter on direction
           search: globalFilter || undefined, // Add the global search term to the query
           type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as "unknown" | "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote", // When no or all options are selected, don't filter on type
+          isUnread: ((filteredIsUnreadValues.length === 0 || filteredIsUnreadValues.length > 1) ? undefined : filteredIsUnreadValues[0]) as "true" | "false" | undefined,
         },
       });
       const json = await response.json();
@@ -224,6 +228,54 @@ export default function Page() {
       toast.error("Failed to delete all documents");
     } finally {
       setIsDeletingAll(false);
+    }
+  };
+
+  const handleToggleMarkAsRead = async (id: string, currentReadAt: Date | null) => {
+    if (!activeTeam?.id) return;
+
+    const isRead = currentReadAt !== null;
+    const newReadStatus = !isRead;
+
+    setDocuments((prev) =>
+      prev.map((doc) =>
+        doc.id === id
+          ? {
+              ...doc,
+              readAt: newReadStatus ? new Date() : null,
+            }
+          : doc
+      )
+    );
+
+    try {
+      const response = await client[":teamId"]["documents"][":documentId"]["markAsRead"].$post({
+        param: {
+          teamId: activeTeam.id,
+          documentId: id,
+        },
+        json: {
+          read: newReadStatus,
+        },
+      });
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+      toast.success(newReadStatus ? "Document marked as read" : "Document marked as unread");
+      fetchDocuments();
+    } catch (error) {
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === id
+            ? {
+                ...doc,
+                readAt: currentReadAt,
+              }
+            : doc
+        )
+      );
+      toast.error("Failed to update document read status");
     }
   };
 
@@ -546,6 +598,18 @@ export default function Page() {
       enableGlobalFilter: true,
     },
     {
+      id: "isUnread",
+      accessorFn: (row) => (row.readAt === null ? "true" : "false"),
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      filterFn: (row, id, value) => {
+        if (!value || value.length === 0) return true;
+        const isUnread = row.original.readAt === null;
+        return value.includes(isUnread ? "true" : "false");
+      },
+    },
+    {
       accessorKey: "labels",
       header: ({ column }) => <ColumnHeader column={column} title="Labels" />,
       cell: ({ row }) => {
@@ -626,8 +690,22 @@ export default function Page() {
         const id = row.original.id;
         if (!id) return null;
 
+        const isRead = row.original.readAt !== null;
+
         return (
           <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleToggleMarkAsRead(id, row.original.readAt)}
+              title={isRead ? "Mark as unread" : "Mark as read"}
+            >
+              {isRead ? (
+                <CheckCheck className="h-4 w-4 opacity-30" />
+              ) : (
+                <CheckCheck className="h-4 w-4" />
+              )}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -708,6 +786,14 @@ export default function Page() {
         { label: "Self Billing Invoice", value: "selfBillingInvoice" },
         { label: "Self Billing Credit Note", value: "selfBillingCreditNote" },
         { label: "Unknown", value: "unknown" },
+      ],
+    },
+    {
+      id: "isUnread",
+      title: "Read Status",
+      options: [
+        { label: "Unread", value: "true", icon: Mail },
+        { label: "Read", value: "false", icon: MailOpen },
       ],
     },
   ];

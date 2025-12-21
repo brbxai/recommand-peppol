@@ -1,23 +1,30 @@
 import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
+import type { Subscription } from "@peppol/api/subscription";
 import { useEffect, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { useActiveTeam } from "@core/hooks/user";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, Plug } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CompanyForm } from "../../../../components/company-form";
 import { CompanyIdentifiersManager } from "../../../../components/company-identifiers-manager";
 import { CompanyDocumentTypesManager } from "../../../../components/company-document-types-manager";
 import { CompanyNotificationsManager } from "../../../../components/company-notifications-manager";
+import { CompanyIntegrationsManager } from "../../../../components/company-integrations-manager";
 import type { Company, CompanyFormData } from "../../../../types/company";
 import { defaultCompanyFormData } from "../../../../types/company";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
 import { AsyncButton } from "@core/components/async-button";
+import { useIsPlayground } from "@peppol/lib/client/playgrounds";
+import { canUseIntegrations } from "@peppol/utils/plan-validation";
+import { BUILT_IN_INTEGRATIONS } from "@peppol/utils/integrations";
+import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 
 const client = rc<Companies>("peppol");
+const subscriptionClient = rc<Subscription>("v1");
 
 export default function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,11 +32,14 @@ export default function CompanyDetailPage() {
   const [company, setCompany] = useState<Company | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<CompanyFormData>(defaultCompanyFormData);
+  const [subscription, setSubscription] = useState<SubscriptionType | null>(null);
   const activeTeam = useActiveTeam();
+  const isPlayground = useIsPlayground();
 
   useEffect(() => {
     if (id && activeTeam?.id) {
       fetchCompany();
+      fetchSubscription();
     }
   }, [id, activeTeam?.id]);
 
@@ -64,6 +74,37 @@ export default function CompanyDetailPage() {
     }
   };
 
+  const fetchSubscription = async () => {
+    if (!activeTeam?.id) return;
+
+    try {
+      const response = await subscriptionClient[":teamId"]["subscription"].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const data = await response.json();
+
+      if (data.success && data.subscription) {
+        setSubscription({
+          ...data.subscription,
+          createdAt: new Date(data.subscription.createdAt),
+          updatedAt: new Date(data.subscription.updatedAt),
+          startDate: new Date(data.subscription.startDate),
+          endDate: data.subscription.endDate
+            ? new Date(data.subscription.endDate)
+            : null,
+          lastBilledAt: data.subscription.lastBilledAt
+            ? new Date(data.subscription.lastBilledAt)
+            : null,
+        });
+      } else {
+        setSubscription(null);
+      }
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+      setSubscription(null);
+    }
+  };
+
   const handleCompanyUpdate = async () => {
     if (!activeTeam?.id || !company) return;
 
@@ -75,7 +116,6 @@ export default function CompanyDetailPage() {
         },
         json: {
           ...formData,
-          vatNumber: formData.vatNumber || undefined,
         },
       });
 
@@ -201,6 +241,7 @@ export default function CompanyDetailPage() {
               onSubmit={handleCompanyUpdate}
               onCancel={() => navigate("/companies")}
               isEditing={true}
+              showEnterpriseNumberForBelgianCompanies={true}
             />
           </CardContent>
         </Card>
@@ -219,6 +260,60 @@ export default function CompanyDetailPage() {
               teamId={activeTeam.id}
               companyId={company.id}
             />
+            {canUseIntegrations(isPlayground, subscription) ? (
+              <CompanyIntegrationsManager
+                teamId={activeTeam.id}
+                companyId={company.id}
+              />
+            ) : (
+              <Card className="border-2 border-primary/20 bg-primary/5">
+                <CardHeader>
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-primary/10 p-2 mt-0.5">
+                      <Plug className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle>Integrations</CardTitle>
+                      <CardDescription>
+                        Connect external services to automate document processing and workflows. Integrations are available on Starter, Professional, or Enterprise plans.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {BUILT_IN_INTEGRATIONS.length > 0 && (
+                      <div className="text-sm">
+                        <p className="mb-2 font-medium">Available integrations:</p>
+                        <ul className="space-y-1">
+                          {BUILT_IN_INTEGRATIONS.map((integration) => (
+                            <li key={integration.url} className="flex items-center gap-2 text-muted-foreground">
+                              <Plug className="h-3 w-3" />
+                              <span>{integration.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="text-sm text-muted-foreground">
+                      <p className="mb-2">With integrations, you can:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>Automatically sync documents with your accounting software</li>
+                        <li>Receive real-time notifications for incoming documents</li>
+                        <li>Streamline your document processing workflow</li>
+                      </ul>
+                    </div>
+                    <Button
+                      onClick={() => navigate("/billing/subscription")}
+                      className="w-full"
+                    >
+                      View Available Plans
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>

@@ -28,11 +28,16 @@ export function creditNoteToUBL(
     recipientAddress: string;
     isDocumentValidationEnforced: boolean;
   }): string {
-  const ublCreditNote = prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddress, isDocumentValidationEnforced});
+  const ublCreditNote = prebuildCreditNoteUBL({
+    creditNote,
+    supplierAddress: senderAddress,
+    customerAddress: recipientAddress,
+    isDocumentValidationEnforced,
+  });
   return builder.build(ublCreditNote);
 }
 
-export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddress, isDocumentValidationEnforced}: {creditNote: CreditNote, senderAddress: string, recipientAddress: string, isDocumentValidationEnforced: boolean}) {
+export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddress, isDocumentValidationEnforced}: {creditNote: CreditNote, supplierAddress: string, customerAddress: string, isDocumentValidationEnforced: boolean}) {
   const totals = calculateTotals(creditNote);
   const vat = (creditNote.vat && "subtotals" in creditNote.vat && "totalVatAmount" in creditNote.vat) ? creditNote.vat : calculateVat({document: creditNote, isDocumentValidationEnforced});
   const lines = creditNote.lines.map((line) => ({
@@ -42,8 +47,8 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
 
   const extractedTotals = extractTotals(totals);
 
-  const sender = parsePeppolAddress(senderAddress);
-  const recipient = parsePeppolAddress(recipientAddress);
+  const supplier = parsePeppolAddress(supplierAddress);
+  const buyer = parsePeppolAddress(customerAddress);
   return {
     CreditNote: {
       "@_xmlns": "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2",
@@ -114,8 +119,8 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
       "cac:AccountingSupplierParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": sender.schemeId,
-            "#text": sender.identifier,
+            "@_schemeID": supplier.schemeId,
+            "#text": supplier.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": creditNote.seller.name,
@@ -141,14 +146,20 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.seller.name,
+            ...(creditNote.seller.enterpriseNumber && { "cbc:CompanyID": creditNote.seller.enterpriseNumber }),
+          },
+          "cac:Contact": {
+            "cbc:Name": creditNote.seller.name,
+            ...(creditNote.seller.phone && { "cbc:Telephone": creditNote.seller.phone }),
+            ...(creditNote.seller.email && { "cbc:ElectronicMail": creditNote.seller.email }),
           },
         },
       },
       "cac:AccountingCustomerParty": {
         "cac:Party": {
           "cbc:EndpointID": {
-            "@_schemeID": recipient.schemeId,
-            "#text": recipient.identifier,
+            "@_schemeID": buyer.schemeId,
+            "#text": buyer.identifier,
           },
           "cac:PartyName": {
             "cbc:Name": creditNote.buyer.name,
@@ -174,6 +185,12 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.buyer.name,
+            ...(creditNote.buyer.enterpriseNumber && { "cbc:CompanyID": creditNote.buyer.enterpriseNumber }),
+          },
+          "cac:Contact": {
+            "cbc:Name": creditNote.buyer.name,
+            ...(creditNote.buyer.phone && { "cbc:Telephone": creditNote.buyer.phone }),
+            ...(creditNote.buyer.email && { "cbc:ElectronicMail": creditNote.buyer.email }),
           },
         },
       },
@@ -350,6 +367,12 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
           "@_currencyID": creditNote.currency,
           "#text": item.netAmount,
         },
+        ...(item.documentReference && {
+          "cac:DocumentReference": {
+            "cbc:ID": item.documentReference,
+            "cbc:DocumentTypeCode": "130",
+          },
+        }),
         ...((item.discounts || item.surcharges) && {
           "cac:AllowanceCharge": [
             ...(item.discounts && item.discounts.map((discount) => ({
@@ -396,11 +419,18 @@ export function prebuildCreditNoteUBL({creditNote, senderAddress, recipientAddre
           }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,
-            "cbc:Percent": item.vat.percentage,
+            // An Invoice line (BG-25) where the VAT category code (BT-151) is "Not subject to VAT" shall not contain an Invoiced item VAT rate (BT-152).	
+            ...(item.vat.category !== "O" && { "cbc:Percent": item.vat.percentage }),
             "cac:TaxScheme": {
               "cbc:ID": "VAT",
             },
           },
+          ...((item.additionalItemProperties && item.additionalItemProperties.length > 0) && {
+            "cac:AdditionalItemProperty": item.additionalItemProperties.map((property) => ({
+              "cbc:Name": property.name,
+              "cbc:Value": property.value,
+            })),
+          }),
         },
         "cac:Price": {
           "cbc:PriceAmount": {

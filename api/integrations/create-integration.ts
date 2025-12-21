@@ -4,7 +4,7 @@ import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
 import { describeErrorResponse, describeSuccessResponseWithZod } from "@peppol/utils/api-docs";
-import { type CompanyAccessContext } from "@peppol/utils/auth-middleware";
+import { type CompanyAccessContext, requireIntegrationAccess } from "@peppol/utils/auth-middleware";
 import { integrationResponse } from "./shared";
 import { type AuthenticatedUserContext, type AuthenticatedTeamContext, requireTeamAccess } from "@core/lib/auth-middleware";
 import { createIntegration } from "@peppol/data/integrations";
@@ -31,7 +31,7 @@ const createIntegrationJsonBodySchema = z.object({
     companyId: z.string(),
     manifest: manifestSchema.optional(),
     url: z.string().url().optional(),
-    configuration: configurationSchema,
+    configuration: configurationSchema.nullish(),
 }).strict().refine(
     (data) => data.manifest !== undefined || data.url !== undefined,
     {
@@ -49,6 +49,7 @@ type CreateIntegrationContext = Context<AuthenticatedUserContext & Authenticated
 const _createIntegrationMinimal = server.post(
     "/integrations",
     requireTeamAccess(),
+    requireIntegrationAccess(),
     createIntegrationRouteDescription,
     zodValidator("json", createIntegrationJsonBodySchema),
     _createIntegrationImplementation,
@@ -57,6 +58,7 @@ const _createIntegrationMinimal = server.post(
 const _createIntegration = server.post(
     "/:teamId/integrations",
     requireTeamAccess(),
+    requireIntegrationAccess(),
     describeRoute({hide: true}),
     zodValidator("param", createIntegrationParamSchemaWithTeamId),
     zodValidator("json", createIntegrationJsonBodySchema),

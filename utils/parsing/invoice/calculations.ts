@@ -203,7 +203,7 @@ export function calculateVat({document, isDocumentValidationEnforced}: {document
   return { totalVatAmount, subtotals };
 } 
 
-function isTaxExemptionReasonRequired(category: VatCategory): boolean {
+export function isTaxExemptionReasonRequired(category: VatCategory): boolean {
   // AE: VAT reverse charge
   // E: Exempt from VAT
   // G: Export outside EU

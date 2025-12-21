@@ -2,9 +2,10 @@ import { describe, it, expect } from "bun:test";
 import { invoiceToUBL } from "../utils/parsing/invoice/to-xml";
 import type { Invoice } from "../utils/parsing/invoice/schemas";
 import { parseInvoiceFromXML } from "@peppol/utils/parsing/invoice/from-xml";
-import { validateXmlDocument } from "../data/validation/client";
+import { sendDocumentViaAPI, validateXml } from "./utils/utils";
+import { XMLParser } from "fast-xml-parser";
 
-function checkInvoiceXML(xml: string, invoice: Invoice) {
+async function checkInvoiceXML(xml: string, invoice: Invoice, testName: string = "invoice") {
   expect(xml).toBeDefined();
   expect(typeof xml).toBe("string");
   expect(xml.length).toBeGreaterThan(0);
@@ -24,7 +25,10 @@ function checkInvoiceXML(xml: string, invoice: Invoice) {
   }
   expect(xml).toContain(String(invoice.seller.name));
   expect(xml).toContain(String(invoice.buyer.name));
+
+  await validateXml(xml, testName);
 }
+
 
 describe("invoiceToUBL", () => {
   it("should convert Factuur 25607246 invoice to XML", async () => {
@@ -119,7 +123,7 @@ describe("invoiceToUBL", () => {
 
     const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
 
-    checkInvoiceXML(xml, invoice);
+    await checkInvoiceXML(xml, invoice, "Factuur 25607246 invoice");
 
     const parsed = parseInvoiceFromXML(xml);
 
@@ -137,6 +141,8 @@ describe("invoiceToUBL", () => {
     expect(parsed.totals?.payableAmount).toEqual("121.00");
     expect(parsed.vat?.totalVatAmount).toEqual("21.00");
     expect(parsed.vat?.subtotals.length).toBe(2);
+
+    await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
   });
 
   function createBaseInvoice(overrides: Partial<Invoice>): Invoice {
@@ -168,15 +174,6 @@ describe("invoiceToUBL", () => {
     };
   }
 
-  async function validateInvoiceXML(xml: string, testName: string) {
-    const validation = await validateXmlDocument(xml);
-    if (validation.result !== "valid") {
-      console.error(`Validation failed for ${testName}:`, validation.errors);
-      console.error("XML:", xml);
-    }
-    expect(validation.result).toBe("valid");
-    expect(validation.errors.length).toBe(0);
-  }
 
   describe("line-level discounts and surcharges", () => {
     it("should preserve line discounts and surcharges in round-trip conversion", async () => {
@@ -229,7 +226,7 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "line-level discounts and surcharges");
+      await checkInvoiceXML(xml, invoice, "line-level discounts and surcharges");
       
       const parsed = parseInvoiceFromXML(xml);
 
@@ -263,6 +260,8 @@ describe("invoiceToUBL", () => {
 
       expect(line1.netAmount).toBeDefined();
       expect(line2.netAmount).toBeDefined();
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
 
     it("should preserve line totals (netAmount) after round-trip conversion", async () => {
@@ -294,13 +293,15 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "line totals preservation");
+      await validateXml(xml, "line totals preservation");
       
       const parsed = parseInvoiceFromXML(xml);
 
       expect(parsed.lines[0].netAmount).toBe("190.00");
       expect(parseFloat(parsed.lines[0].quantity)).toBe(2.5);
       expect(parseFloat(parsed.lines[0].netPriceAmount)).toBe(80);
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
   });
 
@@ -354,7 +355,7 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "global discounts and surcharges");
+      await validateXml(xml, "global discounts and surcharges");
       
       const parsed = parseInvoiceFromXML(xml);
 
@@ -379,6 +380,8 @@ describe("invoiceToUBL", () => {
       expect(parsed.surcharges?.[1].reason).toBe("Handling fee");
       expect(parsed.surcharges?.[1].vat.category).toBe("S");
       expect(parsed.surcharges?.[1].vat.percentage).toBe("6.00");
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
   });
 
@@ -449,7 +452,7 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "combined line-level and global discounts/surcharges");
+      await validateXml(xml, "combined line-level and global discounts/surcharges");
       
       const parsed = parseInvoiceFromXML(xml);
 
@@ -476,6 +479,8 @@ describe("invoiceToUBL", () => {
       expect(parsed.surcharges?.[0].reasonCode).toBe("FC");
       expect(parsed.surcharges?.[1].amount).toBe("5.00");
       expect(parsed.surcharges?.[1].reason).toBe("Global handling");
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
   });
 
@@ -536,7 +541,7 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "document totals preservation with line and global discounts/surcharges");
+      await validateXml(xml, "document totals preservation with line and global discounts/surcharges");
       
       const parsed = parseInvoiceFromXML(xml);
 
@@ -557,6 +562,8 @@ describe("invoiceToUBL", () => {
       const totalVat = parseFloat(parsed.vat!.totalVatAmount);
       const taxInclusive = parseFloat(parsed.totals!.taxInclusiveAmount);
       expect(taxInclusive).toBeCloseTo(taxExclusive + totalVat, 2);
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
 
     it("should preserve totals with different VAT rates on discounts and surcharges", async () => {
@@ -606,7 +613,7 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "totals with different VAT rates on discounts and surcharges");
+      await validateXml(xml, "totals with different VAT rates on discounts and surcharges");
       
       const parsed = parseInvoiceFromXML(xml);
 
@@ -619,6 +626,8 @@ describe("invoiceToUBL", () => {
 
       expect(vat21Subtotal).toBeDefined();
       expect(vat6Subtotal).toBeDefined();
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
   });
 
@@ -667,7 +676,7 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "rounding scenarios with discounts and surcharges");
+      await validateXml(xml, "rounding scenarios with discounts and surcharges");
       
       const parsed = parseInvoiceFromXML(xml);
 
@@ -683,6 +692,8 @@ describe("invoiceToUBL", () => {
       expect(parsed.totals?.taxExclusiveAmount).toBeDefined();
       expect(parsed.totals?.taxInclusiveAmount).toBeDefined();
       expect(parsed.vat?.totalVatAmount).toBeDefined();
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
   });
 
@@ -713,13 +724,15 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "invoice with only line discounts");
+      await validateXml(xml, "invoice with only line discounts");
       
       const parsed = parseInvoiceFromXML(xml);
 
       expect(parsed.lines[0].discounts?.length).toBe(1);
       expect(parsed.lines[0].discounts?.[0].amount).toBe("10.00");
       expect(parsed.lines[0].surcharges?.length).toBe(0);
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
 
     it("should handle invoice with only line surcharges (no discounts)", async () => {
@@ -748,13 +761,15 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "invoice with only line surcharges");
+      await validateXml(xml, "invoice with only line surcharges");
       
       const parsed = parseInvoiceFromXML(xml);
 
       expect(parsed.lines[0].surcharges?.length).toBe(1);
       expect(parsed.lines[0].surcharges?.[0].amount).toBe("5.00");
       expect(parsed.lines[0].discounts?.length).toBe(0);
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
 
     it("should handle invoice with reasonCode only (no reason text)", async () => {
@@ -800,7 +815,7 @@ describe("invoiceToUBL", () => {
       const recipientAddress = "0208:0598726857";
       const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
       
-      await validateInvoiceXML(xml, "invoice with reasonCode only");
+      await validateXml(xml, "invoice with reasonCode only");
       
       const parsed = parseInvoiceFromXML(xml);
 
@@ -808,6 +823,8 @@ describe("invoiceToUBL", () => {
       expect(parsed.lines[0].surcharges?.[0].reasonCode).toBe("FC");
       expect(parsed.discounts?.[0].reasonCode).toBe("95");
       expect(parsed.surcharges?.[0].reasonCode).toBe("FC");
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
   });
 
@@ -920,8 +937,8 @@ describe("invoiceToUBL", () => {
         isDocumentValidationEnforced: true,
       });
 
-      await validateInvoiceXML(xml1, "invoice with precalculated VAT");
-      await validateInvoiceXML(xml2, "invoice with simplified VAT");
+      await validateXml(xml1, "invoice with precalculated VAT");
+      await validateXml(xml2, "invoice with simplified VAT");
 
       const parsed1 = parseInvoiceFromXML(xml1);
       const parsed2 = parseInvoiceFromXML(xml2);
@@ -955,6 +972,371 @@ describe("invoiceToUBL", () => {
         expect(sortedSubtotals1[i].exemptionReason).toBe(sortedSubtotals2[i].exemptionReason);
         expect(sortedSubtotals1[i].exemptionReasonCode).toBe(sortedSubtotals2[i].exemptionReasonCode);
       }
+
+      await sendDocumentViaAPI(invoiceWithPrecalculatedVat, "invoice", recipientAddress);
+      await sendDocumentViaAPI(invoiceWithSimplifiedVat, "invoice", recipientAddress);
+    });
+  });
+
+  describe("specific VAT totals scenario", () => {
+    it("should preserve VAT totals with multiple rates including exempt category", async () => {
+      const invoice = createBaseInvoice({
+        lines: [
+          {
+            name: "Item 1 - Standard 21%",
+            quantity: "10",
+            unitCode: "C62",
+            netPriceAmount: "235.20",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+          {
+            name: "Item 2 - Standard 6%",
+            quantity: "2",
+            unitCode: "C62",
+            netPriceAmount: "98.00",
+            netAmount: null,
+            vat: { category: "S", percentage: "6.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+          {
+            name: "Item 3 - Exempt",
+            quantity: "1",
+            unitCode: "C62",
+            netPriceAmount: "52.00",
+            netAmount: null,
+            vat: { category: "E", percentage: "0.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+        vat: {
+          totalVatAmount: "505.68",
+          subtotals: [
+            {
+              taxableAmount: "2352.00",
+              vatAmount: "493.92",
+              category: "S",
+              percentage: "21.00",
+            },
+            {
+              taxableAmount: "196.00",
+              vatAmount: "11.76",
+              category: "S",
+              percentage: "6.00",
+            },
+            {
+              taxableAmount: "52.00",
+              vatAmount: "0.00",
+              category: "E",
+              percentage: "0.00",
+              exemptionReason: "Exempt from tax",
+            },
+          ],
+        },
+        totals: {
+          paidAmount: "0.00",
+          linesAmount: "2600.00",
+          payableAmount: "3105.68",
+          discountAmount: null,
+          surchargeAmount: null,
+          taxExclusiveAmount: "2600.00",
+          taxInclusiveAmount: "3105.68",
+        },
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
+      
+      await validateXml(xml, "VAT totals with multiple rates including exempt category");
+      
+      const parsed = parseInvoiceFromXML(xml);
+
+      expect(parsed.vat).toBeDefined();
+      expect(parsed.vat?.totalVatAmount).toBe("505.68");
+      expect(parsed.vat?.subtotals.length).toBe(3);
+
+      const vat21Subtotal = parsed.vat?.subtotals.find(s => s.percentage === "21.00" && s.category === "S");
+      expect(vat21Subtotal).toBeDefined();
+      expect(vat21Subtotal?.taxableAmount).toBe("2352.00");
+      expect(vat21Subtotal?.vatAmount).toBe("493.92");
+
+      const vat6Subtotal = parsed.vat?.subtotals.find(s => s.percentage === "6.00" && s.category === "S");
+      expect(vat6Subtotal).toBeDefined();
+      expect(vat6Subtotal?.taxableAmount).toBe("196.00");
+      expect(vat6Subtotal?.vatAmount).toBe("11.76");
+
+      const vat0Subtotal = parsed.vat?.subtotals.find(s => s.percentage === "0.00" && s.category === "E");
+      expect(vat0Subtotal).toBeDefined();
+      expect(vat0Subtotal?.taxableAmount).toBe("52.00");
+      expect(vat0Subtotal?.vatAmount).toBe("0.00");
+      expect(vat0Subtotal?.exemptionReason).toBe("Exempt from tax");
+
+      expect(parsed.totals?.taxExclusiveAmount).toBe("2600.00");
+      expect(parsed.totals?.taxInclusiveAmount).toBe("3105.68");
+      expect(parsed.totals?.payableAmount).toBe("3105.68");
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
+    });
+  });
+
+  describe("address mapping", () => {
+    it("should map senderAddress to supplier and recipientAddress to customer", async () => {
+      const invoice = createBaseInvoice({
+        lines: [
+          {
+            name: "Item 1",
+            quantity: "1",
+            unitCode: "C62",
+            netPriceAmount: "100.00",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
+      
+      await validateXml(xml, "address mapping");
+      
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "@_",
+        removeNSPrefix: true,
+        parseAttributeValue: false,
+        parseTagValue: false,
+      });
+      const parsed = parser.parse(xml);
+      const supplierEndpointId = parsed.Invoice.AccountingSupplierParty.Party.EndpointID;
+      const customerEndpointId = parsed.Invoice.AccountingCustomerParty.Party.EndpointID;
+      
+      expect(`${supplierEndpointId["@_schemeID"]}:${supplierEndpointId["#text"]}`).toBe(senderAddress);
+      expect(`${customerEndpointId["@_schemeID"]}:${customerEndpointId["#text"]}`).toBe(recipientAddress);
+
+      const parsedInvoice = parseInvoiceFromXML(xml);
+      expect(parsedInvoice.seller.name).toBe(invoice.seller.name);
+      expect(parsedInvoice.buyer.name).toBe(invoice.buyer.name);
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
+    });
+  });
+
+  describe("enterprise number", () => {
+    it("should include enterprise number in seller and buyer when provided", async () => {
+      const invoice = createBaseInvoice({
+        seller: {
+          name: "Test Seller",
+          street: "Seller Street 1",
+          city: "Seller City",
+          postalZone: "1000",
+          country: "BE",
+          vatNumber: "BE0123456789",
+          enterpriseNumber: "0123456789",
+          street2: null,
+        },
+        buyer: {
+          name: "Test Buyer",
+          street: "Buyer Street 1",
+          city: "Buyer City",
+          postalZone: "2000",
+          country: "BE",
+          vatNumber: "BE9876543210",
+          enterpriseNumber: "9876543210",
+          street2: null,
+        },
+        lines: [
+          {
+            name: "Item 1",
+            quantity: "1",
+            unitCode: "C62",
+            netPriceAmount: "100.00",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
+      
+      await validateXml(xml, "enterprise number");
+      
+      expect(xml).toContain('<cbc:CompanyID>0123456789</cbc:CompanyID>');
+      expect(xml).toContain('<cbc:CompanyID>9876543210</cbc:CompanyID>');
+
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "@_",
+        removeNSPrefix: true,
+        parseAttributeValue: false,
+        parseTagValue: false,
+      });
+      const parsed = parser.parse(xml);
+      const supplierEnterpriseNumber = parsed.Invoice.AccountingSupplierParty.Party.PartyLegalEntity.CompanyID;
+      const customerEnterpriseNumber = parsed.Invoice.AccountingCustomerParty.Party.PartyLegalEntity.CompanyID;
+      
+      expect(supplierEnterpriseNumber).toBe("0123456789");
+      expect(customerEnterpriseNumber).toBe("9876543210");
+
+      const parsedInvoice = parseInvoiceFromXML(xml);
+      expect(parsedInvoice.seller.name).toBe(invoice.seller.name);
+      expect(parsedInvoice.buyer.name).toBe(invoice.buyer.name);
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
+    });
+
+    it("should handle missing enterprise number", async () => {
+      const invoice = createBaseInvoice({
+        seller: {
+          name: "Test Seller",
+          street: "Seller Street 1",
+          city: "Seller City",
+          postalZone: "1000",
+          country: "BE",
+          vatNumber: "BE0123456789",
+          enterpriseNumber: null,
+          street2: null,
+        },
+        buyer: {
+          name: "Test Buyer",
+          street: "Buyer Street 1",
+          city: "Buyer City",
+          postalZone: "2000",
+          country: "BE",
+          vatNumber: "BE9876543210",
+          enterpriseNumber: null,
+          street2: null,
+        },
+        lines: [
+          {
+            name: "Item 1",
+            quantity: "1",
+            unitCode: "C62",
+            netPriceAmount: "100.00",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
+      
+      await validateXml(xml, "missing enterprise number");
+      
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
+    });
+  });
+
+  describe("VAT category O (Not subject to VAT)", () => {
+    it("should handle invoice with VAT category O and exemption reason", async () => {
+      const invoice = createBaseInvoice({
+        seller: {
+          name: "Test Seller",
+          street: "Seller Street 1",
+          city: "Seller City",
+          postalZone: "1000",
+          country: "BE",
+          vatNumber: null,
+          enterpriseNumber: "0123456789",
+          street2: null,
+        },
+        buyer: {
+          name: "Test Buyer",
+          street: "Buyer Street 1",
+          city: "Buyer City",
+          postalZone: "2000",
+          country: "BE",
+          vatNumber: null,
+          enterpriseNumber: "9876543210",
+          street2: null,
+        },
+        lines: [
+          {
+            name: "Item not subject to VAT",
+            quantity: "1",
+            unitCode: "C62",
+            netPriceAmount: "100.00",
+            netAmount: null,
+            vat: {
+              category: "O",
+              percentage: "0.00",
+            },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+        vat: {
+          exemptionReason: "Not subject to VAT according to local legislation",
+        } as any,
+        totals: {
+          paidAmount: "0.00",
+          linesAmount: null,
+          payableAmount: "100.00",
+          discountAmount: null,
+          surchargeAmount: null,
+          taxExclusiveAmount: "100.00",
+          taxInclusiveAmount: "100.00",
+        },
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false});
+      
+      await validateXml(xml, "VAT category O with exemption reason");
+      
+      expect(xml).toContain('cbc:ID>O</cbc:ID>');
+      expect(xml).toContain("Not subject to VAT according to local legislation");
+      expect(xml).toContain('<cbc:CompanyID>0123456789</cbc:CompanyID>');
+
+      const parsed = parseInvoiceFromXML(xml);
+      expect(parsed.lines[0].vat.category).toBe("O");
+      expect(parsed.lines[0].vat.percentage).toBe("0.00");
+      expect(parsed.vat?.subtotals.length).toBe(1);
+      expect(parsed.vat?.subtotals[0].category).toBe("O");
+      expect(parsed.vat?.subtotals[0].vatAmount).toBe("0.00");
+      expect(parsed.vat?.subtotals[0].exemptionReason).toBe("Not subject to VAT according to local legislation");
+      expect(parsed.totals?.taxExclusiveAmount).toBe("100.00");
+      expect(parsed.totals?.taxInclusiveAmount).toBe("100.00");
+      expect(parsed.totals?.payableAmount).toBe("100.00");
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
   });
 });

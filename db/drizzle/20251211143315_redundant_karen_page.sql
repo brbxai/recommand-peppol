@@ -1,0 +1,1 @@
+ALTER TABLE "activated_integrations" ALTER COLUMN "configuration" DROP NOT NULL;

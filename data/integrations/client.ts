@@ -2,12 +2,63 @@ import { errorResponseSchema, manifestSchema, successResponseSchema, type Integr
 import { createIntegrationTaskLog, updateIntegrationState, type ActivatedIntegration } from ".";
 import { createCleanUrl, UserFacingError } from "@peppol/utils/util";
 import { generateIntegrationJwt } from "./auth";
+import { getMinimalTeamMembers } from "@core/data/team-members";
+import { sendEmail } from "@core/lib/email";
+import { getCompany } from "@peppol/data/companies";
+import { getActiveSubscription } from "@peppol/data/subscriptions";
+import { isPlayground } from "@peppol/data/teams";
+import { canUseIntegrations } from "@peppol/utils/plan-validation";
+import { IntegrationFailureNotification } from "@peppol/emails/integration-failure-notification";
 
 function flattenFieldsToObject(fields: IntegrationConfigurationField[]): Record<string, unknown> {
     return fields.reduce((acc, field) => {
         acc[field.id] = field.value;
         return acc;
     }, {} as Record<string, unknown>);
+}
+
+async function sendFailureEmailToTeam({
+    integration,
+    event,
+    failedTasks,
+}: {
+    integration: ActivatedIntegration;
+    event: IntegrationEvent;
+    failedTasks: Array<{ task: string; message: string; context?: string }>;
+}) {
+    try {
+        const teamMembers = await getMinimalTeamMembers(integration.teamId);
+        const verifiedTeamMembers = teamMembers.filter(member => member.user.emailVerified);
+        
+        if (verifiedTeamMembers.length === 0) {
+            console.log("No verified team members to send integration failure email to");
+            return;
+        }
+
+        const company = await getCompany(integration.teamId, integration.companyId);
+        const companyName = company?.name || "Unknown Company";
+
+        const integrationName = integration.manifest.name;
+
+        for (const member of verifiedTeamMembers) {
+            try {
+                await sendEmail({
+                    to: member.user.email,
+                    subject: `Integration Failure: ${integrationName} for ${companyName}`,
+                    email: IntegrationFailureNotification({
+                        integrationName,
+                        companyName,
+                        event,
+                        failedTasks,
+                    }),
+                });
+            } catch (error) {
+                console.error(`Failed to send integration failure email to ${member.user.email}:`, error);
+            }
+        }
+    } catch (error) {
+        console.error("Failed to send integration failure emails:", error);
+    }
 }
 
 export async function postToIntegration({
@@ -19,6 +70,15 @@ export async function postToIntegration({
     event: IntegrationEvent;
     ctx?: { documentId?: string }
 }) {
+    if (!integration.configuration) {
+        throw new UserFacingError("Integration configuration is not set, this is required to communicate with the integration.");
+    }
+
+    const teamIsPlayground = await isPlayground(integration.teamId);
+    const subscription = await getActiveSubscription(integration.teamId);
+    if (!canUseIntegrations(teamIsPlayground, subscription)) {
+        throw new UserFacingError("Integrations are only available on Starter, Professional, or Enterprise plans. Please upgrade your subscription to use integrations.");
+    }
 
     const body = JSON.stringify({
         version: integration.manifest.version,
@@ -43,6 +103,7 @@ export async function postToIntegration({
     });
 
     const json = await response.json();
+    console.log("Response from integration", integration.manifest.url, event, JSON.stringify(json, null, 2));
 
     // Ensure the version is 1.0.0
     if (json.version !== "1.0.0") {
@@ -52,11 +113,24 @@ export async function postToIntegration({
     if (response.status !== 200) {
         const result = errorResponseSchema.safeParse(json);
         let message = "Invalid response for unsuccessful integration request";
+        const failedTasks: Array<{ task: string; message: string; context?: string }> = [];
+        
         if (result.success) {
             const parsedResponse = result.data;
             message = parsedResponse.error.message;
+            const failedTask = {
+                task: parsedResponse.error.task,
+                message: parsedResponse.error.message,
+                context: parsedResponse.error.context,
+            };
+            failedTasks.push(failedTask);
             await createIntegrationTaskLog(integration.id, event, parsedResponse.error.task, false, message, parsedResponse.error.context ?? "");
         }
+        
+        if (failedTasks.length > 0) {
+            await sendFailureEmailToTeam({ integration, event, failedTasks });
+        }
+        
         console.error("Error response from integration", integration.manifest.url, event, JSON.stringify(json, null, 2));
         throw new UserFacingError(message);
     }
@@ -74,8 +148,22 @@ export async function postToIntegration({
 
     // If the response contains tasks, create task logs
     if (parsedResponse.tasks !== null && parsedResponse.tasks !== undefined) {
+        const failedTasks: Array<{ task: string; message: string; context?: string }> = [];
+        
         for (const task of parsedResponse.tasks) {
             await createIntegrationTaskLog(integration.id, event, task.task, task.success, task.message ?? "", task.context ?? "");
+            
+            if (!task.success) {
+                failedTasks.push({
+                    task: task.task,
+                    message: task.message ?? "Task failed without a message",
+                    context: task.context,
+                });
+            }
+        }
+        
+        if (failedTasks.length > 0) {
+            await sendFailureEmailToTeam({ integration, event, failedTasks });
         }
     }
 

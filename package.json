@@ -7,7 +7,7 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "test": "bun test"
+    "test": "bun test --preload ./test/setup.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
