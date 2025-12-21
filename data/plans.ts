@@ -1,15 +1,20 @@
+import { z } from "zod";
+
 export type Plan = {
   id: string;
   isAvailable: boolean;
 } & BillingConfig;
 
-export type BillingConfig = {
-  name: string;
-  basePrice: number;
-  vatRate: number;
-  includedMonthlyDocuments: number;
-  documentOveragePrice: number;
-}
+export const BillingConfigSchema = z.object({
+  name: z.string(),
+  basePrice: z.number(),
+  includedMonthlyDocuments: z.number(),
+  documentOveragePrice: z.number(),
+  incomingDocumentOveragePrice: z.number().optional(),
+  outgoingDocumentOveragePrice: z.number().optional(),
+});
+
+export type BillingConfig = z.infer<typeof BillingConfigSchema>;
 
 export const allPlans: Plan[] = [
   {
@@ -17,7 +22,6 @@ export const allPlans: Plan[] = [
     isAvailable: true,
     name: "Free",
     basePrice: 0,
-    vatRate: 0.21,
     includedMonthlyDocuments: 25,
     documentOveragePrice: 0.3,
   },
@@ -26,7 +30,6 @@ export const allPlans: Plan[] = [
     isAvailable: true,
     name: "Starter",
     basePrice: 29,
-    vatRate: 0.21,
     includedMonthlyDocuments: 200,
     documentOveragePrice: 0.2,
   },
@@ -35,7 +38,6 @@ export const allPlans: Plan[] = [
     isAvailable: true,
     name: "Professional",
     basePrice: 99,
-    vatRate: 0.21,
     includedMonthlyDocuments: 1000,
     documentOveragePrice: 0.1,
   },
@@ -44,7 +46,6 @@ export const allPlans: Plan[] = [
     isAvailable: false,
     name: "Enterprise",
     basePrice: 0,
-    vatRate: 0.21,
     includedMonthlyDocuments: 0,
     documentOveragePrice: 0.05,
   }
