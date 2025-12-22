@@ -167,7 +167,9 @@ export function ExportDocumentsDialog({
 
             setStartDateTime("");
             setEndDateTime("");
-            setOutputType("nested");
+            setOutputType("flat");
+            setIncludeIncoming(true);
+            setIncludeOutgoing(true);
         } catch (error) {
             console.error("Failed to export documents:", error);
             setErrors({ general: "Failed to export documents. Please try again." });
