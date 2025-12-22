@@ -25,7 +25,7 @@ const getTransmittedDocumentsRouteDescription = describeRoute({
   tags: ["Documents"],
   responses: {
     ...describeSuccessResponseWithZod("Successfully retrieved transmitted documents", z.object({
-      documents: z.array(transmittedDocumentResponse),
+      documents: z.array(transmittedDocumentResponse.omit({ xml: true })),
       pagination: z.object({
         total: z.number(),
         page: z.number(),
