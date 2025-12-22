@@ -137,7 +137,8 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         return c.json(
           actionFailure(
             "Invalid invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-          )
+          ),
+          400
         );
       }
 
@@ -192,7 +193,8 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         return c.json(
           actionFailure(
             "Invalid credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-          )
+          ),
+          400
         );
       }
 
@@ -244,7 +246,8 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         return c.json(
           actionFailure(
             "Invalid self billing invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-          )
+          ),
+          400
         );
       }
 
@@ -300,7 +303,8 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         return c.json(
           actionFailure(
             "Invalid self billing credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-          )
+          ),
+          400
         );
       }
 
