@@ -23,6 +23,11 @@ export const COUNTRIES: CountryInfo[] = [
         defaultEnterpriseNumberScheme: "0208",
     },
     {
+        code: "CA",
+        name: "Canada",
+        flag: "🇨🇦",
+    },
+    {
         code: "DK",
         name: "Denmark",
         flag: "🇩🇰",
