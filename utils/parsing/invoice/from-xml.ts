@@ -35,6 +35,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   const dueDate = getNullableTextContent(invoice.DueDate);
   const note = getTextContent(invoice.Note);
   const purchaseOrderReference = getNullableTextContent(invoice.OrderReference?.ID);
+  const salesOrderReference = getNullableTextContent(invoice.OrderReference?.SalesOrderID);
   const buyerReference = getNullableTextContent(invoice.BuyerReference);
   const despatchReference = getNullableTextContent(invoice.DespatchDocumentReference?.ID);
 
@@ -214,6 +215,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     dueDate,
     note,
     purchaseOrderReference,
+    salesOrderReference,
     buyerReference,
     despatchReference,
     attachments: attachments.length > 0 ? attachments : [],

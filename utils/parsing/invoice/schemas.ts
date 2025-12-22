@@ -443,6 +443,7 @@ export const _invoiceSchema = z.object({
     example: "PO-2024-001",
     description: "A reference to a related purchase order",
   }),
+  salesOrderReference: z.string().nullish().openapi({ example: "SO-2024-001", description: "A reference to a related sales order." }),
   despatchReference: z.string().nullish().openapi({
     example: "DE-2024-001",
     description:

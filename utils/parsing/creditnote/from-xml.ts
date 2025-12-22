@@ -35,6 +35,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   const issueDate = getTextContent(creditNote.IssueDate);
   const note = getTextContent(creditNote.Note);
   const purchaseOrderReference = getNullableTextContent(creditNote.OrderReference?.ID);
+  const salesOrderReference = getNullableTextContent(creditNote.OrderReference?.SalesOrderID);
   const buyerReference = getNullableTextContent(creditNote.BuyerReference);
   const despatchReference = getNullableTextContent(creditNote.DespatchDocumentReference?.ID);
   const invoiceReferences = (creditNote.BillingReference || []).map((reference: any) => ({
@@ -217,6 +218,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     issueDate,
     note,
     purchaseOrderReference,
+    salesOrderReference,
     buyerReference,
     despatchReference,
     invoiceReferences,

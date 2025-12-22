@@ -70,9 +70,10 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
       ...(creditNote.buyerReference && {
         "cbc:BuyerReference": creditNote.buyerReference,
       }),
-      ...(creditNote.purchaseOrderReference && {
+      ...((creditNote.purchaseOrderReference || creditNote.salesOrderReference) && {
         "cac:OrderReference": {
-          "cbc:ID": creditNote.purchaseOrderReference,
+          "cbc:ID": creditNote.purchaseOrderReference || "NA",
+          ...(creditNote.salesOrderReference && { "cbc:SalesOrderID": creditNote.salesOrderReference }),
         },
       }),
       ...(!creditNote.buyerReference &&
