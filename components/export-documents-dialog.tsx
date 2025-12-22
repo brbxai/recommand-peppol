@@ -11,6 +11,7 @@ import {
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@core/components/ui/radio-group";
+import { Checkbox } from "@core/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { rc } from "@recommand/lib/client";
 import type { TransmittedDocuments } from "@peppol/api/documents";
@@ -34,6 +35,8 @@ export function ExportDocumentsDialog({
     const [startDateTime, setStartDateTime] = useState("");
     const [endDateTime, setEndDateTime] = useState("");
     const [outputType, setOutputType] = useState<"flat" | "nested">("flat");
+    const [includeIncoming, setIncludeIncoming] = useState(true);
+    const [includeOutgoing, setIncludeOutgoing] = useState(true);
     const [errors, setErrors] = useState<{
         startDateTime?: string;
         endDateTime?: string;
@@ -65,6 +68,8 @@ export function ExportDocumentsDialog({
             const defaults = getDefaultDateRange();
             setStartDateTime(defaults.start);
             setEndDateTime(defaults.end);
+            setIncludeIncoming(true);
+            setIncludeOutgoing(true);
             setErrors({});
         }
     }, [open]);
@@ -78,6 +83,10 @@ export function ExportDocumentsDialog({
 
         if (!endDateTime) {
             newErrors.endDateTime = "End datetime is required";
+        }
+
+        if (!includeIncoming && !includeOutgoing) {
+            newErrors.general = "At least one direction (incoming or outgoing) must be selected";
         }
 
         if (startDateTime && endDateTime) {
@@ -111,6 +120,13 @@ export function ExportDocumentsDialog({
             const start = new Date(startDateTime);
             const end = new Date(endDateTime);
 
+            let direction: "incoming" | "outgoing" | undefined;
+            if (includeIncoming && !includeOutgoing) {
+                direction = "incoming";
+            } else if (includeOutgoing && !includeIncoming) {
+                direction = "outgoing";
+            }
+
             const response = await client[":teamId"]["documents"]["export"].$post({
                 param: { teamId: activeTeam.id },
                 json: {
@@ -118,6 +134,7 @@ export function ExportDocumentsDialog({
                     to: end,
                     outputType,
                     generatePdf: "never",
+                    ...(direction && { direction }),
                 },
             });
 
@@ -228,6 +245,37 @@ export function ExportDocumentsDialog({
                         />
                         {errors.endDateTime && (
                             <p className="text-sm text-destructive">{errors.endDateTime}</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Document direction</Label>
+                        <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="includeIncoming"
+                                    checked={includeIncoming}
+                                    onCheckedChange={(checked) => setIncludeIncoming(checked === true)}
+                                    disabled={isExporting}
+                                />
+                                <Label htmlFor="includeIncoming" className="font-normal cursor-pointer">
+                                    Include incoming documents
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="includeOutgoing"
+                                    checked={includeOutgoing}
+                                    onCheckedChange={(checked) => setIncludeOutgoing(checked === true)}
+                                    disabled={isExporting}
+                                />
+                                <Label htmlFor="includeOutgoing" className="font-normal cursor-pointer">
+                                    Include outgoing documents
+                                </Label>
+                            </div>
+                        </div>
+                        {!includeIncoming && !includeOutgoing && (
+                            <p className="text-sm text-destructive">At least one direction must be selected</p>
                         )}
                     </div>
 

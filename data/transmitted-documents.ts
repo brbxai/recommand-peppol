@@ -280,13 +280,18 @@ export async function getTransmittedDocument(
 export async function getAllTransmittedDocumentsInRange(
   teamId: string,
   from: Date,
-  to: Date
+  to: Date,
+  direction?: "incoming" | "outgoing"
 ): Promise<(TransmittedDocument & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] })[]> {
   const whereClause = [
     eq(transmittedDocuments.teamId, teamId),
     gte(transmittedDocuments.createdAt, from),
     lt(transmittedDocuments.createdAt, to),
   ];
+
+  if (direction) {
+    whereClause.push(eq(transmittedDocuments.direction, direction));
+  }
 
   const documents = await db
     .select()
