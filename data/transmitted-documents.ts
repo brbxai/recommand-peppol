@@ -276,3 +276,29 @@ export async function getTransmittedDocument(
     labels: documentLabelsMap.get(documentId) || [],
   };
 }
+
+export async function getAllTransmittedDocumentsInRange(
+  teamId: string,
+  from: Date,
+  to: Date
+): Promise<(TransmittedDocument & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] })[]> {
+  const whereClause = [
+    eq(transmittedDocuments.teamId, teamId),
+    gte(transmittedDocuments.createdAt, from),
+    lt(transmittedDocuments.createdAt, to),
+  ];
+
+  const documents = await db
+    .select()
+    .from(transmittedDocuments)
+    .where(and(...whereClause))
+    .orderBy(desc(transmittedDocuments.createdAt));
+
+  const documentIds = documents.map((doc) => doc.id);
+  const documentLabelsMap = await getLabelsForDocuments(documentIds);
+
+  return documents.map((doc) => ({
+    ...doc,
+    labels: documentLabelsMap.get(doc.id) || [],
+  }));
+}

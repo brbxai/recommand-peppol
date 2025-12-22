@@ -13,7 +13,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X, CheckCheck, Mail, MailOpen } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X, CheckCheck, Mail, MailOpen, Download } from "lucide-react";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
@@ -39,6 +39,7 @@ import {
 import type { Label } from "@peppol/types/label";
 import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
+import { ExportDocumentsDialog } from "@peppol/components/export-documents-dialog";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -60,6 +61,7 @@ export default function Page() {
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   const fetchCompanies = useCallback(async () => {
     if (!activeTeam?.id) {
@@ -802,8 +804,16 @@ export default function Page() {
     <PageTemplate
       breadcrumbs={[{ label: "Peppol" }, { label: "Sent and received documents" }]}
       description="View and manage your transmitted Peppol documents."
-      buttons={
-        isPlayground
+      buttons={[
+        <Button
+          key="export"
+          variant="outline"
+          onClick={() => setIsExportDialogOpen(true)}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </Button>,
+        ...(isPlayground
           ? [
               <ConfirmDialog
                 key="delete-all"
@@ -829,8 +839,8 @@ export default function Page() {
                 }
               />,
             ]
-          : undefined
-      }
+          : []),
+      ]}
     >
       <div className="space-y-6">
         {isLoading ? (
@@ -850,6 +860,10 @@ export default function Page() {
           </>
         )}
       </div>
+      <ExportDocumentsDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+      />
     </PageTemplate>
   );
 }
