@@ -22,6 +22,7 @@ import {
 import {
   describeErrorResponse,
   describeSuccessResponse,
+  describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
 import { addMonths, formatISO } from "date-fns";
 import {
@@ -39,7 +40,7 @@ import { selfBillingInvoiceToUBL } from "@peppol/utils/parsing/self-billing-invo
 import { sendSelfBillingCreditNoteSchema, type SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 import { selfBillingCreditNoteToUBL } from "@peppol/utils/parsing/self-billing-creditnote/to-xml";
 import { sendOutgoingDocumentNotifications } from "@peppol/data/send-document-notifications";
-import type z from "zod";
+import { z } from "zod";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { validateXmlDocument } from "@peppol/data/validation/client";
 import type { ValidationResponse } from "@peppol/types/validation";
@@ -47,39 +48,25 @@ import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, getDocumentTypeInfo, INVOICE_DOCUMENT_T
 
 const server = new Server();
 
+const sendDocumentResponse = z.object({
+  sentOverPeppol: z.boolean(),
+  sentOverEmail: z.boolean(),
+  emailRecipients: z.array(z.string()),
+  teamId: z.string(),
+  companyId: z.string(),
+  id: z.string(),
+  peppolMessageId: z.string().nullable(),
+});
+
 const routeDescription = describeRoute({
   operationId: "sendDocument",
   description: "Send a document to a customer",
   summary: "Send Document",
   tags: ["Sending"],
   responses: {
-    ...describeSuccessResponse("Successfully sent document", {
-      sentOverPeppol: {
-        type: "boolean",
-        description: "Whether the document was sent over Peppol",
-      },
-      sentOverEmail: {
-        type: "boolean",
-        description: "Whether the document was sent over email",
-      },
-      emailRecipients: {
-        type: "array",
-        description: "The email addresses that the document was sent to",
-      },
-      teamId: {
-        type: "string",
-        description: "The ID of the team that sent the document",
-      },
-      companyId: {
-        type: "string",
-        description: "The ID of the company that sent the document",
-      },
-      id: {
-        type: "string",
-        description: "The ID of the transmitted document",
-      },
-    }),
+    ...describeSuccessResponseWithZod("Successfully sent document", sendDocumentResponse),
     ...describeErrorResponse(400, "Invalid document data provided"),
+    ...describeErrorResponse(422, "Recipient could not be reached and no email fallback was configured or possible"),
   },
 });
 
@@ -403,16 +390,31 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
 
     let as4Response: SendAs4Response | null = null;
     if (isPlayground && !useTestNetwork) {
-      await simulateSendAs4({
-        senderId: senderAddress,
-        receiverId: recipientAddress,
-        docTypeId: doctypeId,
-        processId,
-        countryC1: countryC1,
-        body: xmlDocument,
-        playgroundTeamId: c.var.team.id, // Must be the same as the sender team: we don't support cross-team sending
-      });
-      sentPeppol = true;
+      try {
+        await simulateSendAs4({
+          senderId: senderAddress,
+          receiverId: recipientAddress,
+          docTypeId: doctypeId,
+          processId,
+          countryC1: countryC1,
+          body: xmlDocument,
+          playgroundTeamId: c.var.team.id, // Must be the same as the sender team: we don't support cross-team sending
+        });
+        sentPeppol = true;
+      } catch (error) {
+        console.error("Failed to simulate send as4:", error);
+        additionalPeppolFailureContext = error instanceof Error ? error.message : "No additional context available, please contact support@recommand.eu if you could use our help.";
+
+        // If send over email is disabled, return an error
+        if (!input.email) {
+          return c.json(
+            actionFailure(
+              `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
+            ),
+            422
+          );
+        }
+      }
     } else {
       as4Response = await sendAs4({
         senderId: senderAddress,
@@ -439,7 +441,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
             actionFailure(
               `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
             ),
-            400
+            422
           );
         }
       } else {
@@ -481,7 +483,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         actionFailure(
           `Failed to send document over Peppol network and email. ${additionalPeppolFailureContext} ${additionalEmailFailureContext}`
         ),
-        400
+        422
       );
     }
 
@@ -563,6 +565,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         teamId: c.var.team.id,
         companyId: company.id,
         id: transmittedDocument.id,
+        peppolMessageId: as4Response?.peppolMessageId ?? null,
         sentOverPeppol: sentPeppol,
         sentOverEmail: sentEmailRecipients.length > 0,
         emailRecipients: sentEmailRecipients,

@@ -14,9 +14,9 @@ export async function simulateSendAs4(options: {
   playgroundTeamId: string;
 }) {
 
-  // If the recipientId is "404:404", throw an error
-  if (options.receiverId === "404:404") {
-    throw new UserFacingError("This document was sent to recipient 404:404, simulating the sending of a document to a Peppol address that does not exist.");
+  // If the recipientId is "404:404" or "0208:1234567894", throw an error
+  if (options.receiverId === "404:404" || options.receiverId === "0208:1234567894") {
+    throw new UserFacingError("This document was sent to recipient 404:404 or 0208:1234567894, simulating the sending of a document to a Peppol address that does not exist.");
   }
 
   // Check if the receiverId is registered as a company in this playground team, search by enterprise number
