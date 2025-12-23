@@ -22,6 +22,8 @@ export async function receiveDocument(options: {
   skipBilling?: boolean;
   useTestNetwork?: boolean;
   playgroundTeamId?: string;
+  as4MessageId?: string | null;
+  as4ConversationId?: string | null;
 }) {
   // The sender and receiver id might start with iso6523-actorid-upis::
   const senderId = options.senderId.startsWith("iso6523-actorid-upis::")
@@ -76,6 +78,8 @@ export async function receiveDocument(options: {
       processId: cleanProcessId,
       countryC1: options.countryC1,
       xml: options.body,
+      peppolMessageId: options.as4MessageId ?? null,
+      peppolConversationId: options.as4ConversationId ?? null,
       type,
       parsed: parsedDocument,
       validation,

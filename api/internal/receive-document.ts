@@ -14,6 +14,8 @@ export const receiveDocumentSchema = z.object({
   processId: z.string(),
   countryC1: z.string(),
   body: z.string(),
+  as4MessageId: z.string().nullish(),
+  as4ConversationId: z.string().nullish(),
 });
 
 const server = new Server();
