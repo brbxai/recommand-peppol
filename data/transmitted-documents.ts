@@ -131,6 +131,7 @@ export async function getTransmittedDocuments(
       peppolMessageId: transmittedDocuments.peppolMessageId,
       peppolConversationId: transmittedDocuments.peppolConversationId,
       receivedPeppolSignalMessage: transmittedDocuments.receivedPeppolSignalMessage,
+      envelopeId: transmittedDocuments.envelopeId,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
@@ -203,6 +204,7 @@ export async function getInbox(
       peppolMessageId: transmittedDocuments.peppolMessageId,
       peppolConversationId: transmittedDocuments.peppolConversationId,
       receivedPeppolSignalMessage: transmittedDocuments.receivedPeppolSignalMessage,
+      envelopeId: transmittedDocuments.envelopeId,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))

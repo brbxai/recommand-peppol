@@ -276,6 +276,7 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   peppolMessageId: text("peppol_message_id"),
   peppolConversationId: text("peppol_conversation_id"),
   receivedPeppolSignalMessage: text("received_peppol_signal_message"),
+  envelopeId: text("envelope_id"),
 
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

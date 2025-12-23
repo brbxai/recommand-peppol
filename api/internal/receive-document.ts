@@ -16,6 +16,7 @@ export const receiveDocumentSchema = z.object({
   body: z.string(),
   as4MessageId: z.string().nullish(),
   as4ConversationId: z.string().nullish(),
+  sbdhInstanceIdentifier: z.string().nullish(),
 });
 
 const server = new Server();

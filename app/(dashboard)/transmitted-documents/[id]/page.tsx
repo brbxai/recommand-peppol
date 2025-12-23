@@ -646,7 +646,7 @@ export default function TransmittedDocumentDetailPage() {
                         </div>
                       )}
                     </div>
-                    {(doc.peppolMessageId || doc.peppolConversationId || doc.receivedPeppolSignalMessage) && (
+                    {(doc.peppolMessageId || doc.peppolConversationId || doc.receivedPeppolSignalMessage || doc.envelopeId) && (
                       <Collapsible>
                         <CollapsibleTrigger asChild>
                           <Button
@@ -708,6 +708,12 @@ export default function TransmittedDocumentDetailPage() {
                                     Copy XML
                                   </Button>
                                 </div>
+                              </div>
+                            )}
+                            {doc.envelopeId && (
+                              <div className="space-y-1">
+                                <div className="text-muted-foreground">Envelope ID</div>
+                                <div className="font-mono text-xs break-all">{doc.envelopeId}</div>
                               </div>
                             )}
                           </div>

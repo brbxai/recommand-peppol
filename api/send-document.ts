@@ -21,7 +21,6 @@ import {
 } from "@peppol/utils/auth-middleware";
 import {
   describeErrorResponse,
-  describeSuccessResponse,
   describeSuccessResponseWithZod,
 } from "@peppol/utils/api-docs";
 import { addMonths, formatISO } from "date-fns";
@@ -512,6 +511,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         peppolMessageId: as4Response?.peppolMessageId ?? null,
         peppolConversationId: as4Response?.peppolConversationId ?? null,
         receivedPeppolSignalMessage: as4Response?.receivedPeppolSignalMessage ?? null,
+        envelopeId: as4Response?.sbdhInstanceIdentifier ?? null,
       })
       .returning({ id: transmittedDocuments.id })
       .then((rows) => rows[0]);
