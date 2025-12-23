@@ -55,6 +55,7 @@ const sendDocumentResponse = z.object({
   companyId: z.string(),
   id: z.string(),
   peppolMessageId: z.string().nullable(),
+  envelopeId: z.string().nullable(),
 });
 
 const routeDescription = describeRoute({
@@ -566,6 +567,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         companyId: company.id,
         id: transmittedDocument.id,
         peppolMessageId: as4Response?.peppolMessageId ?? null,
+        envelopeId: as4Response?.sbdhInstanceIdentifier ?? null,
         sentOverPeppol: sentPeppol,
         sentOverEmail: sentEmailRecipients.length > 0,
         emailRecipients: sentEmailRecipients,
