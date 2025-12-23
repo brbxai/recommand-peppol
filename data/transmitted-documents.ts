@@ -58,9 +58,12 @@ export async function getTransmittedDocuments(
     from?: Date;
     to?: Date;
     isUnread?: boolean;
+    envelopeId?: string | null;
+    peppolMessageId?: string | null;
+    peppolConversationId?: string | null
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
-  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread } = options;
+  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread, envelopeId, peppolMessageId, peppolConversationId } = options;
   const offset = (page - 1) * limit;
 
   // Build the where clause
@@ -98,6 +101,21 @@ export async function getTransmittedDocuments(
     } else {
       whereClause.push(isNotNull(transmittedDocuments.readAt));
     }
+  }
+  if (envelopeId !== undefined && envelopeId !== null) {
+    whereClause.push(eq(transmittedDocuments.envelopeId, envelopeId));
+  }else if (envelopeId === null) {
+    whereClause.push(isNull(transmittedDocuments.envelopeId));
+  }
+  if (peppolMessageId !== undefined && peppolMessageId !== null) {
+    whereClause.push(eq(transmittedDocuments.peppolMessageId, peppolMessageId));
+  }else if (peppolMessageId === null) {
+    whereClause.push(isNull(transmittedDocuments.peppolMessageId));
+  }
+  if (peppolConversationId !== undefined && peppolConversationId !== null) {
+    whereClause.push(eq(transmittedDocuments.peppolConversationId, peppolConversationId));
+  }else if (peppolConversationId === null) {
+    whereClause.push(isNull(transmittedDocuments.peppolConversationId));
   }
 
   // Get total count
