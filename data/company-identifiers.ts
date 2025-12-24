@@ -202,16 +202,16 @@ export async function deleteCompanyIdentifier({
 /**
  * Check if a company identifier can be upserted.
  * Whether a company identifier can be upserted depends on whether we're in a playground or production context:
- * - In a playground context without test network, we can upsert a company identifier as long as it doesn't already exist on the same playground team.
- * - In a playground context with test network, we can upsert a company identifier as long as it is not already registered with any playground company.
- * - In a production context, we can upsert a company identifier as long as it is not already registered with a production company.
+ * - In a playground context without test network, we can upsert a company identifier as long as it doesn't already exist on the same playground team as a SMP registered company.
+ * - In a playground context with test network, we can upsert a company identifier as long as it is not already registered with any SMP registered playground company.
+ * - In a production context, we can upsert a company identifier as long as it is not already registered with any SMP registered production company.
  * @param scheme 
  * @param identifier 
  * @param currentIdentifierId 
  * @param companyId
  * @returns 
  */
-async function canUpsertCompanyIdentifier(scheme: string, identifier: string, currentIdentifierId: string | undefined, companyId: string): Promise<boolean> {
+export async function canUpsertCompanyIdentifier(scheme: string, identifier: string, currentIdentifierId: string | undefined, companyId: string, excludeCompanyId?: string): Promise<boolean> {
   const teamInfo = await getTeamExtensionAndCompanyByCompanyId(companyId);
   if(!teamInfo){
     console.error("Company is not associated with a team", companyId);
@@ -220,6 +220,7 @@ async function canUpsertCompanyIdentifier(scheme: string, identifier: string, cu
   }
   const isPlaygroundTeam = teamInfo.teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamInfo.teamExtension?.useTestNetwork ?? false;
+  // Look for collisions
   return await db
     .select()
     .from(companyIdentifiers)
@@ -228,6 +229,13 @@ async function canUpsertCompanyIdentifier(scheme: string, identifier: string, cu
     .where(
       and(
         currentIdentifierId ? ne(companyIdentifiers.id, currentIdentifierId) : undefined, // Exclude the current identifier from the check
+        excludeCompanyId ? ne(companies.id, excludeCompanyId) : undefined, // Exclude the provided company from the check
+        // Look for duplicates within the same company. For SMP recipients, also look for collisions with other smp recipients
+        or(
+          eq(companies.id, companyId), // Include the current company (the same identifier cannot be added to the same company more than once)
+          teamInfo.company.isSmpRecipient ? eq(companies.isSmpRecipient, true) : undefined, // Only include companies that are registered as SMP recipient (the same identifier can be used multiple times for sending)
+        ),
+        // Scope the search depending on the class (playground, playground with test network, production)
         or(
           eq(companies.teamId, teamInfo.company.teamId), // Include all companies on the same team
           isPlaygroundTeam

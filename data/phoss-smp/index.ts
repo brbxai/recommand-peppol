@@ -4,7 +4,7 @@ import { deleteServiceGroup, migrateParticipantToOurSMP, registerServiceGroup } 
 import { deleteServiceMetadata, registerServiceMetadata } from "./service-metadata";
 import { registerBusinessCard } from "./business-card";
 import { getMigrationToken } from "../hermes";
-import { getCompanyIdentifiers, type CompanyIdentifier } from "../company-identifiers";
+import { canUpsertCompanyIdentifier, getCompanyIdentifiers, type CompanyIdentifier } from "../company-identifiers";
 import { getCompanyDocumentTypes, type CompanyDocumentType } from "../company-document-types";
 import { verifyRecipient } from "../recipient";
 
@@ -63,10 +63,14 @@ export async function unregisterCompanyDocumentType({documentType, useTestNetwor
   }
 }
 
-export async function registerCompanyIdentifier({company, identifier, documentTypes, useTestNetwork}: {company: Company | InsertCompany, identifier: MinimalCompanyIdentifier, documentTypes: CompanyDocumentType[], useTestNetwork: boolean}) {
+async function registerCompanyIdentifier({company, identifier, documentTypes, useTestNetwork}: {company: Company | InsertCompany, identifier: MinimalCompanyIdentifier, documentTypes: CompanyDocumentType[], useTestNetwork: boolean}) {
 
-  if(!company.isSmpRecipient){
+  if(!company.isSmpRecipient || !company.id){
     return;
+  }
+
+  if(!await canUpsertCompanyIdentifier(identifier.scheme, identifier.identifier, undefined, company.id, company.id)){
+    throw new UserFacingError("Company cannot be registered as SMP recipient, it has identifiers that are already registered as recipient with another company.");
   }
 
   const address = `${company.address}, ${company.postalCode} ${company.city}, ${company.country}`;

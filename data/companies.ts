@@ -10,7 +10,7 @@ import {
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { getTeamExtension } from "./teams";
 import { createCompanyDocumentType } from "./company-document-types";
-import { createCompanyIdentifier } from "./company-identifiers";
+import { canUpsertCompanyIdentifier, createCompanyIdentifier, getCompanyIdentifiers } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
 import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
@@ -26,21 +26,21 @@ export async function getCompanies(
   }
 ): Promise<Company[]> {
   const conditions = [eq(companies.teamId, teamId)];
-  
+
   if (filters?.enterpriseNumber) {
     const cleanedEnterpriseNumber = cleanEnterpriseNumber(filters.enterpriseNumber);
     if (cleanedEnterpriseNumber) {
       conditions.push(eq(companies.enterpriseNumber, cleanedEnterpriseNumber));
     }
   }
-  
+
   if (filters?.vatNumber) {
     const cleanedVatNumber = cleanVatNumber(filters.vatNumber);
     if (cleanedVatNumber) {
       conditions.push(eq(companies.vatNumber, cleanedVatNumber));
     }
   }
-  
+
   return await db.select().from(companies).where(and(...conditions)).orderBy(asc(companies.name));
 }
 
@@ -99,6 +99,7 @@ export async function getCompanyByPeppolId({
     .leftJoin(teamExtensions, eq(companies.teamId, teamExtensions.id))
     .where(
       and(
+        eq(companies.isSmpRecipient, true), // Only include companies that are registered as SMP recipient
         eq(companyIdentifiers.scheme, scheme.toLowerCase()),
         eq(companyIdentifiers.identifier, identifier.toLowerCase()),
         playgroundTeamId ? eq(companies.teamId, playgroundTeamId) : (
@@ -236,7 +237,7 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
         await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
       } catch (error) {
         // If registration fails, unregister any company registrations that might have been registered
-        try{
+        try {
           await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
         } catch (error) {
           // If this fails, we can't do much about it, we at least want to rollback the update of the company
@@ -247,13 +248,13 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
         throw error;
       }
     } else {
-      try{
+      try {
         await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
       } catch (error) {
         // If unregistration fails, register all company registrations that might have been unregistered
-        try{
+        try {
           await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-        }catch(error){
+        } catch (error) {
           // If this fails, we can't do much about it, we at least want to rollback the update of the company
           console.error(`Failed to register company registrations for company ${updatedCompany.id} after unregistration failed: ${error}`);
         }
@@ -261,6 +262,21 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
         await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
         throw error;
       }
+    }
+  } else {
+    try {
+      // Ensure none of the company's identifiers are already registered as recipient with another company within the same class (playground, playground with test network, production)
+      const identifiers = await getCompanyIdentifiers(updatedCompany.id);
+      for (const identifier of identifiers) {
+        const canUpsert = await canUpsertCompanyIdentifier(identifier.scheme, identifier.identifier, identifier.id, updatedCompany.id);
+        if (!canUpsert) {
+          throw new UserFacingError("Company cannot be registered as SMP recipient, it has identifiers that are already registered as recipient with another company.");
+        }
+      }
+    } catch (error) {
+      // If the check fails, rollback the update of the company
+      await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
+      throw error;
     }
   }
 
