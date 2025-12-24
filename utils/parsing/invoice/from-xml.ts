@@ -56,7 +56,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   }
 
   const seller = {
-    name: getTextContent(sellerParty.PartyName?.Name),
+    name: getNullableTextContent(sellerParty.PartyName?.Name) ?? getTextContent(sellerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(sellerParty.PostalAddress?.StreetName),
     street2: getTextContent(sellerParty.PostalAddress?.AdditionalStreetName),
     city: getTextContent(sellerParty.PostalAddress?.CityName),
@@ -74,7 +74,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   }
 
   const buyer = {
-    name: getTextContent(buyerParty.PartyName?.Name),
+    name: getNullableTextContent(buyerParty.PartyName?.Name) ?? getTextContent(buyerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(buyerParty.PostalAddress?.StreetName),
     street2: getTextContent(buyerParty.PostalAddress?.AdditionalStreetName),
     city: getTextContent(buyerParty.PostalAddress?.CityName),

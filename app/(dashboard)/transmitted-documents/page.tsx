@@ -41,6 +41,10 @@ import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
 import { ExportDocumentsDialog } from "@peppol/components/export-documents-dialog";
 import type { SupportedDocumentType } from "@peppol/utils/document-types";
+import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
+import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -486,8 +490,8 @@ export default function Page() {
         if (isRecognizedType && document.parsed) {
           // For billing documents, sender is the seller, for self-billing documents, sender is the buyer
           const senderInfo = ["invoice", "creditNote"].includes(documentType)
-            ? (document.parsed as any)?.seller
-            : (document.parsed as any)?.buyer;
+            ? (document.parsed as Invoice | CreditNote)?.seller
+            : ["selfBillingInvoice", "selfBillingCreditNote"].includes(documentType) ? (document.parsed as SelfBillingInvoice | SelfBillingCreditNote)?.buyer : undefined;
 
           if (senderInfo?.name) {
             return (
