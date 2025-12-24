@@ -40,6 +40,7 @@ import type { Label } from "@peppol/types/label";
 import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
 import { ExportDocumentsDialog } from "@peppol/components/export-documents-dialog";
+import type { SupportedDocumentType } from "@peppol/utils/document-types";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -121,7 +122,7 @@ export default function Page() {
           companyId: filteredCompanyIds,
           direction: ((filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0]) as "incoming" | "outgoing", // When no or all options are selected, don't filter on direction
           search: globalFilter || undefined, // Add the global search term to the query
-          type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as "unknown" | "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote", // When no or all options are selected, don't filter on type
+          type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as SupportedDocumentType, // When no or all options are selected, don't filter on type
           isUnread: ((filteredIsUnreadValues.length === 0 || filteredIsUnreadValues.length > 1) ? undefined : filteredIsUnreadValues[0]) as "true" | "false" | undefined,
         },
       });

@@ -1,14 +1,15 @@
 import type { TransmittedDocument } from "@peppol/data/transmitted-documents";
 import { BILLING_DOCUMENT_TEMPLATE } from "@peppol/templates/billing-document";
+import { MESSAGE_LEVEL_RESPONSE_TEMPLATE } from "@peppol/templates/message-level-response";
 import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
 import { getUnitCodeName } from "@peppol/utils/unit-codes";
+import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 
-type AnyParsedDocument =
+type ParsedBillingDocument =
   | import("@peppol/utils/parsing/invoice/schemas").Invoice
   | import("@peppol/utils/parsing/creditnote/schemas").CreditNote
   | import("@peppol/utils/parsing/self-billing-invoice/schemas").SelfBillingInvoice
-  | import("@peppol/utils/parsing/self-billing-creditnote/schemas").SelfBillingCreditNote
-  | null;
+  | import("@peppol/utils/parsing/self-billing-creditnote/schemas").SelfBillingCreditNote;
 
 type TemplateLineDiscount = {
   amount: string;
@@ -86,6 +87,20 @@ type BillingTemplateData = {
   paymentMeans?: TemplatePaymentMeans[] | null;
 };
 
+type MessageLevelResponseTemplateData = {
+  documentId: string;
+  documentType: string;
+  documentTypeLabel: string;
+  responseId: string;
+  issueDate: string;
+  responseCode: string;
+  responseCodeLabel: string;
+  envelopeId: string;
+  isAccepted: boolean;
+  isRejected: boolean;
+  isAcknowledgement: boolean;
+};
+
 const RECOMMAND_RENDER_ENDPOINT = "https://render.recommand.dev";
 
 function getDocumentTypeLabel(type: TransmittedDocument["type"]): string {
@@ -98,13 +113,15 @@ function getDocumentTypeLabel(type: TransmittedDocument["type"]): string {
       return "Self-billing invoice";
     case "selfBillingCreditNote":
       return "Self-billing credit note";
+    case "messageLevelResponse":
+      return "Message Level Response";
     default:
       return "Document";
   }
 }
 
 function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
-  const parsed = document.parsed as AnyParsedDocument;
+  const parsed = document.parsed as ParsedBillingDocument;
 
   const isInvoice =
     document.type === "invoice" || document.type === "selfBillingInvoice";
@@ -118,7 +135,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
     null;
 
   const issueDate = parsed?.issueDate ?? null;
-  const dueDate = (parsed as any)?.dueDate ?? null;
+  const dueDate = "dueDate" in parsed ? parsed.dueDate : null;
   const buyerReference = parsed?.buyerReference && parsed.buyerReference !== documentNumber ? parsed.buyerReference : null;
 
   const sellerRaw = (parsed as any)?.seller;
@@ -270,9 +287,46 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
   };
 }
 
+function buildMessageLevelResponseTemplateData(
+  document: TransmittedDocument,
+): MessageLevelResponseTemplateData {
+  const parsed = document.parsed as MessageLevelResponse;
+
+  if (!parsed) {
+    throw new Error("Message Level Response document missing parsed data");
+  }
+
+  const getResponseCodeLabel = (code: string): string => {
+    switch (code) {
+      case "AB":
+        return "Message Acknowledgement";
+      case "AP":
+        return "Accepted";
+      case "RE":
+        return "Rejected";
+      default:
+        return code;
+    }
+  };
+
+  return {
+    documentId: document.id,
+    documentType: document.type,
+    documentTypeLabel: getDocumentTypeLabel(document.type),
+    responseId: parsed.id,
+    issueDate: parsed.issueDate,
+    responseCode: parsed.responseCode,
+    responseCodeLabel: getResponseCodeLabel(parsed.responseCode),
+    envelopeId: parsed.envelopeId,
+    isAccepted: parsed.responseCode === "AP",
+    isRejected: parsed.responseCode === "RE",
+    isAcknowledgement: parsed.responseCode === "AB",
+  };
+}
+
 async function callTailwindPdfGenerator(
   templateHtml: string,
-  data: BillingTemplateData,
+  data: BillingTemplateData | MessageLevelResponseTemplateData,
   options: { preview: boolean },
 ): Promise<string | Buffer> {
   const body = JSON.stringify({ html: templateHtml, data });
@@ -304,6 +358,19 @@ async function callTailwindPdfGenerator(
 export async function renderDocumentHtml(
   document: TransmittedDocument,
 ): Promise<string> {
+  if (document.type === "unknown") {
+    throw new Error("Unknown document type");
+  }
+  if (document.type === "messageLevelResponse") {
+    const data = buildMessageLevelResponseTemplateData(document);
+    const html = await callTailwindPdfGenerator(
+      MESSAGE_LEVEL_RESPONSE_TEMPLATE,
+      data,
+      { preview: true },
+    );
+    return html.toString();
+  }
+
   const data = buildTemplateData(document);
   const html = await callTailwindPdfGenerator(
     BILLING_DOCUMENT_TEMPLATE,
@@ -316,6 +383,19 @@ export async function renderDocumentHtml(
 export async function renderDocumentPdf(
   document: TransmittedDocument,
 ): Promise<Buffer> {
+  if (document.type === "unknown") {
+    throw new Error("Unknown document type");
+  }
+  if (document.type === "messageLevelResponse") {
+    const data = buildMessageLevelResponseTemplateData(document);
+    const pdf = await callTailwindPdfGenerator(
+      MESSAGE_LEVEL_RESPONSE_TEMPLATE,
+      data,
+      { preview: false },
+    );
+    return pdf as Buffer;
+  }
+
   const data = buildTemplateData(document);
   const pdf = await callTailwindPdfGenerator(
     BILLING_DOCUMENT_TEMPLATE,

@@ -4,20 +4,22 @@ import { sendInvoiceSchema } from "./invoice/schemas";
 import { sendCreditNoteSchema } from "./creditnote/schemas";
 import { sendSelfBillingInvoiceSchema } from "./self-billing-invoice/schemas";
 import { sendSelfBillingCreditNoteSchema } from "./self-billing-creditnote/schemas";
+import { sendMessageLevelResponseSchema } from "./message-level-response/schemas";
 
 export const DocumentType = {
   INVOICE: "invoice",
   CREDIT_NOTE: "creditNote",
   SELF_BILLING_INVOICE: "selfBillingInvoice",
   SELF_BILLING_CREDIT_NOTE: "selfBillingCreditNote",
+  MESSAGE_LEVEL_RESPONSE: "messageLevelResponse",
   XML: "xml",
 } as const;
 
-export const documentTypeSchema = z.enum([DocumentType.INVOICE, DocumentType.CREDIT_NOTE, DocumentType.SELF_BILLING_INVOICE, DocumentType.SELF_BILLING_CREDIT_NOTE, DocumentType.XML])
-.openapi({
-  description: "The type of document.",
-  example: DocumentType.INVOICE,
-});
+export const documentTypeSchema = z.enum([DocumentType.INVOICE, DocumentType.CREDIT_NOTE, DocumentType.SELF_BILLING_INVOICE, DocumentType.SELF_BILLING_CREDIT_NOTE, DocumentType.MESSAGE_LEVEL_RESPONSE, DocumentType.XML])
+  .openapi({
+    description: "The type of document.",
+    example: DocumentType.INVOICE,
+  });
 
 export type DocumentType =
   (typeof DocumentType)[keyof typeof DocumentType];
@@ -60,13 +62,20 @@ export const sendDocumentSchema = z.object({
   //   description: "Generate a PDF of the document. Each generated PDF is counted towards your document quota. PDF generation is only available for invoices and credit notes.",
   // }),
   documentType: documentTypeSchema,
-  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, sendSelfBillingInvoiceSchema, sendSelfBillingCreditNoteSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
+  document: z.union([sendInvoiceSchema, sendCreditNoteSchema, sendSelfBillingInvoiceSchema, sendSelfBillingCreditNoteSchema, sendMessageLevelResponseSchema, z.string().openapi({ ref: "XML", title: "XML", description: "XML document as a string" })]),
   doctypeId: z.string().optional().openapi({
     description:
       "The document type identifier. Not required, only used when documentType is \"xml\". For supported document types, the doctypeId can be detected automatically from your XML document, if that's not the case you can provide it manually.",
     example:
       "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1",
   }),
+  processId: z.string().optional().openapi({
+    description:
+      "The process identifier. Not required, only used when documentType is \"xml\". For supported document types, the processId can be detected automatically from your XML document, if that's not the case you can provide it manually.",
+    example:
+      "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+
+  })
 });
 
 export type SendDocument = z.infer<typeof sendDocumentSchema>;

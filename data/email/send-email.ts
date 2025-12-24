@@ -3,10 +3,11 @@ import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 import { Attachment } from "postmark";
+import type { DocumentType } from "@peppol/utils/document-types";
 
-export type ParsedDocument = Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote;
-export type DocumentType = "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown";
+export type ParsedDocument = Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | MessageLevelResponse;
 
 export function getDocumentTypeLabel(type: DocumentType): string {
   switch (type) {
@@ -18,6 +19,8 @@ export function getDocumentTypeLabel(type: DocumentType): string {
       return "Self Billing Invoice";
     case "selfBillingCreditNote":
       return "Self Billing Credit Note";
+    case "messageLevelResponse":
+      return "Message Level Response";
     default:
       return "Document";
   }
@@ -87,7 +90,7 @@ export async function sendDocumentEmail(options: {
 
   if (!htmlBody) {
     const documentTypeLabel = getDocumentTypeLabel(options.type).toLowerCase();
-    if (options.parsedDocument && options.parsedDocument.buyer?.name) {
+    if (options.parsedDocument && "buyer" in options.parsedDocument && options.parsedDocument.buyer?.name) {
       htmlBody = `Dear ${options.parsedDocument.buyer.name}, you can find your ${documentTypeLabel} attached.`;
     } else {
       htmlBody = `Dear, you can find your ${documentTypeLabel} attached.`;

@@ -43,7 +43,9 @@ import { z } from "zod";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { validateXmlDocument } from "@peppol/data/validation/client";
 import type { ValidationResponse } from "@peppol/types/validation";
-import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, getDocumentTypeInfo, INVOICE_DOCUMENT_TYPE_INFO, SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO, SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
+import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, getDocumentTypeInfo, INVOICE_DOCUMENT_TYPE_INFO, MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO, SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO, SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO, type BillingDocumentType, type SupportedDocumentType, type UnknownDocumentType } from "@peppol/utils/document-types";
+import { messageLevelResponseSchema, type MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
+import { messageLevelResponseToXML } from "@peppol/utils/parsing/message-level-response/to-xml";
 
 const server = new Server();
 
@@ -98,8 +100,9 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     const useTestNetwork = c.get("team").useTestNetwork ?? false;
 
     let xmlDocument: string | null = null;
-    let type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown" = "unknown";
-    let parsedDocument: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | null = null;
+    let type: SupportedDocumentType = "unknown";
+    let probableType: SupportedDocumentType = "unknown";
+    let parsedDocument: Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | MessageLevelResponse | null = null;
     let doctypeId: string = INVOICE_DOCUMENT_TYPE_INFO.docTypeId;
 
     // Get senderId, countryC1 from company
@@ -334,6 +337,48 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       } else {
         parsedDocument = selfBillingCreditNote;
       }
+    } else if (input.documentType === DocumentType.MESSAGE_LEVEL_RESPONSE) {
+      const messageLevelResponse = document as MessageLevelResponse;
+
+      if (!messageLevelResponse.id) {
+        messageLevelResponse.id = Bun.randomUUIDv7();
+      }
+      if (!messageLevelResponse.issueDate) {
+        messageLevelResponse.issueDate = formatISO(new Date(), { representation: "date" });
+      }
+
+      // Check the message level response corresponds to the required zod schema
+      const parsedMessageLevelResponse = messageLevelResponseSchema.safeParse(messageLevelResponse);
+      if (!parsedMessageLevelResponse.success) {
+        return c.json(
+          actionFailure(
+            "Invalid message level response data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+          ),
+          400
+        );
+      }
+
+      xmlDocument = messageLevelResponseToXML({
+        messageLevelResponse,
+        senderAddress,
+        recipientAddress,
+      });
+      type = "messageLevelResponse";
+      doctypeId = MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO.docTypeId;
+
+      const parsed = parseDocument(
+        doctypeId,
+        xmlDocument,
+        company,
+        senderAddress,
+      );
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as MessageLevelResponse;
+        type = parsed.type;
+      } else {
+        parsedDocument = messageLevelResponse;
+      }
     } else if (input.documentType === DocumentType.XML) {
       xmlDocument = document as string;
       if (input.doctypeId) {
@@ -354,6 +399,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
 
       parsedDocument = parsed.parsedDocument;
       type = parsed.type;
+      probableType = parsed.probableType; // We don't want to block if something goes wrong with the parsing, so we use the probableType for XML documents
     } else {
       return c.json(actionFailure("Invalid document type provided."), 400);
     }
@@ -364,7 +410,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
 
     const validation: ValidationResponse = await validateXmlDocument(xmlDocument);
     if (company.isOutgoingDocumentValidationEnforced) {
-      if (validation.result === "invalid" || validation.result === "error") { // Only stop sending if explicitly invalid or an error occurred
+      if (validation.result === "invalid") { // Only stop sending if explicitly invalid
         // Transform into key (ruleCode) value (errorMessage) object
         const errors: Record<string, string[]> = validation.errors.reduce((acc: Record<string, string[]>, error) => {
           const ruleErrors = acc[error.fieldName] || [];
@@ -386,7 +432,26 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     let additionalPeppolFailureContext = "";
     let additionalEmailFailureContext = "";
 
-    const processId = getDocumentTypeInfo(type).processId;
+    let processId: string = "";
+    if (input.processId) {
+      processId = input.processId;
+    } else {
+      try {
+        let typeToInspect = type;
+        if (type === "unknown" && probableType !== "unknown") {
+          typeToInspect = probableType;
+        }
+        processId = getDocumentTypeInfo(typeToInspect).processId;
+      } catch (error) {
+        console.error("Failed to get process id:", error);
+        sendSystemAlert(
+          "Process ID Detection Failed",
+          `Failed to detect process id. Error: \`\`\`\n${error}\n\`\`\``,
+          "error"
+        );
+        return c.json(actionFailure("Failed to detect process id. Please provide the processId manually."), 400);
+      }
+    }
 
     let as4Response: SendAs4Response | null = null;
     if (isPlayground && !useTestNetwork) {

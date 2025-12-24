@@ -5,15 +5,20 @@ import { parseCreditNoteFromXML } from "./creditnote/from-xml";
 import { parseSelfBillingInvoiceFromXML } from "./self-billing-invoice/from-xml";
 import { parseSelfBillingCreditNoteFromXML } from "./self-billing-creditnote/from-xml";
 import { XMLParser } from "fast-xml-parser";
+import { parseMessageLevelResponseFromXML } from "./message-level-response/from-xml";
+import { MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO, type SupportedDocumentType } from "../document-types";
 
 export function parseDocument(docTypeId: string, xml: string, company: Company, senderId: string) {
     // Parse the XML document
     let parsedDocument = null;
-    let type: "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote" | "unknown" = "unknown";
+    let type: SupportedDocumentType = "unknown";
+    let probableType: SupportedDocumentType = "unknown";
+
     if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0")) {
+        probableType = "invoice";
         try {
             parsedDocument = parseInvoiceFromXML(xml);
-            type = "invoice";
+            type = probableType;
         } catch (error) {
             console.error("Failed to parse invoice XML:", error);
             sendSystemAlert(
@@ -26,9 +31,10 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
             );
         }
     } else if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0")) {
+        probableType = "creditNote";
         try {
             parsedDocument = parseCreditNoteFromXML(xml);
-            type = "creditNote";
+            type = probableType;
         } catch (error) {
             console.error("Failed to parse credit note XML:", error);
             sendSystemAlert(
@@ -41,9 +47,10 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
             );
         }
     } else if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0")) {
+        probableType = "selfBillingInvoice";
         try {
             parsedDocument = parseSelfBillingInvoiceFromXML(xml);
-            type = "selfBillingInvoice";
+            type = probableType;
         } catch (error) {
             console.error("Failed to parse self billing invoice XML:", error);
             sendSystemAlert(
@@ -56,9 +63,10 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
             );
         }
     } else if (docTypeId.startsWith("urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:selfbilling:3.0")) {
+        probableType = "selfBillingCreditNote";
         try {
             parsedDocument = parseSelfBillingCreditNoteFromXML(xml);
-            type = "selfBillingCreditNote";
+            type = probableType;
         } catch (error) {
             console.error("Failed to parse self billing credit note XML:", error);
             sendSystemAlert(
@@ -70,9 +78,25 @@ export function parseDocument(docTypeId: string, xml: string, company: Company, 
                 "error"
             );
         }
+    } else if (docTypeId === MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO.docTypeId) {
+        probableType = "messageLevelResponse";
+        try {
+            parsedDocument = parseMessageLevelResponseFromXML(xml);
+            type = probableType;
+        } catch (error) {
+            console.error("Failed to parse message level response XML:", error);
+            sendSystemAlert(
+                "Document Parsing Error",
+                `Failed to parse message level response XML\n\n` +
+                `Company: ${company.name}\n` +
+                `Sender: ${senderId}\n` +
+                `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+                "error"
+            );
+        }
     }
 
-    return { parsedDocument, type };
+    return { parsedDocument, type, probableType };
 }
 
 export function detectDoctypeId(xml: string): string | null {
@@ -98,6 +122,11 @@ export function detectDoctypeId(xml: string): string | null {
             // Get the customization id from the invoice
             const customizationId = parsed.Invoice["CustomizationID"] || defaultCustomizationId;
             return `urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##${customizationId}::2.1`; // https://docs.peppol.eu/poacc/billing/3.0/rules/ubl-tc434/ "A UBL invoice should not include the UBLVersionID or it should be 2.1"
+        }
+
+        // If the document tag is a Message Level Response, return the message level response doctype id
+        if (parsed.ApplicationResponse) {
+            return MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO.docTypeId;
         }
 
         return null;

@@ -11,6 +11,8 @@ import { findSupplierByVatAndPeppolId } from "./suppliers";
 import { assignSupplierLabelsToDocument } from "./document-labels";
 import { validateXmlDocument } from "./validation/client";
 import type { ValidationResponse } from "@peppol/types/validation";
+import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -120,7 +122,7 @@ export async function receiveDocument(options: {
   // Try to match supplier and assign labels
   if (parsedDocument && (type === "invoice" || type === "creditNote")) {
     try {
-      const vatNumber = parsedDocument.seller?.vatNumber || null;
+      const vatNumber = (parsedDocument as Invoice | CreditNote).seller?.vatNumber || null;
       const supplier = await findSupplierByVatAndPeppolId(
         company.teamId,
         vatNumber,

@@ -5,13 +5,17 @@ import DocumentOutgoingNotification from "@peppol/emails/document-outgoing-notif
 import { Attachment } from "postmark";
 import {
   type ParsedDocument,
-  type DocumentType,
   getDocumentTypeLabel,
   extractDocumentAttachments,
   getDocumentFilename,
 } from "@peppol/data/email/send-email";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { renderDocumentPdf } from "@peppol/utils/document-renderer";
+import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
+import type { DocumentType } from "@peppol/utils/document-types";
 
 function extractDocumentDetails(
   parsedDocument: ParsedDocument | null,
@@ -51,16 +55,20 @@ function extractDocumentDetails(
     // TODO: Support multiple currencies
   }
 
-  const sellerName = parsedDocument.seller?.name || "Unknown";
-  const buyerName = parsedDocument.buyer?.name || "Unknown";
+  let sellerName = "Unknown";
+  let buyerName = "Unknown";
   let senderName = "Unknown";
   let receiverName = "Unknown";
   if(["invoice", "creditNote"].includes(type)) {
-    senderName = parsedDocument.seller?.name || "Unknown";
-    receiverName = parsedDocument.buyer?.name || "Unknown";
+    senderName = (parsedDocument as Invoice | CreditNote).seller?.name || "Unknown";
+    receiverName = (parsedDocument as Invoice | CreditNote).buyer?.name || "Unknown";
+    sellerName = (parsedDocument as Invoice | CreditNote).seller?.name || "Unknown";
+    buyerName = (parsedDocument as Invoice | CreditNote).buyer?.name || "Unknown";
   } else if(["selfBillingInvoice", "selfBillingCreditNote"].includes(type)) {
-    senderName = parsedDocument.buyer?.name || "Unknown";
-    receiverName = parsedDocument.seller?.name || "Unknown";
+    senderName = (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).buyer?.name || "Unknown";
+    receiverName = (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).seller?.name || "Unknown";
+    sellerName = (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).seller?.name || "Unknown";
+    buyerName = (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).buyer?.name || "Unknown";
   }
 
   return { documentNumber, amount, currency, sellerName, buyerName, senderName, receiverName };

@@ -17,7 +17,7 @@ import {
 import { Button } from "@core/components/ui/button";
 import { AsyncButton } from "@core/components/async-button";
 import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
-import type { TransmittedDocument } from "@peppol/data/transmitted-documents";
+import type { TransmittedDocument, TransmittedDocumentWithoutBody } from "@peppol/data/transmitted-documents";
 import type { Label } from "@peppol/types/label";
 import { Badge } from "@core/components/ui/badge";
 import { format } from "date-fns";
@@ -37,6 +37,7 @@ import { SyntaxHighlighter } from "@peppol/components/send-document/syntax-highl
 import { ValidationDetails } from "@peppol/components/validation-details";
 import type { ValidationResponse } from "@peppol/types/validation";
 import { CsvAttachmentTable } from "@peppol/components/csv-attachment-table";
+import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 
 const client = rc<TransmittedDocuments>("peppol");
 
@@ -53,6 +54,8 @@ export default function TransmittedDocumentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [relatedDocuments, setRelatedDocuments] = useState<TransmittedDocumentWithoutBody[]>([]);
+  const [isLoadingRelated, setIsLoadingRelated] = useState(false);
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -117,8 +120,10 @@ export default function TransmittedDocumentDetailPage() {
               type: "html",
             },
           });
-        const html = await previewResponse.text();
-        setPreviewHtml(html);
+        if (previewResponse.ok) {
+          const html = await previewResponse.text();
+          setPreviewHtml(html);
+        }
       } catch (error) {
         console.error("Failed to load rendered document HTML:", error);
         setPreviewHtml(null);
@@ -129,6 +134,45 @@ export default function TransmittedDocumentDetailPage() {
 
     fetchPreview();
   }, [activeTeam?.id, doc]);
+
+  useEffect(() => {
+    const fetchRelatedDocuments = async () => {
+      if (!activeTeam?.id || doc?.type !== "messageLevelResponse") {
+        setRelatedDocuments([]);
+        return;
+      }
+
+      try {
+        setIsLoadingRelated(true);
+        const response = await client[":teamId"]["documents"].$get({
+          param: { teamId: activeTeam.id },
+          query: {
+            envelopeId: (doc.parsed as MessageLevelResponse).envelopeId,
+          },
+        });
+        const json = await response.json();
+
+        if (json.success) {
+          const docs = (json.documents || [])
+            .filter((d: any) => d.id !== doc.id)
+            .map((d: any) => ({
+              ...d,
+              createdAt: new Date(d.createdAt),
+              updatedAt: new Date(d.updatedAt),
+              readAt: d.readAt ? new Date(d.readAt) : null,
+            })) as TransmittedDocumentWithoutBody[];
+          setRelatedDocuments(docs);
+        }
+      } catch (error) {
+        console.error("Failed to fetch related documents:", error);
+        setRelatedDocuments([]);
+      } finally {
+        setIsLoadingRelated(false);
+      }
+    };
+
+    fetchRelatedDocuments();
+  }, [activeTeam?.id, doc?.id, doc?.envelopeId]);
 
   const handleDelete = async () => {
     if (!activeTeam?.id || !doc) return;
@@ -356,7 +400,7 @@ export default function TransmittedDocumentDetailPage() {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="main" className="w-full">
-                <TabsList className="flex w-full gap-2 overflow-x-auto mb-3">
+                {attachments.length > 0 && <TabsList className="flex w-full gap-2 overflow-x-auto mb-3">
                   <TabsTrigger value="main">Generated document preview</TabsTrigger>
                   {attachments.map((attachment, index) => (
                     <TabsTrigger
@@ -366,7 +410,7 @@ export default function TransmittedDocumentDetailPage() {
                       {attachment.filename || `Attachment ${index + 1}`}
                     </TabsTrigger>
                   ))}
-                </TabsList>
+                </TabsList>}
 
                 <TabsContent value="main">
                   {isPreviewLoading && (
@@ -542,6 +586,62 @@ export default function TransmittedDocumentDetailPage() {
               </Card>
             )}
 
+            {relatedDocuments.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Related documents</CardTitle>
+                  <CardDescription>
+                    Documents with the referenced envelope ID.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingRelated ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {relatedDocuments.map((relatedDoc) => {
+                        const relatedParsed: any = relatedDoc.parsed;
+                        const relatedDocumentNumber =
+                          relatedParsed?.invoiceNumber ??
+                          relatedParsed?.creditNoteNumber ??
+                          relatedParsed?.selfBillingInvoiceNumber ??
+                          relatedParsed?.selfBillingCreditNoteNumber ??
+                          relatedParsed?.id;
+                        const relatedTitle =
+                          relatedDocumentNumber ||
+                          `${relatedDoc.id.slice(0, 6)}...${relatedDoc.id.slice(-6)}`;
+
+                        return (
+                          <div
+                            key={relatedDoc.id}
+                            onClick={() => navigate(`/transmitted-documents/${relatedDoc.id}`)}
+                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-default"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div
+                                className="text-sm font-medium text-primary text-left w-full truncate"
+                              >
+                                {relatedTitle}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <span className="capitalize">{relatedDoc.type}</span>
+                                <span>•</span>
+                                <span className="capitalize">{relatedDoc.direction}</span>
+                                <span>•</span>
+                                <span>{format(new Date(relatedDoc.createdAt), "PPp")}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>Technical details & raw data</CardTitle>
@@ -601,126 +701,126 @@ export default function TransmittedDocumentDetailPage() {
                         </div>
                       </div>
                       <div className="space-y-1">
-                      <div className="text-muted-foreground">Attachments</div>
-                      {attachments.length === 0 && (
-                        <div className="text-xs text-muted-foreground">
-                          No attachments found on this document.
-                        </div>
-                      )}
-                      {attachments.length > 0 && (
-                        <div className="space-y-1">
-                          {attachments.map((attachment, index) => (
-                            <div
-                              key={attachment.id ?? `${attachment.filename}-${index}`}
-                              className="rounded border px-2 py-1 bg-muted/40"
-                            >
-                              <div className="flex flex-wrap items-center justify-between gap-1">
-                                <div className="font-mono text-xs break-all">
-                                  {attachment.filename || "Unnamed attachment"}
+                        <div className="text-muted-foreground">Attachments</div>
+                        {attachments.length === 0 && (
+                          <div className="text-xs text-muted-foreground">
+                            No attachments found on this document.
+                          </div>
+                        )}
+                        {attachments.length > 0 && (
+                          <div className="space-y-1">
+                            {attachments.map((attachment, index) => (
+                              <div
+                                key={attachment.id ?? `${attachment.filename}-${index}`}
+                                className="rounded border px-2 py-1 bg-muted/40"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-1">
+                                  <div className="font-mono text-xs break-all">
+                                    {attachment.filename || "Unnamed attachment"}
+                                  </div>
+                                  {attachment.mimeCode && (
+                                    <span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
+                                      {attachment.mimeCode}
+                                    </span>
+                                  )}
                                 </div>
-                                {attachment.mimeCode && (
-                                  <span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
-                                    {attachment.mimeCode}
-                                  </span>
+                                {attachment.description && (
+                                  <div className="mt-0.5 text-xs text-muted-foreground">
+                                    {attachment.description}
+                                  </div>
+                                )}
+                                {attachment.url && (
+                                  <div className="mt-0.5 text-xs">
+                                    <a
+                                      href={attachment.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-primary underline break-all"
+                                    >
+                                      Open external reference
+                                    </a>
+                                  </div>
                                 )}
                               </div>
-                              {attachment.description && (
-                                <div className="mt-0.5 text-xs text-muted-foreground">
-                                  {attachment.description}
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {(doc.peppolMessageId || doc.peppolConversationId || doc.receivedPeppolSignalMessage || doc.envelopeId) && (
+                        <Collapsible>
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="w-full font-normal [&[data-state=open]>svg]:rotate-180"
+                            >
+                              <span className="text-sm font-medium">Advanced</span>
+                              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
+                              {doc.peppolMessageId && (
+                                <div className="space-y-1">
+                                  <div className="text-muted-foreground">Peppol Message ID</div>
+                                  <div className="font-mono text-xs break-all">{doc.peppolMessageId}</div>
                                 </div>
                               )}
-                              {attachment.url && (
-                                <div className="mt-0.5 text-xs">
-                                  <a
-                                    href={attachment.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-primary underline break-all"
-                                  >
-                                    Open external reference
-                                  </a>
+                              {doc.peppolConversationId && (
+                                <div className="space-y-1">
+                                  <div className="text-muted-foreground">Peppol Conversation ID</div>
+                                  <div className="font-mono text-xs break-all">{doc.peppolConversationId}</div>
+                                </div>
+                              )}
+                              {doc.receivedPeppolSignalMessage && (
+                                <div className="space-y-1">
+                                  <div className="text-muted-foreground">Received Peppol Signal Message</div>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (!doc.receivedPeppolSignalMessage) return;
+                                        const blob = new Blob([doc.receivedPeppolSignalMessage], { type: "application/xml" });
+                                        const url = window.URL.createObjectURL(blob);
+                                        const link = window.document.createElement("a");
+                                        link.href = url;
+                                        link.download = `received-peppol-signal-message-${doc.id}.xml`;
+                                        window.document.body.appendChild(link);
+                                        link.click();
+                                        window.document.body.removeChild(link);
+                                        window.URL.revokeObjectURL(url);
+                                        toast.success("XML downloaded");
+                                      }}
+                                    >
+                                      <ArrowDown className="h-4 w-4 mr-2" />
+                                      Download XML
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (!doc.receivedPeppolSignalMessage) return;
+                                        navigator.clipboard.writeText(doc.receivedPeppolSignalMessage);
+                                        toast.success("XML copied to clipboard");
+                                      }}
+                                    >
+                                      <Copy className="h-4 w-4 mr-2" />
+                                      Copy XML
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                              {doc.envelopeId && (
+                                <div className="space-y-1">
+                                  <div className="text-muted-foreground">Envelope ID</div>
+                                  <div className="font-mono text-xs break-all">{doc.envelopeId}</div>
                                 </div>
                               )}
                             </div>
-                          ))}
-                        </div>
+                          </CollapsibleContent>
+                        </Collapsible>
                       )}
                     </div>
-                    {(doc.peppolMessageId || doc.peppolConversationId || doc.receivedPeppolSignalMessage || doc.envelopeId) && (
-                      <Collapsible>
-                        <CollapsibleTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            className="w-full font-normal [&[data-state=open]>svg]:rotate-180"
-                          >
-                            <span className="text-sm font-medium">Advanced</span>
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                          </Button>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
-                            {doc.peppolMessageId && (
-                              <div className="space-y-1">
-                                <div className="text-muted-foreground">Peppol Message ID</div>
-                                <div className="font-mono text-xs break-all">{doc.peppolMessageId}</div>
-                              </div>
-                            )}
-                            {doc.peppolConversationId && (
-                              <div className="space-y-1">
-                                <div className="text-muted-foreground">Peppol Conversation ID</div>
-                                <div className="font-mono text-xs break-all">{doc.peppolConversationId}</div>
-                              </div>
-                            )}
-                            {doc.receivedPeppolSignalMessage && (
-                              <div className="space-y-1">
-                                <div className="text-muted-foreground">Received Peppol Signal Message</div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      if (!doc.receivedPeppolSignalMessage) return;
-                                      const blob = new Blob([doc.receivedPeppolSignalMessage], { type: "application/xml" });
-                                      const url = window.URL.createObjectURL(blob);
-                                      const link = window.document.createElement("a");
-                                      link.href = url;
-                                      link.download = `received-peppol-signal-message-${doc.id}.xml`;
-                                      window.document.body.appendChild(link);
-                                      link.click();
-                                      window.document.body.removeChild(link);
-                                      window.URL.revokeObjectURL(url);
-                                      toast.success("XML downloaded");
-                                    }}
-                                  >
-                                    <ArrowDown className="h-4 w-4 mr-2" />
-                                    Download XML
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                      if (!doc.receivedPeppolSignalMessage) return;
-                                      navigator.clipboard.writeText(doc.receivedPeppolSignalMessage);
-                                      toast.success("XML copied to clipboard");
-                                    }}
-                                  >
-                                    <Copy className="h-4 w-4 mr-2" />
-                                    Copy XML
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                            {doc.envelopeId && (
-                              <div className="space-y-1">
-                                <div className="text-muted-foreground">Envelope ID</div>
-                                <div className="font-mono text-xs break-all">{doc.envelopeId}</div>
-                              </div>
-                            )}
-                          </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    )}
-                  </div>
                   </TabsContent>
                   <TabsContent value="json">
                     {hasStructuredData && (
