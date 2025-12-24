@@ -13,7 +13,6 @@ export async function validateXmlDocument(xmlDocument: string): Promise<Validati
 
         if (!response.ok) {
             console.error(`Failed to validate XML document: ${response.status}`);
-            console.log(xmlDocument);
             sendTelegramNotification(`Failed to reach validation service successfully: ${response.status}`);
             return { result: "error", errors: [] };
         }
