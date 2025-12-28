@@ -112,7 +112,7 @@ export function DocumentForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
         <div>
-          <Label htmlFor="company">Sending Company</Label>
+          <Label htmlFor="company">Sending Company *</Label>
           <CompanySelector
             value={selectedCompanyId}
             onChange={onCompanyChange}
@@ -139,7 +139,9 @@ export function DocumentForm({
             document={formData.document || {}}
             onChange={handleDocumentChange}
             companyId={selectedCompanyId}
-            isSelfBilling={formData.documentType === DocumentType.SELF_BILLING_INVOICE}
+            isSelfBilling={
+              formData.documentType === DocumentType.SELF_BILLING_INVOICE
+            }
           />
         )}
         {type === "creditNote" && (
@@ -147,7 +149,9 @@ export function DocumentForm({
             document={formData.document || {}}
             onChange={handleDocumentChange}
             companyId={selectedCompanyId}
-            isSelfBilling={formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE}
+            isSelfBilling={
+              formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE
+            }
           />
         )}
         {type === "xml" && (
@@ -157,6 +161,10 @@ export function DocumentForm({
             doctypeId={formData.doctypeId}
             onDoctypeIdChange={(id) =>
               onFormChange({ ...formData, doctypeId: id })
+            }
+            processId={formData.processId}
+            onProcessIdChange={(id) =>
+              onFormChange({ ...formData, processId: id })
             }
           />
         )}

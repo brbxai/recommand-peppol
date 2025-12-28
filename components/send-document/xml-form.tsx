@@ -11,6 +11,8 @@ interface XmlFormProps {
   onChange: (document: string) => void;
   doctypeId?: string;
   onDoctypeIdChange: (id: string) => void;
+  processId?: string;
+  onProcessIdChange: (id: string) => void;
 }
 
 export function XmlForm({
@@ -18,6 +20,8 @@ export function XmlForm({
   onChange,
   doctypeId,
   onDoctypeIdChange,
+  processId,
+  onProcessIdChange,
 }: XmlFormProps) {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
@@ -37,7 +41,7 @@ export function XmlForm({
       </Card>
 
       <div>
-        <Label htmlFor="doctypeId">Document Type ID (Optional)</Label>
+        <Label htmlFor="doctypeId">Document Type ID (optional)</Label>
         <Input
           id="doctypeId"
           value={doctypeId || ""}
@@ -45,7 +49,20 @@ export function XmlForm({
           placeholder=""
         />
         <p className="mt-1 text-xs text-muted-foreground">
-          Leave blank to use the default invoice document type ID
+          Leave blank to auto-detect from your XML (if possible)
+        </p>
+      </div>
+
+      <div>
+        <Label htmlFor="processId">Process ID (optional)</Label>
+        <Input
+          id="processId"
+          value={processId || ""}
+          onChange={(e) => onProcessIdChange(e.target.value)}
+          placeholder=""
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Leave blank to auto-detect from the document type
         </p>
       </div>
 

@@ -77,6 +77,8 @@ export default function SendDocumentPage() {
           : (newDocumentType === DocumentType.CREDIT_NOTE || newDocumentType === DocumentType.SELF_BILLING_CREDIT_NOTE)
             ? ({ creditNoteNumber: "", lines: [] } as any)
             : ({ invoiceNumber: "", lines: [] } as any),
+      doctypeId: newDocumentType === DocumentType.XML ? formData.doctypeId : undefined,
+      processId: newDocumentType === DocumentType.XML ? formData.processId : undefined,
     });
   };
 

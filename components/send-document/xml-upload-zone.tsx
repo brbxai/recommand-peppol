@@ -18,7 +18,7 @@ export function XmlUploadZone({
   loadedFileName,
   onLoaded,
   onClear,
-  label = "Upload XML file (optional)",
+  label = "Upload XML file",
   maxBytes = 5 * 1024 * 1024,
 }: XmlUploadZoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
