@@ -6,7 +6,15 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
-import { Loader2, Trash2, FolderArchive, ArrowDown, ArrowUp, Copy, ChevronDown } from "lucide-react";
+import {
+  Loader2,
+  Trash2,
+  FolderArchive,
+  ArrowDown,
+  ArrowUp,
+  Copy,
+  ChevronDown,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -17,7 +25,10 @@ import {
 import { Button } from "@core/components/ui/button";
 import { AsyncButton } from "@core/components/async-button";
 import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
-import type { TransmittedDocument, TransmittedDocumentWithoutBody } from "@peppol/data/transmitted-documents";
+import type {
+  TransmittedDocument,
+  TransmittedDocumentWithoutBody,
+} from "@peppol/data/transmitted-documents";
 import type { Label } from "@peppol/types/label";
 import { Badge } from "@core/components/ui/badge";
 import { format } from "date-fns";
@@ -54,7 +65,9 @@ export default function TransmittedDocumentDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  const [relatedDocuments, setRelatedDocuments] = useState<TransmittedDocumentWithoutBody[]>([]);
+  const [relatedDocuments, setRelatedDocuments] = useState<
+    TransmittedDocumentWithoutBody[]
+  >([]);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
 
   useEffect(() => {
@@ -63,7 +76,9 @@ export default function TransmittedDocumentDetailPage() {
 
       try {
         setIsLoading(true);
-        const response = await client[":teamId"]["documents"][":documentId"].$get({
+        const response = await client[":teamId"]["documents"][
+          ":documentId"
+        ].$get({
           param: {
             teamId: activeTeam.id,
             documentId: id,
@@ -112,14 +127,15 @@ export default function TransmittedDocumentDetailPage() {
     const fetchPreview = async () => {
       try {
         setIsPreviewLoading(true);
-        const previewResponse =
-          await client[":teamId"]["documents"][":documentId"]["render"][":type"].$get({
-            param: {
-              teamId: activeTeam.id,
-              documentId: doc.id,
-              type: "html",
-            },
-          });
+        const previewResponse = await client[":teamId"]["documents"][
+          ":documentId"
+        ]["render"][":type"].$get({
+          param: {
+            teamId: activeTeam.id,
+            documentId: doc.id,
+            type: "html",
+          },
+        });
         if (previewResponse.ok) {
           const html = await previewResponse.text();
           setPreviewHtml(html);
@@ -179,7 +195,9 @@ export default function TransmittedDocumentDetailPage() {
     if (!confirm("Are you sure you want to delete this document?")) return;
 
     try {
-      const response = await client[":teamId"]["documents"][":documentId"].$delete({
+      const response = await client[":teamId"]["documents"][
+        ":documentId"
+      ].$delete({
         param: {
           teamId: activeTeam.id,
           documentId: doc.id,
@@ -202,7 +220,9 @@ export default function TransmittedDocumentDetailPage() {
     if (!activeTeam?.id || !doc) return;
 
     try {
-      const response = await client[":teamId"]["documents"][":documentId"]["downloadPackage"].$get({
+      const response = await client[":teamId"]["documents"][":documentId"][
+        "downloadPackage"
+      ].$get({
         param: {
           teamId: activeTeam.id,
           documentId: doc.id,
@@ -294,14 +314,15 @@ export default function TransmittedDocumentDetailPage() {
   const directionLabel =
     doc.direction === "incoming" ? "Incoming document" : "Outgoing document";
 
-  const pageTitle = doc.validation && doc.validation.result !== "valid" ? (
-    <div className="flex items-center gap-2">
-      <span>{doc.id}</span>
-      <Badge variant="destructive" className="capitalize text-sm">
-        {doc.validation.result.replaceAll("_", " ")}
-      </Badge>
-    </div>
-  ) : undefined;
+  const pageTitle =
+    doc.validation && doc.validation.result !== "valid" ? (
+      <div className="flex items-center gap-2">
+        <span>{doc.id}</span>
+        <Badge variant="destructive" className="capitalize text-sm">
+          {doc.validation.result.replaceAll("_", " ")}
+        </Badge>
+      </div>
+    ) : undefined;
 
   return (
     <PageTemplate
@@ -371,9 +392,7 @@ export default function TransmittedDocumentDetailPage() {
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: label.colorHex }}
                     />
-                    <span className="leading-none pt-0.5">
-                      {label.name}
-                    </span>
+                    <span className="leading-none pt-0.5">{label.name}</span>
                   </Badge>
                 ))}
             </div>
@@ -395,22 +414,27 @@ export default function TransmittedDocumentDetailPage() {
             <CardHeader>
               <CardTitle>Document preview</CardTitle>
               <CardDescription>
-                Rendered billing document and inline previews for any attachments.
+                Rendered billing document and inline previews for any
+                attachments.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="main" className="w-full">
-                {attachments.length > 0 && <TabsList className="flex w-full gap-2 overflow-x-auto mb-3">
-                  <TabsTrigger value="main">Generated document preview</TabsTrigger>
-                  {attachments.map((attachment, index) => (
-                    <TabsTrigger
-                      key={attachment.id ?? `${attachment.filename}-${index}`}
-                      value={`attachment-${index}`}
-                    >
-                      {attachment.filename || `Attachment ${index + 1}`}
+                {attachments.length > 0 && (
+                  <TabsList className="flex w-full gap-2 overflow-x-auto mb-3">
+                    <TabsTrigger value="main">
+                      Generated document preview
                     </TabsTrigger>
-                  ))}
-                </TabsList>}
+                    {attachments.map((attachment, index) => (
+                      <TabsTrigger
+                        key={attachment.id ?? `${attachment.filename}-${index}`}
+                        value={`attachment-${index}`}
+                      >
+                        {attachment.filename || `Attachment ${index + 1}`}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                )}
 
                 <TabsContent value="main">
                   {isPreviewLoading && (
@@ -456,7 +480,11 @@ export default function TransmittedDocumentDetailPage() {
                       attachment.filename.toLowerCase().endsWith(".csv"));
 
                   let decodedText: string | null = null;
-                  if (hasEmbedded && isTextLike && typeof window !== "undefined") {
+                  if (
+                    hasEmbedded &&
+                    isTextLike &&
+                    typeof window !== "undefined"
+                  ) {
                     try {
                       decodedText = window.atob(attachment.embeddedDocument);
                     } catch {
@@ -540,8 +568,8 @@ export default function TransmittedDocumentDetailPage() {
                           (!isTextLike || decodedText === null) &&
                           dataUrl && (
                             <p className="text-sm text-muted-foreground">
-                              This attachment type cannot be previewed inline, but
-                              you can download it.
+                              This attachment type cannot be previewed inline,
+                              but you can download it.
                             </p>
                           )}
 
@@ -573,15 +601,15 @@ export default function TransmittedDocumentDetailPage() {
             {doc.validation && doc.validation.result !== "valid" && (
               <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
                 <CardHeader>
-                  <CardTitle>
-                    Document Validation Issues
-                  </CardTitle>
+                  <CardTitle>Document Validation Issues</CardTitle>
                   <CardDescription className="text-orange-700 dark:text-orange-300">
                     This document has validation errors that need attention.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ValidationDetails validation={doc.validation as ValidationResponse} />
+                  <ValidationDetails
+                    validation={doc.validation as ValidationResponse}
+                  />
                 </CardContent>
               </Card>
             )}
@@ -616,21 +644,32 @@ export default function TransmittedDocumentDetailPage() {
                         return (
                           <div
                             key={relatedDoc.id}
-                            onClick={() => navigate(`/transmitted-documents/${relatedDoc.id}`)}
+                            onClick={() =>
+                              navigate(
+                                `/transmitted-documents/${relatedDoc.id}`
+                              )
+                            }
                             className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors cursor-default"
                           >
                             <div className="flex-1 min-w-0">
-                              <div
-                                className="text-sm font-medium text-primary text-left w-full truncate"
-                              >
+                              <div className="text-sm font-medium text-primary text-left w-full truncate">
                                 {relatedTitle}
                               </div>
                               <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                <span className="capitalize">{relatedDoc.type}</span>
+                                <span className="capitalize">
+                                  {relatedDoc.type}
+                                </span>
                                 <span>•</span>
-                                <span className="capitalize">{relatedDoc.direction}</span>
+                                <span className="capitalize">
+                                  {relatedDoc.direction}
+                                </span>
                                 <span>•</span>
-                                <span>{format(new Date(relatedDoc.createdAt), "PPp")}</span>
+                                <span>
+                                  {format(
+                                    new Date(relatedDoc.createdAt),
+                                    "PPp"
+                                  )}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -646,7 +685,8 @@ export default function TransmittedDocumentDetailPage() {
               <CardHeader>
                 <CardTitle>Technical details & raw data</CardTitle>
                 <CardDescription>
-                  Inspect metadata, parsed JSON structure, or the original XML payload.
+                  Inspect metadata, parsed JSON structure, or the original XML
+                  payload.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -662,7 +702,9 @@ export default function TransmittedDocumentDetailPage() {
                     <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
                       <div className="space-y-1">
                         <div className="text-muted-foreground">Document ID</div>
-                        <div className="font-mono text-xs break-all">{doc.id}</div>
+                        <div className="font-mono text-xs break-all">
+                          {doc.id}
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <div className="text-muted-foreground">Company ID</div>
@@ -695,7 +737,9 @@ export default function TransmittedDocumentDetailPage() {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <div className="text-muted-foreground">Country (C1)</div>
+                        <div className="text-muted-foreground">
+                          Country (C1)
+                        </div>
                         <div className="font-mono text-xs break-all">
                           {doc.countryC1}
                         </div>
@@ -711,12 +755,16 @@ export default function TransmittedDocumentDetailPage() {
                           <div className="space-y-1">
                             {attachments.map((attachment, index) => (
                               <div
-                                key={attachment.id ?? `${attachment.filename}-${index}`}
+                                key={
+                                  attachment.id ??
+                                  `${attachment.filename}-${index}`
+                                }
                                 className="rounded border px-2 py-1 bg-muted/40"
                               >
                                 <div className="flex flex-wrap items-center justify-between gap-1">
                                   <div className="font-mono text-xs break-all">
-                                    {attachment.filename || "Unnamed attachment"}
+                                    {attachment.filename ||
+                                      "Unnamed attachment"}
                                   </div>
                                   {attachment.mimeCode && (
                                     <span className="text-[0.65rem] uppercase tracking-wide text-muted-foreground">
@@ -746,14 +794,19 @@ export default function TransmittedDocumentDetailPage() {
                           </div>
                         )}
                       </div>
-                      {(doc.peppolMessageId || doc.peppolConversationId || doc.receivedPeppolSignalMessage || doc.envelopeId) && (
+                      {(doc.peppolMessageId ||
+                        doc.peppolConversationId ||
+                        doc.receivedPeppolSignalMessage ||
+                        doc.envelopeId) && (
                         <Collapsible>
                           <CollapsibleTrigger asChild>
                             <Button
                               variant="ghost"
                               className="w-full font-normal [&[data-state=open]>svg]:rotate-180"
                             >
-                              <span className="text-sm font-medium">Advanced</span>
+                              <span className="text-sm font-medium">
+                                Advanced
+                              </span>
                               <ChevronDown className="h-4 w-4 transition-transform duration-200" />
                             </Button>
                           </CollapsibleTrigger>
@@ -761,28 +814,44 @@ export default function TransmittedDocumentDetailPage() {
                             <div className="grid grid-cols-1 gap-3 text-xs md:text-sm">
                               {doc.peppolMessageId && (
                                 <div className="space-y-1">
-                                  <div className="text-muted-foreground">Peppol Message ID</div>
-                                  <div className="font-mono text-xs break-all">{doc.peppolMessageId}</div>
+                                  <div className="text-muted-foreground">
+                                    Peppol Message ID
+                                  </div>
+                                  <div className="font-mono text-xs break-all">
+                                    {doc.peppolMessageId}
+                                  </div>
                                 </div>
                               )}
                               {doc.peppolConversationId && (
                                 <div className="space-y-1">
-                                  <div className="text-muted-foreground">Peppol Conversation ID</div>
-                                  <div className="font-mono text-xs break-all">{doc.peppolConversationId}</div>
+                                  <div className="text-muted-foreground">
+                                    Peppol Conversation ID
+                                  </div>
+                                  <div className="font-mono text-xs break-all">
+                                    {doc.peppolConversationId}
+                                  </div>
                                 </div>
                               )}
                               {doc.receivedPeppolSignalMessage && (
                                 <div className="space-y-1">
-                                  <div className="text-muted-foreground">Received Peppol Signal Message</div>
+                                  <div className="text-muted-foreground">
+                                    Received Peppol Signal Message
+                                  </div>
                                   <div className="flex items-center gap-2">
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => {
-                                        if (!doc.receivedPeppolSignalMessage) return;
-                                        const blob = new Blob([doc.receivedPeppolSignalMessage], { type: "application/xml" });
-                                        const url = window.URL.createObjectURL(blob);
-                                        const link = window.document.createElement("a");
+                                        if (!doc.receivedPeppolSignalMessage)
+                                          return;
+                                        const blob = new Blob(
+                                          [doc.receivedPeppolSignalMessage],
+                                          { type: "application/xml" }
+                                        );
+                                        const url =
+                                          window.URL.createObjectURL(blob);
+                                        const link =
+                                          window.document.createElement("a");
                                         link.href = url;
                                         link.download = `received-peppol-signal-message-${doc.id}.xml`;
                                         window.document.body.appendChild(link);
@@ -799,9 +868,14 @@ export default function TransmittedDocumentDetailPage() {
                                       variant="outline"
                                       size="sm"
                                       onClick={() => {
-                                        if (!doc.receivedPeppolSignalMessage) return;
-                                        navigator.clipboard.writeText(doc.receivedPeppolSignalMessage);
-                                        toast.success("XML copied to clipboard");
+                                        if (!doc.receivedPeppolSignalMessage)
+                                          return;
+                                        navigator.clipboard.writeText(
+                                          doc.receivedPeppolSignalMessage
+                                        );
+                                        toast.success(
+                                          "XML copied to clipboard"
+                                        );
                                       }}
                                     >
                                       <Copy className="h-4 w-4 mr-2" />
@@ -812,8 +886,12 @@ export default function TransmittedDocumentDetailPage() {
                               )}
                               {doc.envelopeId && (
                                 <div className="space-y-1">
-                                  <div className="text-muted-foreground">Envelope ID</div>
-                                  <div className="font-mono text-xs break-all">{doc.envelopeId}</div>
+                                  <div className="text-muted-foreground">
+                                    Envelope ID
+                                  </div>
+                                  <div className="font-mono text-xs break-all">
+                                    {doc.envelopeId}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -825,7 +903,7 @@ export default function TransmittedDocumentDetailPage() {
                   <TabsContent value="json">
                     {hasStructuredData && (
                       <div className="space-y-2">
-                        <div className="h-[320px] overflow-auto w-full rounded border bg-white">
+                        <div className="h-[320px] overflow-auto w-full rounded-md border bg-white">
                           <SyntaxHighlighter
                             code={JSON.stringify(parsed, null, 2)}
                             language="json"
@@ -837,7 +915,9 @@ export default function TransmittedDocumentDetailPage() {
                           size="sm"
                           className="w-full"
                           onClick={() => {
-                            navigator.clipboard.writeText(JSON.stringify(parsed, null, 2));
+                            navigator.clipboard.writeText(
+                              JSON.stringify(parsed, null, 2)
+                            );
                             toast.success("JSON copied to clipboard");
                           }}
                         >
@@ -849,7 +929,7 @@ export default function TransmittedDocumentDetailPage() {
                   </TabsContent>
                   <TabsContent value="xml">
                     <div className="space-y-2">
-                      <div className="h-[320px] overflow-auto w-full rounded border bg-white">
+                      <div className="h-[320px] overflow-auto w-full rounded-md border bg-white">
                         <SyntaxHighlighter
                           code={doc.xml ?? ""}
                           language="xml"
