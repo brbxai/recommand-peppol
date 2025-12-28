@@ -204,7 +204,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     rows={4}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    You can use HTML tags for formatting. The document will be attached as XML and PDF.
+                    You can use HTML tags for formatting. The document will be attached as XML, plus any embedded attachments (optionally including a generated PDF).
                   </p>
                 </div>
               </CollapsibleContent>
