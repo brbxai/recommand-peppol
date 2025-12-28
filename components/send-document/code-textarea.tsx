@@ -1,5 +1,6 @@
 import { useDeferredValue, useRef } from "react";
 import { cn } from "@core/lib/utils";
+import { Textarea } from "@core/components/ui/textarea";
 import { SyntaxHighlighter } from "./syntax-highlighter";
 
 interface CodeTextareaProps {
@@ -29,10 +30,8 @@ export function CodeTextarea({
   return (
     <div
       className={cn(
-        "border-input dark:bg-input/30 relative w-full overflow-hidden rounded-md border bg-transparent shadow-xs transition-[color,box-shadow] outline-none",
-        "focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]",
-        heightClassName,
-        className
+        "relative w-full rounded-md bg-transparent dark:bg-input/30",
+        heightClassName
       )}
     >
       <div
@@ -51,7 +50,7 @@ export function CodeTextarea({
         />
       </div>
 
-      <textarea
+      <Textarea
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -67,11 +66,12 @@ export function CodeTextarea({
           highlight.scrollLeft = el.scrollLeft;
         }}
         className={cn(
-          "placeholder:text-muted-foreground absolute inset-0 h-full w-full resize-none bg-transparent px-3 py-2",
+          "relative z-10 h-full min-h-0 resize-none",
+          "bg-transparent dark:bg-transparent",
           "font-mono text-xs leading-[1.4]",
           "text-transparent caret-foreground",
           "selection:bg-primary/20 selection:text-transparent",
-          "outline-none"
+          className
         )}
       />
     </div>
