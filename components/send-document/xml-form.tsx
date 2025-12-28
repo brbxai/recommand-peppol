@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Textarea } from "@core/components/ui/textarea";
 import { Label } from "@core/components/ui/label";
 import { Input } from "@core/components/ui/input";
 import { Card } from "@core/components/ui/card";
 import { FileText } from "lucide-react";
 import { XmlUploadZone } from "./xml-upload-zone";
+import { CodeTextarea } from "./code-textarea";
 
 interface XmlFormProps {
   document: string;
@@ -63,15 +63,16 @@ export function XmlForm({
 
       <div>
         <Label htmlFor="xmlDocument">XML Document *</Label>
-        <Textarea
-          id="xmlDocument"
-          value={document}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={""}
-          rows={20}
-          className="font-mono text-xs"
-          required
-        />
+        <div className="mt-2">
+          <CodeTextarea
+            id="xmlDocument"
+            value={document}
+            onChange={onChange}
+            language="xml"
+            required
+            placeholder=""
+          />
+        </div>
       </div>
     </div>
   );
