@@ -68,7 +68,7 @@ export function CodeTextarea({
         className={cn(
           "relative z-10 h-full min-h-0 resize-none",
           "bg-transparent dark:bg-transparent",
-          "font-mono text-xs leading-[1.4]",
+          "font-mono !text-xs leading-[1.4]",
           "text-transparent caret-foreground",
           "selection:bg-primary/20 selection:text-transparent",
           className
