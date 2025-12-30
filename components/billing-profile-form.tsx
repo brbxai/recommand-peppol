@@ -11,6 +11,8 @@ export type BillingProfileFormData = {
   city: string;
   country: string;
   vatNumber: string | null;
+  billingEmail: string | null;
+  billingPeppolAddress: string | null;
 };
 
 type BillingProfileFormProps = {
@@ -27,6 +29,8 @@ export const DEFAULT_BILLING_PROFILE_FORM_DATA: BillingProfileFormData = {
   city: "",
   country: "BE",
   vatNumber: null,
+  billingEmail: null,
+  billingPeppolAddress: null,
 };
 
 export function BillingProfileForm({ profileForm, onChange, onCancel, onSubmit }: BillingProfileFormProps) {
@@ -98,6 +102,45 @@ export function BillingProfileForm({ profileForm, onChange, onCancel, onSubmit }
             }
           }}
         />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="billingEmail">Billing Email (Optional)</Label>
+        <Input
+          id="billingEmail"
+          type="email"
+          value={profileForm.billingEmail || ''}
+          placeholder="billing@example.com"
+          onChange={(e) => {
+            const value = e.target.value.trim();
+            if (value === '') {
+              onChange({ ...profileForm, billingEmail: null });
+            } else {
+              onChange({ ...profileForm, billingEmail: value });
+            }
+          }}
+        />
+        <p className="text-sm text-muted-foreground">
+          Email address to receive invoices. If not set, invoices will be sent to all team members.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="billingPeppolAddress">Billing Peppol Address (Optional)</Label>
+        <Input
+          id="billingPeppolAddress"
+          value={profileForm.billingPeppolAddress || ''}
+          placeholder="0208:1234567890"
+          onChange={(e) => {
+            const value = e.target.value.trim();
+            if (value === '') {
+              onChange({ ...profileForm, billingPeppolAddress: null });
+            } else {
+              onChange({ ...profileForm, billingPeppolAddress: value });
+            }
+          }}
+        />
+        <p className="text-sm text-muted-foreground">
+          Peppol address for invoice delivery. If not set, we will try to derive it from your VAT number or deliver the invoice via email.
+        </p>
       </div>
       {(onCancel || onSubmit) && <div className="flex justify-end space-x-2 pt-4">
         {onCancel && <Button variant="outline" onClick={onCancel}>

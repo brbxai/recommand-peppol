@@ -153,6 +153,8 @@ export default function Page() {
         city: billingProfile.city,
         country: billingProfile.country,
         vatNumber: billingProfile.vatNumber || "",
+        billingEmail: billingProfile.billingEmail || null,
+        billingPeppolAddress: billingProfile.billingPeppolAddress || null,
       });
     } else {
       setBillingProfile(null);
@@ -502,6 +504,18 @@ export default function Page() {
                         {billingProfile.postalCode} {billingProfile.city}
                         <br />
                         {billingProfile.country}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-1">Billing Email</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {billingProfile.billingEmail || "Not set"}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-1">Billing Peppol Address</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {billingProfile.billingPeppolAddress || "Not set"}
                       </p>
                     </div>
                     {billingProfile.vatNumber && (

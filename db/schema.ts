@@ -82,6 +82,10 @@ export const billingProfiles = pgTable("peppol_billing_profiles", {
   city: text("city").notNull(),
   country: validCountryCodes("country").notNull(),
   vatNumber: text("vat_number"),
+  billingEmail: text("billing_email"),
+  billingPeppolAddress: text("billing_peppol_address"),
+
+  isManuallyBilled: boolean("is_manually_billed").notNull().default(false), // Set to true if the billing profile has to be billed manually, e.g. by an admin
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),

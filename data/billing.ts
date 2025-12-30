@@ -21,9 +21,13 @@ import { BillingConfigSchema } from "./plans";
 import { cleanVatNumber } from "@peppol/utils/util";
 import { COUNTRIES } from "@peppol/utils/countries";
 import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
+import { getMinimalTeamMembers } from "@core/data/team-members";
 
 export type BillSubscriptionResult = {
+  status: "success" | "error";
+  message: string;
   billingProfileId: string;
+  isManuallyBilled: boolean;
   teamId: string;
   subscriptionId: string;
   companyName: string;
@@ -76,14 +80,13 @@ export async function getCurrentUsage(teamId: string) {
   return transmittedDocuments[0].usage;
 }
 
-export async function endBillingCycle(teamId: string, billingDate: Date, dryRun: boolean = false): Promise<BillSubscriptionResult[]> {
+export async function endBillingCycle(billingDate: Date, dryRun: boolean = false): Promise<BillSubscriptionResult[]> {
   const results: BillSubscriptionResult[] = [];
   const toBeBilled = await db
     .select()
     .from(subscriptions)
     .where(
       and(
-        eq(subscriptions.teamId, teamId),
         lt(subscriptions.startDate, billingDate),
         or(
           isNull(subscriptions.lastBilledAt), // Subscription has not been billed yet
@@ -95,7 +98,8 @@ export async function endBillingCycle(teamId: string, billingDate: Date, dryRun:
           gt(subscriptions.endDate, subscriptions.lastBilledAt) // Subscription has been ended, but not fully billed yet
         )
       )
-    );
+    )
+    .orderBy(subscriptions.teamId);
 
   for (const subscription of toBeBilled) {
     try {
@@ -107,7 +111,10 @@ export async function endBillingCycle(teamId: string, billingDate: Date, dryRun:
       );
       sendTelegramNotification(`Error billing subscription ${subscription.id} for team ${subscription.teamId}: ${error}`);
       results.push({
+        status: "error",
+        message: error?.toString() ?? "Unknown error",
         billingProfileId: "BILLING FAILED: " + error?.toString(),
+        isManuallyBilled: false,
         teamId: subscription.teamId,
         subscriptionId: subscription.id,
         companyName: "",
@@ -306,39 +313,41 @@ async function billSubscription(
   // Create billing event
   if (!dryRun) {
     await db.transaction(async (tx) => {
-      const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
-        .insert(subscriptionBillingEvents)
-        .values({
-          teamId: subscription.teamId,
-          subscriptionId: subscription.id,
-          billingProfileId: billingProfile.id,
-          billingDate: billingDate,
-          billingPeriodStart: billingPeriodStartInclusive,
-          billingPeriodEnd: billingPeriodEndInclusive,
-          totalAmountExcl: totalAmountExcl.toFixed(2),
-          vatAmount: vatAmount.toFixed(2),
-          vatCategory: vat.vatCategory,
-          vatPercentage: vat.percentage.toFixed(2),
-          totalAmountIncl: totalAmountIncl.toFixed(2),
-          billingConfig: billingConfig,
-          usedQty: usageDecimal.toString(),
-          usedQtyIncoming: incomingUsageDecimal.toString(),
-          usedQtyOutgoing: outgoingUsageDecimal.toString(),
-          includedQty: includedUsage.toString(),
-          amountDue: totalAmountIncl.toFixed(2),
-          paymentStatus: "none",
-          paymentId: null,
-          paidAmount: null,
-          paymentMethod: null,
-          paymentDate: null,
-        })
-        .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
-      billingEventId = _billingEventId;
+      if (!billingProfile.isManuallyBilled) {
+        const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
+          .insert(subscriptionBillingEvents)
+          .values({
+            teamId: subscription.teamId,
+            subscriptionId: subscription.id,
+            billingProfileId: billingProfile.id,
+            billingDate: billingDate,
+            billingPeriodStart: billingPeriodStartInclusive,
+            billingPeriodEnd: billingPeriodEndInclusive,
+            totalAmountExcl: totalAmountExcl.toFixed(2),
+            vatAmount: vatAmount.toFixed(2),
+            vatCategory: vat.vatCategory,
+            vatPercentage: vat.percentage.toFixed(2),
+            totalAmountIncl: totalAmountIncl.toFixed(2),
+            billingConfig: billingConfig,
+            usedQty: usageDecimal.toString(),
+            usedQtyIncoming: incomingUsageDecimal.toString(),
+            usedQtyOutgoing: outgoingUsageDecimal.toString(),
+            includedQty: includedUsage.toString(),
+            amountDue: totalAmountIncl.toFixed(2),
+            paymentStatus: "none",
+            paymentId: null,
+            paidAmount: null,
+            paymentMethod: null,
+            paymentDate: null,
+          })
+          .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
+        billingEventId = _billingEventId;
 
-      if (!billingEventId) {
-        throw new Error(
-          `Failed to create billing event for subscription ${subscription.id}`
-        );
+        if (!billingEventId) {
+          throw new Error(
+            `Failed to create billing event for subscription ${subscription.id}`
+          );
+        }
       }
 
       // Update lastBilledAt date
@@ -348,24 +357,29 @@ async function billSubscription(
         .where(eq(subscriptions.id, subscription.id));
     });
 
-    if (!billingEventId) {
-      throw new Error(
-        `Failed to request payment for subscription ${subscription.id} due to missing billing event id`
+    if (!billingProfile.isManuallyBilled) {
+      if (!billingEventId) {
+        throw new Error(
+          `Failed to request payment for subscription ${subscription.id} due to missing billing event id`
+        );
+      }
+
+      // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
+      await requestPayment(
+        billingProfile.mollieCustomerId,
+        mollieMandateId,
+        billingProfile.id,
+        billingEventId,
+        totalAmountIncl.toFixed(2)
       );
     }
-
-    // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
-    await requestPayment(
-      billingProfile.mollieCustomerId,
-      mollieMandateId,
-      billingProfile.id,
-      billingEventId,
-      totalAmountIncl.toFixed(2)
-    );
   }
 
   const info: BillSubscriptionResult = {
+    status: "success",
+    message: "Successfully billed subscription",
     billingProfileId: billingProfile.id,
+    isManuallyBilled: billingProfile.isManuallyBilled,
     teamId: subscription.teamId,
     subscriptionId: subscription.id,
     companyName: billingProfile.companyName,
@@ -401,15 +415,17 @@ async function billSubscription(
   };
 
   // Send invoice to customer
-  const invoiceId = await sendInvoiceAsBRBX(info, dryRun);
-  info.invoiceId = invoiceId;
+  if (!billingProfile.isManuallyBilled) {
+    const invoiceId = await sendInvoiceAsBRBX(info, billingProfile, dryRun);
+    info.invoiceId = invoiceId;
 
-  // Update billing event with invoice id and reference
-  if(!dryRun) {
-    await db
-      .update(subscriptionBillingEvents)
-      .set({ invoiceId: invoiceId })
-      .where(eq(subscriptionBillingEvents.id, billingEventId!));
+    // Update billing event with invoice id and reference
+    if (!dryRun) {
+      await db
+        .update(subscriptionBillingEvents)
+        .set({ invoiceId: invoiceId })
+        .where(eq(subscriptionBillingEvents.id, billingEventId!));
+    }
   }
 
   return info;
@@ -439,12 +455,16 @@ function calculateVat(billingProfile: typeof billingProfiles.$inferSelect): { pe
 
 }
 
-async function sendInvoiceAsBRBX(info: BillSubscriptionResult, dryRun: boolean = false) {
-  const companyId = dryRun 
-    ? process.env.BRBX_BILLING_DRY_RUN_COMPANY_ID 
+async function sendInvoiceAsBRBX(
+  info: BillSubscriptionResult,
+  billingProfile: typeof billingProfiles.$inferSelect,
+  dryRun: boolean = false
+) {
+  const companyId = dryRun
+    ? process.env.BRBX_BILLING_DRY_RUN_COMPANY_ID
     : process.env.BRBX_BILLING_LIVE_COMPANY_ID;
-  const jwt = dryRun 
-    ? process.env.BRBX_BILLING_DRY_RUN_JWT 
+  const jwt = dryRun
+    ? process.env.BRBX_BILLING_DRY_RUN_JWT
     : process.env.BRBX_BILLING_LIVE_JWT;
 
   if (!companyId) {
@@ -455,16 +475,29 @@ async function sendInvoiceAsBRBX(info: BillSubscriptionResult, dryRun: boolean =
   }
 
   let recipient: string;
-  if (info.companyVatNumber) {
+  if (billingProfile.billingPeppolAddress) {
+    recipient = billingProfile.billingPeppolAddress.trim();
+  } else if (info.companyVatNumber) {
     const cleanedVat = cleanVatNumber(info.companyVatNumber);
     if (!cleanedVat) {
       throw new Error("Cannot send invoice: company VAT number is invalid");
     }
-    // TODO: Handle non-BE VAT numbers
-    const vatWithoutCountryCode = cleanedVat.substring(2);
-    recipient = `0208:${vatWithoutCountryCode}`;
+    if (cleanedVat.startsWith("BE")) {
+      const vatWithoutCountryCode = cleanedVat.substring(2);
+      recipient = `0208:${vatWithoutCountryCode}`;
+    } else {
+      recipient = "0000:0000";
+    }
   } else {
-    throw new Error("Cannot send invoice: company VAT number is missing");
+    throw new Error("Cannot send invoice: company VAT number is missing and billing Peppol address is not set");
+  }
+
+  let emailRecipients: string[] = [];
+  if (billingProfile.billingEmail) {
+    emailRecipients = [billingProfile.billingEmail];
+  } else {
+    const teamMembers = await getMinimalTeamMembers(info.teamId);
+    emailRecipients = teamMembers.map(member => member.user.email);
   }
 
   const invoice = {
@@ -501,7 +534,7 @@ async function sendInvoiceAsBRBX(info: BillSubscriptionResult, dryRun: boolean =
       recipient,
       document: invoice,
       email: dryRun ? undefined : {
-        to: [],
+        to: emailRecipients,
         when: "always",
         subject: "Recommand invoice " + invoice.invoiceNumber,
       }
