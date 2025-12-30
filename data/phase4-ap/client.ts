@@ -16,6 +16,7 @@ export type SendAs4Response = {
   peppolMessageId: string | null;
   peppolConversationId: string | null;
   receivedPeppolSignalMessage: string | null;
+  sbdhInstanceIdentifier: string | null;
   sendingException?: {
     message: string;
   };
@@ -55,6 +56,7 @@ export async function sendAs4(options: {
         peppolMessageId: null,
         peppolConversationId: null,
         receivedPeppolSignalMessage: null,
+        sbdhInstanceIdentifier: null,
       }
     }
 
@@ -66,6 +68,7 @@ export async function sendAs4(options: {
       peppolMessageId: resultJson.as4MessageId ?? null,
       peppolConversationId: resultJson.as4ConversationId ?? null,
       receivedPeppolSignalMessage: resultJson.as4ReceivedSignalMsg ?? null,
+      sbdhInstanceIdentifier: resultJson.sbdhInstanceIdentifier ?? null,
     }
 
   } catch (e) {
@@ -75,6 +78,7 @@ export async function sendAs4(options: {
       peppolMessageId: null,
       peppolConversationId: null,
       receivedPeppolSignalMessage: null,
+      sbdhInstanceIdentifier: null,
     }
   }
 }

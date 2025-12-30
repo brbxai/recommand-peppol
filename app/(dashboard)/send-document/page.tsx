@@ -37,6 +37,10 @@ function getDocumentDescription(documentType: string): string {
       return "Fill in the invoice details including buyer information, line items, and payment terms.";
     case DocumentType.CREDIT_NOTE:
       return "Create a credit note for refunds, adjustments, or corrections to previous invoices.";
+    case DocumentType.SELF_BILLING_INVOICE:
+      return "Create a self billing invoice where the buyer issues the invoice on behalf of the seller.";
+    case DocumentType.SELF_BILLING_CREDIT_NOTE:
+      return "Create a self billing credit note for adjustments or corrections in a self billing flow.";
     case DocumentType.XML:
       return "Upload or paste a raw UBL XML document that complies with Peppol standards.";
     default:
@@ -57,7 +61,10 @@ export default function SendDocumentPage() {
     } as any,
   });
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-  const [showApiPreview, setShowApiPreview] = useLocalStorageState<boolean>("peppol.sendDocument.showApiPreview", true);
+  const [showApiPreview, setShowApiPreview] = useLocalStorageState<boolean>(
+    "peppol.sendDocument.showApiPreview",
+    true
+  );
 
   const handleFormChange = (data: Partial<SendDocument>) => {
     setFormData(data);
@@ -74,9 +81,14 @@ export default function SendDocumentPage() {
       document:
         newDocumentType === DocumentType.XML
           ? ""
-          : (newDocumentType === DocumentType.CREDIT_NOTE || newDocumentType === DocumentType.SELF_BILLING_CREDIT_NOTE)
+          : newDocumentType === DocumentType.CREDIT_NOTE ||
+              newDocumentType === DocumentType.SELF_BILLING_CREDIT_NOTE
             ? ({ creditNoteNumber: "", lines: [] } as any)
             : ({ invoiceNumber: "", lines: [] } as any),
+      doctypeId:
+        newDocumentType === DocumentType.XML ? formData.doctypeId : undefined,
+      processId:
+        newDocumentType === DocumentType.XML ? formData.processId : undefined,
     });
   };
 
@@ -92,7 +104,10 @@ export default function SendDocumentPage() {
             checked={showApiPreview}
             onCheckedChange={setShowApiPreview}
           />
-          <Label htmlFor="api-preview" className="text-sm flex items-center gap-2">
+          <Label
+            htmlFor="api-preview"
+            className="text-sm flex items-center gap-2"
+          >
             API Preview
           </Label>
         </div>
@@ -144,7 +159,9 @@ export default function SendDocumentPage() {
                   </SelectItem>
                   <SelectItem value={DocumentType.SELF_BILLING_CREDIT_NOTE}>
                     <div className="flex flex-col py-1">
-                      <span className="font-medium">Self Billing Credit Note</span>
+                      <span className="font-medium">
+                        Self Billing Credit Note
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         Self billing credit note
                       </span>

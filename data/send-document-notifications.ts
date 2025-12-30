@@ -1,17 +1,26 @@
 import { sendEmail } from "@core/lib/email";
-import { getIncomingCompanyNotificationEmailAddresses, getOutgoingCompanyNotificationEmailAddresses } from "@peppol/data/company-notification-emails";
+import {
+  getIncomingCompanyNotificationEmailAddresses,
+  getOutgoingCompanyNotificationEmailAddresses,
+} from "@peppol/data/company-notification-emails";
 import DocumentIncomingNotification from "@peppol/emails/document-incoming-notification";
 import DocumentOutgoingNotification from "@peppol/emails/document-outgoing-notification";
 import { Attachment } from "postmark";
 import {
-  type ParsedDocument,
-  type DocumentType,
   getDocumentTypeLabel,
   extractDocumentAttachments,
-  getDocumentFilename,
 } from "@peppol/data/email/send-email";
+import {
+  getDocumentFilename,
+  type ParsedDocument,
+} from "@peppol/utils/document-filename";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { renderDocumentPdf } from "@peppol/utils/document-renderer";
+import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
+import type { DocumentType } from "@peppol/utils/document-types";
 
 function extractDocumentDetails(
   parsedDocument: ParsedDocument | null,
@@ -44,26 +53,54 @@ function extractDocumentDetails(
     documentNumber = parsedDocument.creditNoteNumber;
   }
 
-  if ("totals" in parsedDocument && parsedDocument.totals && typeof parsedDocument.totals === "object") {
+  if (
+    "totals" in parsedDocument &&
+    parsedDocument.totals &&
+    typeof parsedDocument.totals === "object"
+  ) {
     const totals = parsedDocument.totals as { payableAmount?: number | string };
     amount = totals.payableAmount?.toString();
     currency = "-";
     // TODO: Support multiple currencies
   }
 
-  const sellerName = parsedDocument.seller?.name || "Unknown";
-  const buyerName = parsedDocument.buyer?.name || "Unknown";
+  let sellerName = "Unknown";
+  let buyerName = "Unknown";
   let senderName = "Unknown";
   let receiverName = "Unknown";
-  if(["invoice", "creditNote"].includes(type)) {
-    senderName = parsedDocument.seller?.name || "Unknown";
-    receiverName = parsedDocument.buyer?.name || "Unknown";
-  } else if(["selfBillingInvoice", "selfBillingCreditNote"].includes(type)) {
-    senderName = parsedDocument.buyer?.name || "Unknown";
-    receiverName = parsedDocument.seller?.name || "Unknown";
+  if (["invoice", "creditNote"].includes(type)) {
+    senderName =
+      (parsedDocument as Invoice | CreditNote).seller?.name || "Unknown";
+    receiverName =
+      (parsedDocument as Invoice | CreditNote).buyer?.name || "Unknown";
+    sellerName =
+      (parsedDocument as Invoice | CreditNote).seller?.name || "Unknown";
+    buyerName =
+      (parsedDocument as Invoice | CreditNote).buyer?.name || "Unknown";
+  } else if (["selfBillingInvoice", "selfBillingCreditNote"].includes(type)) {
+    senderName =
+      (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).buyer
+        ?.name || "Unknown";
+    receiverName =
+      (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).seller
+        ?.name || "Unknown";
+    sellerName =
+      (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).seller
+        ?.name || "Unknown";
+    buyerName =
+      (parsedDocument as SelfBillingInvoice | SelfBillingCreditNote).buyer
+        ?.name || "Unknown";
   }
 
-  return { documentNumber, amount, currency, sellerName, buyerName, senderName, receiverName };
+  return {
+    documentNumber,
+    amount,
+    currency,
+    sellerName,
+    buyerName,
+    senderName,
+    receiverName,
+  };
 }
 
 export async function sendIncomingDocumentNotifications(options: {
@@ -76,16 +113,15 @@ export async function sendIncomingDocumentNotifications(options: {
   isPlayground?: boolean;
 }): Promise<void> {
   try {
-    const notificationEmails = await getIncomingCompanyNotificationEmailAddresses(options.companyId);
+    const notificationEmails =
+      await getIncomingCompanyNotificationEmailAddresses(options.companyId);
 
     if (notificationEmails.length === 0) {
       return;
     }
 
-    const { documentNumber, amount, currency, senderName, receiverName } = extractDocumentDetails(
-      options.parsedDocument,
-      options.type
-    );
+    const { documentNumber, amount, currency, senderName, receiverName } =
+      extractDocumentDetails(options.parsedDocument, options.type);
 
     const documentTypeLabel = getDocumentTypeLabel(options.type);
     let subject = documentNumber
@@ -99,7 +135,7 @@ export async function sendIncomingDocumentNotifications(options: {
     const attachments = extractDocumentAttachments(options.parsedDocument);
     const filename = getDocumentFilename(options.type, options.parsedDocument);
     const xmlAttachment: Attachment = {
-      Content: Buffer.from(options.xmlDocument, 'utf-8').toString('base64'),
+      Content: Buffer.from(options.xmlDocument, "utf-8").toString("base64"),
       ContentID: null,
       ContentType: "application/xml",
       Name: filename + ".xml",
@@ -129,7 +165,10 @@ export async function sendIncomingDocumentNotifications(options: {
           Name: "auto-generated.pdf",
         };
       } catch (error) {
-        console.error("Failed to generate auto-generated PDF for incoming notification:", error);
+        console.error(
+          "Failed to generate auto-generated PDF for incoming notification:",
+          error
+        );
         sendSystemAlert(
           "Document Notification Attachment Failed",
           `Failed to generate auto-generated PDF for incoming document ${options.transmittedDocumentId}.`,
@@ -163,10 +202,16 @@ export async function sendIncomingDocumentNotifications(options: {
     for (const notificationEmail of notificationEmails) {
       try {
         const extraAttachments: Attachment[] = [];
-        if (notificationEmail.includeAutoGeneratedPdfIncoming && autoGeneratedPdfAttachment) {
+        if (
+          notificationEmail.includeAutoGeneratedPdfIncoming &&
+          autoGeneratedPdfAttachment
+        ) {
           extraAttachments.push(autoGeneratedPdfAttachment);
         }
-        if (notificationEmail.includeDocumentJsonIncoming && documentJsonAttachment) {
+        if (
+          notificationEmail.includeDocumentJsonIncoming &&
+          documentJsonAttachment
+        ) {
           extraAttachments.push(documentJsonAttachment);
         }
 
@@ -184,7 +229,10 @@ export async function sendIncomingDocumentNotifications(options: {
           attachments: [...baseAttachments, ...extraAttachments],
         });
       } catch (error) {
-        console.error(`Failed to send incoming document notification to ${notificationEmail.email}:`, error);
+        console.error(
+          `Failed to send incoming document notification to ${notificationEmail.email}:`,
+          error
+        );
         sendSystemAlert(
           "Document Notification Sending Failed",
           `Failed to send incoming document notification to ${notificationEmail.email}.`,
@@ -212,16 +260,15 @@ export async function sendOutgoingDocumentNotifications(options: {
   isPlayground?: boolean;
 }): Promise<void> {
   try {
-    const notificationEmails = await getOutgoingCompanyNotificationEmailAddresses(options.companyId);
+    const notificationEmails =
+      await getOutgoingCompanyNotificationEmailAddresses(options.companyId);
 
     if (notificationEmails.length === 0) {
       return;
     }
 
-    const { documentNumber, amount, currency, receiverName } = extractDocumentDetails(
-      options.parsedDocument,
-      options.type
-    );
+    const { documentNumber, amount, currency, receiverName } =
+      extractDocumentDetails(options.parsedDocument, options.type);
 
     const documentTypeLabel = getDocumentTypeLabel(options.type);
     let subject = documentNumber
@@ -235,7 +282,7 @@ export async function sendOutgoingDocumentNotifications(options: {
     const attachments = extractDocumentAttachments(options.parsedDocument);
     const filename = getDocumentFilename(options.type, options.parsedDocument);
     const xmlAttachment: Attachment = {
-      Content: Buffer.from(options.xmlDocument, 'utf-8').toString('base64'),
+      Content: Buffer.from(options.xmlDocument, "utf-8").toString("base64"),
       ContentID: null,
       ContentType: "application/xml",
       Name: filename + ".xml",
@@ -265,7 +312,10 @@ export async function sendOutgoingDocumentNotifications(options: {
           Name: "auto-generated.pdf",
         };
       } catch (error) {
-        console.error("Failed to generate auto-generated PDF for outgoing notification:", error);
+        console.error(
+          "Failed to generate auto-generated PDF for outgoing notification:",
+          error
+        );
         sendSystemAlert(
           "Document Notification Attachment Failed",
           `Failed to generate auto-generated PDF for outgoing document ${options.transmittedDocumentId}.`,
@@ -299,10 +349,16 @@ export async function sendOutgoingDocumentNotifications(options: {
     for (const notificationEmail of notificationEmails) {
       try {
         const extraAttachments: Attachment[] = [];
-        if (notificationEmail.includeAutoGeneratedPdfOutgoing && autoGeneratedPdfAttachment) {
+        if (
+          notificationEmail.includeAutoGeneratedPdfOutgoing &&
+          autoGeneratedPdfAttachment
+        ) {
           extraAttachments.push(autoGeneratedPdfAttachment);
         }
-        if (notificationEmail.includeDocumentJsonOutgoing && documentJsonAttachment) {
+        if (
+          notificationEmail.includeDocumentJsonOutgoing &&
+          documentJsonAttachment
+        ) {
           extraAttachments.push(documentJsonAttachment);
         }
 
@@ -320,7 +376,10 @@ export async function sendOutgoingDocumentNotifications(options: {
           attachments: [...baseAttachments, ...extraAttachments],
         });
       } catch (error) {
-        console.error(`Failed to send outgoing document notification to ${notificationEmail.email}:`, error);
+        console.error(
+          `Failed to send outgoing document notification to ${notificationEmail.email}:`,
+          error
+        );
         sendSystemAlert(
           "Document Notification Sending Failed",
           `Failed to send outgoing document notification to ${notificationEmail.email}.`,

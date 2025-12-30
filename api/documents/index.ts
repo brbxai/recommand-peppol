@@ -10,8 +10,9 @@ import downloadPackageServer, { type DownloadPackage } from "./download-package"
 import assignLabelServer, { type AssignLabel } from "./assign-label";
 import unassignLabelServer, { type UnassignLabel } from "./unassign-label";
 import renderDocumentServer, { type RenderDocument } from "./render-document";
+import exportDocumentsServer, { type ExportDocuments } from "./export-documents";
 
-export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | DeleteAllTransmittedDocuments | GetInbox | MarkAsRead | DownloadPackage | AssignLabel | UnassignLabel | RenderDocument;
+export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | DeleteAllTransmittedDocuments | GetInbox | MarkAsRead | DownloadPackage | AssignLabel | UnassignLabel | RenderDocument | ExportDocuments;
 
 const server = new Server();
 server.route("/", listDocumentsServer);
@@ -24,4 +25,5 @@ server.route("/", downloadPackageServer);
 server.route("/", assignLabelServer);
 server.route("/", unassignLabelServer);
 server.route("/", renderDocumentServer);
+server.route("/", exportDocumentsServer);
 export default server;

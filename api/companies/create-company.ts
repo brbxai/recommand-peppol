@@ -38,6 +38,7 @@ const createCompanyJsonBodySchema = z.object({
     vatNumber: z.string().nullish().transform(cleanVatNumber),
     isSmpRecipient: z.boolean().default(true),
     isOutgoingDocumentValidationEnforced: z.boolean().default(true).openapi({ description: "If document validation is enabled, outgoing documents will be validated against Peppol standards. Defaults to true for new companies." }),
+    skipDefaultCompanySetup: z.boolean().default(false).openapi({ description: "If true, the automatic creation of company identifiers and document types will be skipped. You will need to create them afterwards using the company identifier creation endpoint and company document type creation endpoint." }),
 });
 
 const createCompanyParamSchemaWithTeamId = z.object({

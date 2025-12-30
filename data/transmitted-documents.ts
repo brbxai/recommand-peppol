@@ -58,9 +58,12 @@ export async function getTransmittedDocuments(
     from?: Date;
     to?: Date;
     isUnread?: boolean;
+    envelopeId?: string | null;
+    peppolMessageId?: string | null;
+    peppolConversationId?: string | null
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
-  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread } = options;
+  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread, envelopeId, peppolMessageId, peppolConversationId } = options;
   const offset = (page - 1) * limit;
 
   // Build the where clause
@@ -99,6 +102,21 @@ export async function getTransmittedDocuments(
       whereClause.push(isNotNull(transmittedDocuments.readAt));
     }
   }
+  if (envelopeId !== undefined && envelopeId !== null) {
+    whereClause.push(eq(transmittedDocuments.envelopeId, envelopeId));
+  }else if (envelopeId === null) {
+    whereClause.push(isNull(transmittedDocuments.envelopeId));
+  }
+  if (peppolMessageId !== undefined && peppolMessageId !== null) {
+    whereClause.push(eq(transmittedDocuments.peppolMessageId, peppolMessageId));
+  }else if (peppolMessageId === null) {
+    whereClause.push(isNull(transmittedDocuments.peppolMessageId));
+  }
+  if (peppolConversationId !== undefined && peppolConversationId !== null) {
+    whereClause.push(eq(transmittedDocuments.peppolConversationId, peppolConversationId));
+  }else if (peppolConversationId === null) {
+    whereClause.push(isNull(transmittedDocuments.peppolConversationId));
+  }
 
   // Get total count
   const total = await db
@@ -131,6 +149,7 @@ export async function getTransmittedDocuments(
       peppolMessageId: transmittedDocuments.peppolMessageId,
       peppolConversationId: transmittedDocuments.peppolConversationId,
       receivedPeppolSignalMessage: transmittedDocuments.receivedPeppolSignalMessage,
+      envelopeId: transmittedDocuments.envelopeId,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
@@ -203,6 +222,7 @@ export async function getInbox(
       peppolMessageId: transmittedDocuments.peppolMessageId,
       peppolConversationId: transmittedDocuments.peppolConversationId,
       receivedPeppolSignalMessage: transmittedDocuments.receivedPeppolSignalMessage,
+      envelopeId: transmittedDocuments.envelopeId,
     })
     .from(transmittedDocuments)
     .where(and(...whereClause))
@@ -275,4 +295,35 @@ export async function getTransmittedDocument(
     ...document[0],
     labels: documentLabelsMap.get(documentId) || [],
   };
+}
+
+export async function getAllTransmittedDocumentsInRange(
+  teamId: string,
+  from: Date,
+  to: Date,
+  direction?: "incoming" | "outgoing"
+): Promise<(TransmittedDocument & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] })[]> {
+  const whereClause = [
+    eq(transmittedDocuments.teamId, teamId),
+    gte(transmittedDocuments.createdAt, from),
+    lt(transmittedDocuments.createdAt, to),
+  ];
+
+  if (direction) {
+    whereClause.push(eq(transmittedDocuments.direction, direction));
+  }
+
+  const documents = await db
+    .select()
+    .from(transmittedDocuments)
+    .where(and(...whereClause))
+    .orderBy(desc(transmittedDocuments.createdAt));
+
+  const documentIds = documents.map((doc) => doc.id);
+  const documentLabelsMap = await getLabelsForDocuments(documentIds);
+
+  return documents.map((doc) => ({
+    ...doc,
+    labels: documentLabelsMap.get(doc.id) || [],
+  }));
 }

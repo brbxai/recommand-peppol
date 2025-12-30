@@ -3,12 +3,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@core/components/ui/too
 
 interface PartyInfo {
   name: string;
-  street?: string;
-  street2?: string;
-  city?: string;
-  postalZone?: string;
-  country?: string;
-  vatNumber?: string;
+  street?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  postalZone?: string | null;
+  country?: string | null;
+  vatNumber?: string | null;
 }
 
 interface PartyInfoTooltipProps {

@@ -1,7 +1,6 @@
 import { expect } from "bun:test";
 import { validateXmlDocument } from "../../data/validation/client";
-
-type DocumentType = "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote";
+import type { DocumentType } from "@peppol/utils/document-types";
 
 export async function validateXml(xml: string, testName: string): Promise<void> {
   const validation = await validateXmlDocument(xml);

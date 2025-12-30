@@ -15,6 +15,7 @@ export const _creditNoteSchema = z.object({
   buyerReference: z.string().nullish().openapi({ example: "PO-2024-001" }),
   invoiceReferences: z.array(creditNoteInvoiceReferenceSchema).default([]).openapi({ description: "References to one or more invoices that are being credited" }),
   purchaseOrderReference: z.string().nullish().openapi({ example: "PO-2024-001", description: "A reference to a related purchase order" }),
+  salesOrderReference: z.string().nullish().openapi({ example: "SO-2024-001", description: "A reference to a related sales order." }),
   despatchReference: z.string().nullish().openapi({ example: "DE-2024-001", description: "A reference to a related despatch advice document (e.g. packing slip)" }),
   seller: partySchema,
   buyer: partySchema,

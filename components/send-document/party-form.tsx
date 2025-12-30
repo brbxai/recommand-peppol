@@ -27,7 +27,7 @@ export function PartyForm({ party, onChange, required = false, disabled = false 
             id="vatNumber"
             value={party.vatNumber || ""}
             onChange={(e) => handleChange("vatNumber", e.target.value)}
-            placeholder="BE0123456789"
+            placeholder="BE1234567894"
             required={required}
             disabled={disabled}
           />

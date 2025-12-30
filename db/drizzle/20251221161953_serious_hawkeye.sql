@@ -1,1 +1,0 @@
-ALTER TABLE "peppol_billing_profiles" ADD COLUMN "is_manually_billed" boolean DEFAULT false NOT NULL;

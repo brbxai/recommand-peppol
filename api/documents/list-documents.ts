@@ -25,7 +25,7 @@ const getTransmittedDocumentsRouteDescription = describeRoute({
   tags: ["Documents"],
   responses: {
     ...describeSuccessResponseWithZod("Successfully retrieved transmitted documents", z.object({
-      documents: z.array(transmittedDocumentResponse),
+      documents: z.array(transmittedDocumentResponse.omit({ xml: true })),
       pagination: z.object({
         total: z.number(),
         page: z.number(),
@@ -76,6 +76,9 @@ const getTransmittedDocumentsQuerySchema = z.object({
     description: "Filter documents by read status: true for unread documents (readAt is null), false for read documents.",
     example: "true",
   }),
+  envelopeId: z.string().optional().openapi({
+    description: "Filter documents by envelope ID (Standard Business Document Header Instance Identifier)",
+  }),
 });
 
 type GetTransmittedDocumentsContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, {in: { query: z.input<typeof getTransmittedDocumentsQuerySchema> }, out: { query: z.infer<typeof getTransmittedDocumentsQuerySchema> } }>;
@@ -98,7 +101,7 @@ const _transmittedDocuments = server.get(
 
 async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocumentsContext) {
   try {
-    const { page, limit, companyId, direction, search, type, from, to, isUnread } = c.req.valid("query");
+    const { page, limit, companyId, direction, search, type, from, to, isUnread, envelopeId } = c.req.valid("query");
     const { documents, total } = await getTransmittedDocuments(
       c.var.team.id,
       {
@@ -115,6 +118,7 @@ async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocuments
         from,
         to,
         isUnread: isUnread === "true" ? true : isUnread === "false" ? false : undefined,
+        envelopeId,
       }
     );
 

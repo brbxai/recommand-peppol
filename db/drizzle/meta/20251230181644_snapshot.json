@@ -1,6 +1,6 @@
 {
-  "id": "a6c80f35-4702-424d-8085-7f5fcdd375fd",
-  "prevId": "35b1de95-979d-467e-9058-439a95650bf6",
+  "id": "bffd8790-ca7a-4bed-b81c-d93cc605f092",
+  "prevId": "1f9ad37e-0f5f-4470-b885-157fd5fa16aa",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1599,6 +1599,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "envelope_id": {
+          "name": "envelope_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "read_at": {
           "name": "read_at",
           "type": "timestamp",
@@ -1757,6 +1763,7 @@
         "creditNote",
         "selfBillingInvoice",
         "selfBillingCreditNote",
+        "messageLevelResponse",
         "unknown"
       ]
     },
@@ -1783,6 +1790,7 @@
         "AU",
         "AT",
         "BE",
+        "CA",
         "DK",
         "FI",
         "FR",

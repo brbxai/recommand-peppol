@@ -13,7 +13,7 @@ import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X, CheckCheck, Mail, MailOpen } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X, CheckCheck, Mail, MailOpen, Download } from "lucide-react";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
@@ -39,6 +39,12 @@ import {
 import type { Label } from "@peppol/types/label";
 import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
+import { ExportDocumentsDialog } from "@peppol/components/export-documents-dialog";
+import type { SupportedDocumentType } from "@peppol/utils/document-types";
+import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
+import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -60,6 +66,7 @@ export default function Page() {
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
 
   const fetchCompanies = useCallback(async () => {
     if (!activeTeam?.id) {
@@ -119,7 +126,7 @@ export default function Page() {
           companyId: filteredCompanyIds,
           direction: ((filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0]) as "incoming" | "outgoing", // When no or all options are selected, don't filter on direction
           search: globalFilter || undefined, // Add the global search term to the query
-          type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as "unknown" | "invoice" | "creditNote" | "selfBillingInvoice" | "selfBillingCreditNote", // When no or all options are selected, don't filter on type
+          type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as SupportedDocumentType, // When no or all options are selected, don't filter on type
           isUnread: ((filteredIsUnreadValues.length === 0 || filteredIsUnreadValues.length > 1) ? undefined : filteredIsUnreadValues[0]) as "true" | "false" | undefined,
         },
       });
@@ -483,8 +490,8 @@ export default function Page() {
         if (isRecognizedType && document.parsed) {
           // For billing documents, sender is the seller, for self-billing documents, sender is the buyer
           const senderInfo = ["invoice", "creditNote"].includes(documentType)
-            ? (document.parsed as any)?.seller
-            : (document.parsed as any)?.buyer;
+            ? (document.parsed as Invoice | CreditNote)?.seller
+            : ["selfBillingInvoice", "selfBillingCreditNote"].includes(documentType) ? (document.parsed as SelfBillingInvoice | SelfBillingCreditNote)?.buyer : undefined;
 
           if (senderInfo?.name) {
             return (
@@ -802,8 +809,16 @@ export default function Page() {
     <PageTemplate
       breadcrumbs={[{ label: "Peppol" }, { label: "Sent and received documents" }]}
       description="View and manage your transmitted Peppol documents."
-      buttons={
-        isPlayground
+      buttons={[
+        <Button
+          key="export"
+          variant="outline"
+          onClick={() => setIsExportDialogOpen(true)}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </Button>,
+        ...(isPlayground
           ? [
               <ConfirmDialog
                 key="delete-all"
@@ -829,8 +844,8 @@ export default function Page() {
                 }
               />,
             ]
-          : undefined
-      }
+          : []),
+      ]}
     >
       <div className="space-y-6">
         {isLoading ? (
@@ -850,6 +865,10 @@ export default function Page() {
           </>
         )}
       </div>
+      <ExportDocumentsDialog
+        open={isExportDialogOpen}
+        onOpenChange={setIsExportDialogOpen}
+      />
     </PageTemplate>
   );
 }

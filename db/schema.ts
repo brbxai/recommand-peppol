@@ -25,6 +25,7 @@ import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invo
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
 import type { IntegrationConfiguration, IntegrationManifest, IntegrationState } from "@peppol/types/integration";
 import { validationResponse, validationResult } from "@peppol/types/validation";
+import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -40,7 +41,7 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
 export const zodValidCountryCodes = z.enum(COUNTRIES.map((c) => c.code) as [string, ...string[]]);
 export const validCountryCodes = pgEnum("peppol_valid_country_codes", zodValidCountryCodes.options);
 
-export const supportedDocumentTypes = z.enum(["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote", "unknown"]);
+export const supportedDocumentTypes = z.enum(["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote", "messageLevelResponse", "unknown"]);
 export const supportedDocumentTypeEnum = pgEnum(
   "peppol_supported_document_type",
   supportedDocumentTypes.options
@@ -282,12 +283,13 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   emailRecipients: text("email_recipients").notNull().array().default([]),
 
   type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
-  parsed: jsonb("parsed").$type<Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote>(),
+  parsed: jsonb("parsed").$type<Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | MessageLevelResponse>(),
   validation: jsonb("validation").$type<z.infer<typeof validationResponse>>(),
 
   peppolMessageId: text("peppol_message_id"),
   peppolConversationId: text("peppol_conversation_id"),
   receivedPeppolSignalMessage: text("received_peppol_signal_message"),
+  envelopeId: text("envelope_id"),
 
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

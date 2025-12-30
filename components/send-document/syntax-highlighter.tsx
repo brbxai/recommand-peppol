@@ -7,6 +7,15 @@ interface SyntaxHighlighterProps {
   className?: string;
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 export function SyntaxHighlighter({
   code,
   language,
@@ -24,8 +33,7 @@ export function SyntaxHighlighter({
         setHighlightedCode(html);
       } catch (error) {
         console.error("Failed to highlight code:", error);
-        // Fallback to plain text
-        setHighlightedCode(`<pre><code>${code}</code></pre>`);
+        setHighlightedCode(`<pre><code>${escapeHtml(code)}</code></pre>`);
       }
     };
 

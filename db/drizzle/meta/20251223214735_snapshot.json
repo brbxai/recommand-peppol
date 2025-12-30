@@ -1,6 +1,6 @@
 {
-  "id": "35b1de95-979d-467e-9058-439a95650bf6",
-  "prevId": "3d5a9ec1-98d7-4d99-bebe-b9a061d61125",
+  "id": "1f9ad37e-0f5f-4470-b885-157fd5fa16aa",
+  "prevId": "8960100b-388f-4963-b8e8-df30b010e221",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -186,18 +186,6 @@
         },
         "vat_number": {
           "name": "vat_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_email": {
-          "name": "billing_email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_peppol_address": {
-          "name": "billing_peppol_address",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -887,18 +875,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "vat_category": {
-          "name": "vat_category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "vat_percentage": {
-          "name": "vat_percentage",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
         "total_amount_incl": {
           "name": "total_amount_incl",
           "type": "numeric",
@@ -917,20 +893,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "used_qty_incoming": {
-          "name": "used_qty_incoming",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "used_qty_outgoing": {
-          "name": "used_qty_outgoing",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": true
-        },
         "included_qty": {
           "name": "included_qty",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "overage_qty": {
+          "name": "overage_qty",
           "type": "numeric",
           "primaryKey": false,
           "notNull": true
@@ -972,18 +942,6 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "invoice_reference": {
-          "name": "invoice_reference",
-          "type": "serial",
-          "primaryKey": false,
-          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -1030,22 +988,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "peppol_subscription_billing_events_invoice_id_unique": {
-          "name": "peppol_subscription_billing_events_invoice_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "invoice_id"
-          ]
-        },
-        "peppol_subscription_billing_events_invoice_reference_unique": {
-          "name": "peppol_subscription_billing_events_invoice_reference_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "invoice_reference"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1592,6 +1535,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "envelope_id": {
+          "name": "envelope_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "read_at": {
           "name": "read_at",
           "type": "timestamp",
@@ -1750,6 +1699,7 @@
         "creditNote",
         "selfBillingInvoice",
         "selfBillingCreditNote",
+        "messageLevelResponse",
         "unknown"
       ]
     },
@@ -1776,6 +1726,7 @@
         "AU",
         "AT",
         "BE",
+        "CA",
         "DK",
         "FI",
         "FR",

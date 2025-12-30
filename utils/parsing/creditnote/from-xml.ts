@@ -35,6 +35,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   const issueDate = getTextContent(creditNote.IssueDate);
   const note = getTextContent(creditNote.Note);
   const purchaseOrderReference = getNullableTextContent(creditNote.OrderReference?.ID);
+  const salesOrderReference = getNullableTextContent(creditNote.OrderReference?.SalesOrderID);
   const buyerReference = getNullableTextContent(creditNote.BuyerReference);
   const despatchReference = getNullableTextContent(creditNote.DespatchDocumentReference?.ID);
   const invoiceReferences = (creditNote.BillingReference || []).map((reference: any) => ({
@@ -59,7 +60,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   }
 
   const seller = {
-    name: getTextContent(sellerParty.PartyName?.Name),
+    name: getNullableTextContent(sellerParty.PartyName?.Name) ?? getTextContent(sellerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(sellerParty.PostalAddress?.StreetName),
     street2: getTextContent(sellerParty.PostalAddress?.AdditionalStreetName),
     city: getTextContent(sellerParty.PostalAddress?.CityName),
@@ -77,7 +78,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   }
 
   const buyer = {
-    name: getTextContent(buyerParty.PartyName?.Name),
+    name: getNullableTextContent(buyerParty.PartyName?.Name) ?? getTextContent(buyerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(buyerParty.PostalAddress?.StreetName),
     street2: getTextContent(buyerParty.PostalAddress?.AdditionalStreetName),
     city: getTextContent(buyerParty.PostalAddress?.CityName),
@@ -217,6 +218,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     issueDate,
     note,
     purchaseOrderReference,
+    salesOrderReference,
     buyerReference,
     despatchReference,
     invoiceReferences,

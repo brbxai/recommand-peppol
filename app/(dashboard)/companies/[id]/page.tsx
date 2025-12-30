@@ -17,11 +17,11 @@ import { CompanyIntegrationsManager } from "../../../../components/company-integ
 import type { Company, CompanyFormData } from "../../../../types/company";
 import { defaultCompanyFormData } from "../../../../types/company";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
-import { AsyncButton } from "@core/components/async-button";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { canUseIntegrations } from "@peppol/utils/plan-validation";
 import { BUILT_IN_INTEGRATIONS } from "@peppol/utils/integrations";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
+import { ConfirmDialog } from "@core/components/confirm-dialog";
 
 const client = rc<Companies>("peppol");
 const subscriptionClient = rc<Subscription>("v1");
@@ -33,6 +33,7 @@ export default function CompanyDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<CompanyFormData>(defaultCompanyFormData);
   const [subscription, setSubscription] = useState<SubscriptionType | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
 
@@ -138,11 +139,8 @@ export default function CompanyDetailPage() {
   const handleDeleteCompany = async () => {
     if (!activeTeam?.id || !company) return;
 
-    if (!confirm("Are you sure you want to delete this company? This action cannot be undone.")) {
-      return;
-    }
-
     try {
+      setIsDeleting(true);
       const response = await client[":teamId"]["companies"][":companyId"].$delete({
         param: {
           teamId: activeTeam.id,
@@ -159,6 +157,8 @@ export default function CompanyDetailPage() {
       navigate("/companies");
     } catch (error) {
       toast.error("Failed to delete company: " + error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -213,14 +213,21 @@ export default function CompanyDetailPage() {
       ]}
       description={`Edit company details for ${company.name}`}
       buttons={[
-        <AsyncButton
+        <ConfirmDialog
           key="delete-button"
+          title="Delete Company"
+          description="Are you sure you want to delete this company? This action cannot be undone."
+          confirmButtonText="Delete"
+          onConfirm={handleDeleteCompany}
+          isLoading={isDeleting}
           variant="destructive"
-          onClick={handleDeleteCompany}
-        >
-          <Trash2 className="h-4 w-4 mr-2" />
-          Delete Company
-        </AsyncButton>,
+          trigger={
+            <Button variant="destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Company
+            </Button>
+          }
+        />,
       ]}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">

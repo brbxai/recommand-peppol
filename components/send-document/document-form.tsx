@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { Label } from "@core/components/ui/label";
 import { toast } from "@core/components/ui/sonner";
@@ -15,6 +15,13 @@ import { EmailOptions } from "./email-options";
 import { Loader2, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stringifyActionFailure } from "@recommand/lib/utils";
+import { Card } from "@core/components/ui/card";
+import { Switch } from "@core/components/ui/switch";
+import { Input } from "@core/components/ui/input";
+import {
+  ensureFileExtension,
+  getDocumentFilename,
+} from "@peppol/utils/document-filename";
 
 const client = rc<SendDocumentAPI>("peppol");
 
@@ -35,6 +42,67 @@ export function DocumentForm({
 }: DocumentFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const lastAutoPdfFilenameRef = useRef<string | null>(null);
+
+  const getAutoPdfFilename = (): string | null => {
+    const docType = formData.documentType;
+    const doc: any = formData.document;
+    if (
+      docType === DocumentType.INVOICE ||
+      docType === DocumentType.SELF_BILLING_INVOICE
+    ) {
+      const invoiceNumber =
+        typeof doc?.invoiceNumber === "string" ? doc.invoiceNumber.trim() : "";
+      if (!invoiceNumber) {
+        return null;
+      }
+      const base = getDocumentFilename(docType, doc);
+      return ensureFileExtension(base, "pdf");
+    }
+    if (
+      docType === DocumentType.CREDIT_NOTE ||
+      docType === DocumentType.SELF_BILLING_CREDIT_NOTE
+    ) {
+      const creditNoteNumber =
+        typeof doc?.creditNoteNumber === "string"
+          ? doc.creditNoteNumber.trim()
+          : "";
+      if (!creditNoteNumber) {
+        return null;
+      }
+      const base = getDocumentFilename(docType, doc);
+      return ensureFileExtension(base, "pdf");
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (!formData.pdfGeneration?.enabled) {
+      return;
+    }
+    const auto = getAutoPdfFilename();
+    if (!auto) {
+      return;
+    }
+    const current = formData.pdfGeneration.filename;
+    const isAuto =
+      current === undefined || current === lastAutoPdfFilenameRef.current;
+    if (!isAuto || current === auto) {
+      return;
+    }
+    lastAutoPdfFilenameRef.current = auto;
+    onFormChange({
+      ...formData,
+      pdfGeneration: { enabled: true, filename: auto },
+    });
+  }, [
+    formData,
+    formData.documentType,
+    formData.document,
+    formData.pdfGeneration?.enabled,
+    formData.pdfGeneration?.filename,
+    onFormChange,
+  ]);
 
   const handleDocumentChange = (documentData: any) => {
     onFormChange({
@@ -54,6 +122,32 @@ export function DocumentForm({
     onFormChange({
       ...formData,
       email: emailOptions,
+    });
+  };
+
+  const handlePdfGenerationToggle = (enabled: boolean) => {
+    const auto = getAutoPdfFilename();
+    onFormChange({
+      ...formData,
+      pdfGeneration: enabled
+        ? auto
+          ? (() => {
+              lastAutoPdfFilenameRef.current = auto;
+              return { enabled: true, filename: auto };
+            })()
+          : { enabled: true }
+        : undefined,
+    });
+  };
+
+  const handlePdfFilenameChange = (filename: string) => {
+    const nextFilename = filename.trim().length > 0 ? filename : undefined;
+    onFormChange({
+      ...formData,
+      pdfGeneration: {
+        enabled: true,
+        ...(nextFilename ? { filename: nextFilename } : {}),
+      },
     });
   };
 
@@ -112,7 +206,7 @@ export function DocumentForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
         <div>
-          <Label htmlFor="company">Sending Company</Label>
+          <Label htmlFor="company">Sending Company *</Label>
           <CompanySelector
             value={selectedCompanyId}
             onChange={onCompanyChange}
@@ -139,7 +233,9 @@ export function DocumentForm({
             document={formData.document || {}}
             onChange={handleDocumentChange}
             companyId={selectedCompanyId}
-            isSelfBilling={formData.documentType === DocumentType.SELF_BILLING_INVOICE}
+            isSelfBilling={
+              formData.documentType === DocumentType.SELF_BILLING_INVOICE
+            }
           />
         )}
         {type === "creditNote" && (
@@ -147,7 +243,9 @@ export function DocumentForm({
             document={formData.document || {}}
             onChange={handleDocumentChange}
             companyId={selectedCompanyId}
-            isSelfBilling={formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE}
+            isSelfBilling={
+              formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE
+            }
           />
         )}
         {type === "xml" && (
@@ -158,7 +256,50 @@ export function DocumentForm({
             onDoctypeIdChange={(id) =>
               onFormChange({ ...formData, doctypeId: id })
             }
+            processId={formData.processId}
+            onProcessIdChange={(id) =>
+              onFormChange({ ...formData, processId: id })
+            }
           />
+        )}
+
+        {type !== "xml" && (
+          <div className="mt-6">
+            <Card className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="pdf-generation-enabled">
+                      Include generated PDF
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Generates a PDF of the document and embeds it as an
+                      attachment.
+                    </p>
+                  </div>
+                  <Switch
+                    id="pdf-generation-enabled"
+                    checked={formData.pdfGeneration?.enabled === true}
+                    onCheckedChange={handlePdfGenerationToggle}
+                  />
+                </div>
+
+                {formData.pdfGeneration?.enabled && (
+                  <div className="space-y-2">
+                    <Label htmlFor="pdf-generation-filename">
+                      PDF filename
+                    </Label>
+                    <Input
+                      id="pdf-generation-filename"
+                      value={formData.pdfGeneration.filename ?? ""}
+                      onChange={(e) => handlePdfFilenameChange(e.target.value)}
+                      placeholder={getAutoPdfFilename() ?? "document.pdf"}
+                    />
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
         )}
       </div>
 

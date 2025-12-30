@@ -30,8 +30,8 @@ import type { Company, CompanyFormData } from "../../../types/company";
 import { defaultCompanyFormData } from "../../../types/company";
 import { DataTableToolbar } from "@core/components/data-table/toolbar";
 import { DataTablePagination } from "@core/components/data-table/pagination";
-import { AsyncButton } from "@core/components/async-button";
 import { Link } from "react-router-dom";
+import { ConfirmDialog } from "@core/components/confirm-dialog";
 
 const client = rc<Companies>("peppol");
 
@@ -73,6 +73,7 @@ export default function Page() {
     defaultCompanyFormData
   );
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [deletingCompanyId, setDeletingCompanyId] = useState<string | null>(null);
   const activeTeam = useActiveTeam();
 
   const fetchCompanies = useCallback(async () => {
@@ -166,6 +167,7 @@ export default function Page() {
     if (!activeTeam?.id) return;
 
     try {
+      setDeletingCompanyId(id);
       const response = await client[":teamId"]["companies"][
         ":companyId"
       ].$delete({
@@ -178,6 +180,8 @@ export default function Page() {
       fetchCompanies();
     } catch (error) {
       console.error("Error deleting company:", error);
+    } finally {
+      setDeletingCompanyId(null);
     }
   };
 
@@ -248,14 +252,23 @@ export default function Page() {
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            <AsyncButton
-              variant="ghost"
-              size="icon"
-              onClick={async () => await handleDeleteCompany(id)}
-              title="Delete"
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </AsyncButton>
+            <ConfirmDialog
+              title="Delete Company"
+              description="Are you sure you want to delete this company? This action cannot be undone."
+              confirmButtonText="Delete"
+              onConfirm={async () => await handleDeleteCompany(id)}
+              isLoading={deletingCompanyId === id}
+              variant="destructive"
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              }
+            />
           </div>
         );
       },

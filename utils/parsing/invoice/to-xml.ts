@@ -70,9 +70,10 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
       ...(invoice.buyerReference && {
         "cbc:BuyerReference": invoice.buyerReference,
       }),
-      ...(invoice.purchaseOrderReference && {
+      ...((invoice.purchaseOrderReference || invoice.salesOrderReference) && {
         "cac:OrderReference": {
-          "cbc:ID": invoice.purchaseOrderReference,
+          "cbc:ID": invoice.purchaseOrderReference || "NA",
+          ...(invoice.salesOrderReference && { "cbc:SalesOrderID": invoice.salesOrderReference }),
         },
       }),
       ...(!invoice.buyerReference &&

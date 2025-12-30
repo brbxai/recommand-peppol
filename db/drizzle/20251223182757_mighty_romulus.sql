@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_transmitted_documents" ADD COLUMN "envelope_id" text;

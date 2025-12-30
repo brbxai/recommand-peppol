@@ -32,4 +32,7 @@ export const transmittedDocumentResponse = z.object({
     peppolMessageId: z.string().nullable(),
     peppolConversationId: z.string().nullable(),
     receivedPeppolSignalMessage: z.string().nullable(),
+    envelopeId: z.string().nullable().openapi({
+        description: "The envelope ID of the document, also known as the SBDH instance identifier (Standard Business Document Header Instance Identifier)",
+    }),
 });
