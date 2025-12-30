@@ -72,7 +72,6 @@ import {
   TableHeader,
   TableRow,
 } from "@core/components/ui/table";
-import { format } from "date-fns";
 
 const subscriptionClient = rc<Subscription>("v1");
 const billingProfileClient = rc<BillingProfile>("v1");
@@ -80,6 +79,8 @@ const billingProfileClient = rc<BillingProfile>("v1");
 export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentSubscription, setCurrentSubscription] =
+    useState<SubscriptionType | null>(null);
+  const [futureSubscription, setFutureSubscription] =
     useState<SubscriptionType | null>(null);
   const [currentUsage, setCurrentUsage] = useState(-1);
   const [billingProfile, setBillingProfile] =
@@ -107,23 +108,45 @@ export default function Page() {
       );
       const data = await response.json();
 
-      if (!data.success || !data.subscription) {
+      if (!data.success) {
         setCurrentSubscription(null);
+        setFutureSubscription(null);
         return;
       }
 
-      setCurrentSubscription({
-        ...data.subscription,
-        createdAt: new Date(data.subscription.createdAt),
-        updatedAt: new Date(data.subscription.updatedAt),
-        startDate: new Date(data.subscription.startDate),
-        endDate: data.subscription.endDate
-          ? new Date(data.subscription.endDate)
-          : null,
-        lastBilledAt: data.subscription.lastBilledAt
-          ? new Date(data.subscription.lastBilledAt)
-          : null,
-      });
+      if (data.subscription) {
+        setCurrentSubscription({
+          ...data.subscription,
+          createdAt: new Date(data.subscription.createdAt),
+          updatedAt: new Date(data.subscription.updatedAt),
+          startDate: new Date(data.subscription.startDate),
+          endDate: data.subscription.endDate
+            ? new Date(data.subscription.endDate)
+            : null,
+          lastBilledAt: data.subscription.lastBilledAt
+            ? new Date(data.subscription.lastBilledAt)
+            : null,
+        });
+      } else {
+        setCurrentSubscription(null);
+      }
+
+      if (data.futureSubscription) {
+        setFutureSubscription({
+          ...data.futureSubscription,
+          createdAt: new Date(data.futureSubscription.createdAt),
+          updatedAt: new Date(data.futureSubscription.updatedAt),
+          startDate: new Date(data.futureSubscription.startDate),
+          endDate: data.futureSubscription.endDate
+            ? new Date(data.futureSubscription.endDate)
+            : null,
+          lastBilledAt: data.futureSubscription.lastBilledAt
+            ? new Date(data.futureSubscription.lastBilledAt)
+            : null,
+        });
+      } else {
+        setFutureSubscription(null);
+      }
     } catch (error) {
       console.error("Error fetching subscription:", error);
       toast.error("Failed to load subscription");
@@ -227,7 +250,7 @@ export default function Page() {
       });
 
       const data = await response.json();
-      setCurrentSubscription(null);
+      fetchSubscription();
       toast.success("Subscription cancelled successfully");
     } catch (error) {
       toast.error("Failed to cancel subscription");
@@ -400,6 +423,19 @@ export default function Page() {
                           ).toLocaleDateString()}
                         </p>
                       </div>
+                      {currentSubscription.endDate && (
+                        <div>
+                          <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                            End Date
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(
+                              currentSubscription.endDate
+                            ).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-4">
                       <div>
@@ -441,7 +477,7 @@ export default function Page() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="pt-6">
+                {(!currentSubscription.endDate || futureSubscription) && <CardFooter className="pt-6">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive">
@@ -473,7 +509,7 @@ export default function Page() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </CardFooter>
+                </CardFooter>}
               </Card>
             ) : (
               <Card className="border-dashed border-2 border-muted-foreground/25">
@@ -489,6 +525,101 @@ export default function Page() {
                     transmission
                   </CardDescription>
                 </CardHeader>
+              </Card>
+            )}
+            {futureSubscription && (
+              <Card className="border-l-4">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        {futureSubscription.planName} Plan
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        Scheduled subscription change
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      Scheduled
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          {futureSubscription.billingConfig.basePrice === 0
+                            ? "Pricing Model"
+                            : "Monthly Price"}
+                        </div>
+                        {futureSubscription.billingConfig.basePrice === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            Volume-based
+                          </p>
+                        ) : (
+                          <p className="text-2xl font-bold text-primary">
+                            €
+                            {futureSubscription.billingConfig.basePrice.toFixed(
+                              2
+                            )}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          Start Date
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(
+                            futureSubscription.startDate
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          Included Documents
+                        </div>
+                        {futureSubscription.billingConfig
+                          .includedMonthlyDocuments === 0 ? (
+                          <p className="text-sm text-muted-foreground">∞</p>
+                        ) : (
+                          <p className="text-lg font-semibold">
+                            {
+                              futureSubscription.billingConfig
+                                .includedMonthlyDocuments
+                            }
+                            <span className="text-sm font-normal text-muted-foreground ml-1">
+                              per month
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                          {futureSubscription.billingConfig
+                            .includedMonthlyDocuments === 0
+                            ? "Price per Document"
+                            : "Overage Rate"}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          €
+                          {futureSubscription.billingConfig.documentOveragePrice.toFixed(
+                            2
+                          )}{" "}
+                          per document
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
               </Card>
             )}
             <Card>
@@ -535,11 +666,11 @@ export default function Page() {
                               : "-"}
                           </TableCell>
                           <TableCell>
-                            {format(event.billingDate, "MMM d, yyyy")}
+                            {event.billingDate.toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {format(event.billingPeriodStart, "MMM d")} -{" "}
-                            {format(event.billingPeriodEnd, "MMM d, yyyy")}
+                            {event.billingPeriodStart.toLocaleDateString()} -{" "}
+                            {event.billingPeriodEnd.toLocaleDateString()}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">
@@ -777,7 +908,10 @@ export default function Page() {
         <PlansGrid
           currentSubscription={currentSubscription}
           teamId={activeTeam.id}
-          onSubscriptionUpdate={setCurrentSubscription}
+          onSubscriptionUpdate={(subscription) => {
+            setCurrentSubscription(subscription);
+            fetchSubscription();
+          }}
         />
       )}
     </PageTemplate>

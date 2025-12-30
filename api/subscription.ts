@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   cancelSubscription,
   getActiveSubscription,
+  getFutureSubscription,
   startSubscription,
 } from "@peppol/data/subscriptions";
 import { getBillingEvents } from "@peppol/data/billing";
@@ -21,7 +22,8 @@ const _getActiveSubscription = server.get(
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     const subscription = await getActiveSubscription(c.var.team.id);
-    return c.json(actionSuccess({ subscription }));
+    const futureSubscription = await getFutureSubscription(c.var.team.id);
+    return c.json(actionSuccess({ subscription, futureSubscription }));
   }
 );
 

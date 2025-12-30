@@ -112,11 +112,11 @@ export function PlansGrid({
             <CardFooter>
               <Button
                 className="w-full"
-                variant={isCurrentPlan(plan.id) ? "secondary" : "default"}
+                variant={isCurrentPlan(plan.id) && !currentSubscription?.endDate ? "secondary" : "default"}
                 onClick={() => handleStartSubscription(plan.id)}
-                disabled={isCurrentPlan(plan.id)}
+                disabled={isCurrentPlan(plan.id) && !currentSubscription?.endDate}
               >
-                {isCurrentPlan(plan.id) ? "Current Plan" : "Select Plan"}
+                {isCurrentPlan(plan.id) ? (currentSubscription?.endDate ? "Resume Subscription" : "Current Plan") : "Select Plan"}
               </Button>
             </CardFooter>
           </Card>

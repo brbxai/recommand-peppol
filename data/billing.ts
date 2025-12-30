@@ -23,6 +23,11 @@ import { COUNTRIES } from "@peppol/utils/countries";
 import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
 import { getMinimalTeamMembers } from "@core/data/team-members";
 
+// TODO: list usage per company
+// TODO: add VAT and totals to the invoice
+// TODO: ensure all billing happens in UTC
+// TODO: combine all subscriptions for a team into a single invoice
+
 export type BillSubscriptionResult = {
   status: "success" | "error";
   message: string;
