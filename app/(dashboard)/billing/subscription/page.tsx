@@ -492,9 +492,7 @@ export default function Page() {
                           Cancel Subscription?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action cannot be undone. You will lose access to
-                          your current plan features immediately. Billing will
-                          be prorated for the current month.
+                          You will lose access to your current plan features at the end of the current month.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
