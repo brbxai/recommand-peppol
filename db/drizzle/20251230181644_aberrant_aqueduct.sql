@@ -10,3 +10,6 @@ ALTER TABLE "peppol_subscription_billing_events" ADD COLUMN "invoice_reference" 
 ALTER TABLE "peppol_subscription_billing_events" DROP COLUMN "overage_qty";--> statement-breakpoint
 ALTER TABLE "peppol_subscription_billing_events" ADD CONSTRAINT "peppol_subscription_billing_events_invoice_id_unique" UNIQUE("invoice_id");--> statement-breakpoint
 ALTER TABLE "peppol_subscription_billing_events" ADD CONSTRAINT "peppol_subscription_billing_events_invoice_reference_unique" UNIQUE("invoice_reference");
+
+-- Set invoice reference start value to 5000
+ALTER SEQUENCE "peppol_subscription_billing_events_invoice_reference_seq" RESTART WITH 5000;
