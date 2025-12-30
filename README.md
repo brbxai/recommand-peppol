@@ -30,9 +30,8 @@ You should be in total control of your business' data and operations. Before Pep
 
 ## Documentation
 
-- [Getting Started Guide](https://recommand.eu/docs/getting-started)
+- [Getting Started Guide](https://recommand.eu/docs)
 - [API Reference](https://recommand.eu/api-reference)
-- [How-To Guides](https://recommand.eu/docs)
 
 ## Pricing
 The Recommand Peppol API is freely available as open source software.
