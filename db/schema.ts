@@ -22,7 +22,11 @@ import { autoUpdateTimestamp } from "@recommand/db/custom-types";
 import { COUNTRIES } from "@peppol/utils/countries";
 import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
-import type { IntegrationConfiguration, IntegrationManifest, IntegrationState } from "@peppol/types/integration";
+import type {
+  IntegrationConfiguration,
+  IntegrationManifest,
+  IntegrationState,
+} from "@peppol/types/integration";
 import { validationResponse, validationResult } from "@peppol/types/validation";
 import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 
@@ -37,10 +41,22 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "failed",
 ]);
 
-export const zodValidCountryCodes = z.enum(COUNTRIES.map((c) => c.code) as [string, ...string[]]);
-export const validCountryCodes = pgEnum("peppol_valid_country_codes", zodValidCountryCodes.options);
+export const zodValidCountryCodes = z.enum(
+  COUNTRIES.map((c) => c.code) as [string, ...string[]]
+);
+export const validCountryCodes = pgEnum(
+  "peppol_valid_country_codes",
+  zodValidCountryCodes.options
+);
 
-export const supportedDocumentTypes = z.enum(["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote", "messageLevelResponse", "unknown"]);
+export const supportedDocumentTypes = z.enum([
+  "invoice",
+  "creditNote",
+  "selfBillingInvoice",
+  "selfBillingCreditNote",
+  "messageLevelResponse",
+  "unknown",
+]);
 export const supportedDocumentTypeEnum = pgEnum(
   "peppol_supported_document_type",
   supportedDocumentTypes.options
@@ -51,12 +67,15 @@ export const transferEventDirectionEnum = pgEnum(
   ["incoming", "outgoing"]
 );
 
-export const transferEventTypeEnum = pgEnum(
-  "peppol_transfer_event_type",
-  ["peppol", "email"]
-);
+export const transferEventTypeEnum = pgEnum("peppol_transfer_event_type", [
+  "peppol",
+  "email",
+]);
 
-export const validationResultEnum = pgEnum("peppol_validation_result", validationResult.options);
+export const validationResultEnum = pgEnum(
+  "peppol_validation_result",
+  validationResult.options
+);
 
 export function lower(email: AnyPgColumn): SQL {
   return sql`lower(${email})`;
@@ -83,7 +102,9 @@ export const billingProfiles = pgTable("peppol_billing_profiles", {
   country: validCountryCodes("country").notNull(),
   vatNumber: text("vat_number"),
 
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
 
@@ -101,7 +122,9 @@ export const subscriptions = pgTable("peppol_subscriptions", {
     .notNull(),
   endDate: timestamp("end_date", { withTimezone: true }),
   lastBilledAt: timestamp("last_billed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
 
@@ -144,7 +167,9 @@ export const subscriptionBillingEvents = pgTable(
     paymentMethod: text("payment_method"),
     paymentDate: timestamp("payment_date"),
 
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     updatedAt: autoUpdateTimestamp(),
   }
 );
@@ -164,60 +189,107 @@ export const companies = pgTable("peppol_companies", {
   enterpriseNumber: text("enterprise_number"),
   vatNumber: text("vat_number"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
-  isOutgoingDocumentValidationEnforced: boolean("is_outgoing_document_validation_enforced").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  isOutgoingDocumentValidationEnforced: boolean(
+    "is_outgoing_document_validation_enforced"
+  )
+    .notNull()
+    .default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
 
-export const companyIdentifiers = pgTable("peppol_company_identifiers", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "ci_" + ulid()),
-  companyId: text("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  scheme: text("scheme").notNull(),
-  identifier: text("identifier").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: autoUpdateTimestamp(),
-}, (table) => [
-  uniqueIndex("peppol_company_identifiers_unique").on(table.companyId, lower(table.scheme), lower(table.identifier)),
-]);
+export const companyIdentifiers = pgTable(
+  "peppol_company_identifiers",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "ci_" + ulid()),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    scheme: text("scheme").notNull(),
+    identifier: text("identifier").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_company_identifiers_unique").on(
+      table.companyId,
+      lower(table.scheme),
+      lower(table.identifier)
+    ),
+  ]
+);
 
-export const companyDocumentTypes = pgTable("peppol_company_document_types", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "cdt_" + ulid()),
-  companyId: text("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  docTypeId: text("doc_type_id").notNull(),
-  processId: text("process_id").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: autoUpdateTimestamp(),
-}, (table) => [
-  uniqueIndex("peppol_company_document_types_unique").on(table.companyId, table.docTypeId, table.processId),
-]);
+export const companyDocumentTypes = pgTable(
+  "peppol_company_document_types",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "cdt_" + ulid()),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    docTypeId: text("doc_type_id").notNull(),
+    processId: text("process_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_company_document_types_unique").on(
+      table.companyId,
+      table.docTypeId,
+      table.processId
+    ),
+  ]
+);
 
-export const companyNotificationEmailAddresses = pgTable("peppol_company_notification_email_addresses", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "cnea_" + ulid()),
-  companyId: text("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  email: text("email").notNull(),
-  notifyIncoming: boolean("notify_incoming").notNull().default(false),
-  notifyOutgoing: boolean("notify_outgoing").notNull().default(false),
-  includeAutoGeneratedPdfIncoming: boolean("include_auto_generated_pdf_incoming").notNull().default(false),
-  includeAutoGeneratedPdfOutgoing: boolean("include_auto_generated_pdf_outgoing").notNull().default(false),
-  includeDocumentJsonIncoming: boolean("include_document_json_incoming").notNull().default(false),
-  includeDocumentJsonOutgoing: boolean("include_document_json_outgoing").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: autoUpdateTimestamp(),
-}, (table) => [
-  uniqueIndex("peppol_company_notification_email_addresses_unique").on(table.companyId, lower(table.email)),
-]);
+export const companyNotificationEmailAddresses = pgTable(
+  "peppol_company_notification_email_addresses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "cnea_" + ulid()),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    email: text("email").notNull(),
+    notifyIncoming: boolean("notify_incoming").notNull().default(false),
+    notifyOutgoing: boolean("notify_outgoing").notNull().default(false),
+    includeAutoGeneratedPdfIncoming: boolean(
+      "include_auto_generated_pdf_incoming"
+    )
+      .notNull()
+      .default(false),
+    includeAutoGeneratedPdfOutgoing: boolean(
+      "include_auto_generated_pdf_outgoing"
+    )
+      .notNull()
+      .default(false),
+    includeDocumentJsonIncoming: boolean("include_document_json_incoming")
+      .notNull()
+      .default(false),
+    includeDocumentJsonOutgoing: boolean("include_document_json_outgoing")
+      .notNull()
+      .default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_company_notification_email_addresses_unique").on(
+      table.companyId,
+      lower(table.email)
+    ),
+  ]
+);
 
 export const webhooks = pgTable("peppol_webhooks", {
   id: text("id")
@@ -226,10 +298,13 @@ export const webhooks = pgTable("peppol_webhooks", {
   teamId: text("team_id")
     .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),
-  companyId: text("company_id")
-    .references(() => companies.id, { onDelete: "cascade" }),
+  companyId: text("company_id").references(() => companies.id, {
+    onDelete: "cascade",
+  }),
   url: text("url").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
 
@@ -239,12 +314,13 @@ export const transferEvents = pgTable("peppol_transfer_events", {
     .$defaultFn(() => "te_" + ulid()),
   teamId: text("team_id") // Not linked to teams table, as we don't want to delete the transfer events when the team is deleted
     .notNull(),
-  companyId: text("company_id")
-    .notNull(),
+  companyId: text("company_id").notNull(),
   type: transferEventTypeEnum("type").notNull().default("peppol"),
   transmittedDocumentId: text("transmitted_document_id"),
   direction: transferEventDirectionEnum("direction").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 
 export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
@@ -271,7 +347,13 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   emailRecipients: text("email_recipients").notNull().array().default([]),
 
   type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
-  parsed: jsonb("parsed").$type<Invoice | CreditNote | SelfBillingInvoice | SelfBillingCreditNote | MessageLevelResponse>(),
+  parsed: jsonb("parsed").$type<
+    | Invoice
+    | CreditNote
+    | SelfBillingInvoice
+    | SelfBillingCreditNote
+    | MessageLevelResponse
+  >(),
   validation: jsonb("validation").$type<z.infer<typeof validationResponse>>(),
 
   peppolMessageId: text("peppol_message_id"),
@@ -280,20 +362,29 @@ export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
   envelopeId: text("envelope_id"),
 
   readAt: timestamp("read_at"), // defaults to null, set when the document is read
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
 
-export const transmittedDocumentLabels = pgTable("peppol_transmitted_document_labels", {
-  transmittedDocumentId: text("transmitted_document_id")
-    .references(() => transmittedDocuments.id, { onDelete: "cascade" })
-    .notNull(),
-  labelId: text("label_id")
-    .references(() => labels.id, { onDelete: "cascade" })
-    .notNull(),
-}, (table) => [
-  primaryKey({ name: "peppol_transmitted_document_labels_pkey", columns: [table.transmittedDocumentId, table.labelId] }),
-]);
+export const transmittedDocumentLabels = pgTable(
+  "peppol_transmitted_document_labels",
+  {
+    transmittedDocumentId: text("transmitted_document_id")
+      .references(() => transmittedDocuments.id, { onDelete: "cascade" })
+      .notNull(),
+    labelId: text("label_id")
+      .references(() => labels.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "peppol_transmitted_document_labels_pkey",
+      columns: [table.transmittedDocumentId, table.labelId],
+    }),
+  ]
+);
 
 export const teamExtensions = pgTable("peppol_team_extensions", {
   id: text("id")
@@ -303,69 +394,129 @@ export const teamExtensions = pgTable("peppol_team_extensions", {
   useTestNetwork: boolean("use_test_network").notNull().default(false),
 });
 
-export const labels = pgTable("peppol_labels", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "lbl_" + ulid()),
-  teamId: text("team_id")
-    .references(() => teams.id, { onDelete: "cascade" })
-    .notNull(),
-  externalId: text("external_id"),
-  name: text("name").notNull(),
-  colorHex: text("color_hex").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: autoUpdateTimestamp(),
-}, (table) => [
-  uniqueIndex("peppol_labels_external_id_unique").on(table.teamId, table.externalId).where(isNotNull(table.externalId)),
-]);
+export const labels = pgTable(
+  "peppol_labels",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "lbl_" + ulid()),
+    teamId: text("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+    externalId: text("external_id"),
+    name: text("name").notNull(),
+    colorHex: text("color_hex").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_labels_external_id_unique")
+      .on(table.teamId, table.externalId)
+      .where(isNotNull(table.externalId)),
+  ]
+);
 
-export const supportingDataSuppliers = pgTable("supporting_data_suppliers", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "sd_supp_" + ulid()), // Supporting Data Supplier
-  teamId: text("team_id")
-    .references(() => teams.id, { onDelete: "cascade" })
-    .notNull(),
-  externalId: text("external_id"),
-  name: text("name").notNull(),
-  vatNumber: text("vat_number"),
-  peppolAddresses: text("peppol_addresses").notNull().array().default([]),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: autoUpdateTimestamp(),
-}, (table) => [
-  index("supporting_suppliers_team_id_idx").on(table.teamId),
-  uniqueIndex("supporting_suppliers_external_id_unique").on(table.teamId, table.externalId).where(isNotNull(table.externalId)),
-]);
+export const supportingDataSuppliers = pgTable(
+  "supporting_data_suppliers",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "sd_supp_" + ulid()), // Supporting Data Supplier
+    teamId: text("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+    externalId: text("external_id"),
+    name: text("name").notNull(),
+    vatNumber: text("vat_number"),
+    peppolAddresses: text("peppol_addresses").notNull().array().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    index("supporting_suppliers_team_id_idx").on(table.teamId),
+    uniqueIndex("supporting_suppliers_external_id_unique")
+      .on(table.teamId, table.externalId)
+      .where(isNotNull(table.externalId)),
+  ]
+);
 
-export const supportingDataSupplierLabels = pgTable("supporting_data_supplier_labels", {
-  supportingDataSupplierId: text("supporting_data_supplier_id")
-    .references(() => supportingDataSuppliers.id, { onDelete: "cascade" })
-    .notNull(),
-  labelId: text("label_id")
-    .references(() => labels.id, { onDelete: "cascade" })
-    .notNull(),
-}, (table) => [
-  primaryKey({ name: "supporting_data_supplier_labels_pkey", columns: [table.supportingDataSupplierId, table.labelId] }),
-]);
+export const supportingDataSupplierLabels = pgTable(
+  "supporting_data_supplier_labels",
+  {
+    supportingDataSupplierId: text("supporting_data_supplier_id")
+      .references(() => supportingDataSuppliers.id, { onDelete: "cascade" })
+      .notNull(),
+    labelId: text("label_id")
+      .references(() => labels.id, { onDelete: "cascade" })
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "supporting_data_supplier_labels_pkey",
+      columns: [table.supportingDataSupplierId, table.labelId],
+    }),
+  ]
+);
 
-export const activatedIntegrations = pgTable("activated_integrations", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "itg_" + ulid()),
-  teamId: text("team_id")
-    .references(() => teams.id, { onDelete: "cascade" })
-    .notNull(),
-  companyId: text("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  manifest: jsonb("manifest").$type<IntegrationManifest>().notNull(),
-  configuration: jsonb("configuration").$type<IntegrationConfiguration>(),
-  state: jsonb("state").$type<IntegrationState>().notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: autoUpdateTimestamp(),
-}, (table) => [
-  index("activated_integrations_team_id_idx").on(table.teamId),
-]);
+export const supportingDataCustomers = pgTable(
+  "supporting_data_customers",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "sd_cust_" + ulid()),
+    teamId: text("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+    externalId: text("external_id"),
+    name: text("name").notNull(),
+    vatNumber: text("vat_number"),
+    enterpriseNumber: text("enterprise_number"),
+    peppolAddresses: text("peppol_addresses").notNull().array().default([]),
+    address: text("address").notNull(),
+    city: text("city").notNull(),
+    postalCode: text("postal_code").notNull(),
+    country: text("country").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    index("supporting_customers_team_id_idx").on(table.teamId),
+    uniqueIndex("supporting_customers_external_id_unique")
+      .on(table.teamId, table.externalId)
+      .where(isNotNull(table.externalId)),
+  ]
+);
+
+export const activatedIntegrations = pgTable(
+  "activated_integrations",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "itg_" + ulid()),
+    teamId: text("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    manifest: jsonb("manifest").$type<IntegrationManifest>().notNull(),
+    configuration: jsonb("configuration").$type<IntegrationConfiguration>(),
+    state: jsonb("state").$type<IntegrationState>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [index("activated_integrations_team_id_idx").on(table.teamId)]
+);
 
 export const integrationTaskLogs = pgTable("integration_task_logs", {
   id: text("id")
@@ -379,6 +530,8 @@ export const integrationTaskLogs = pgTable("integration_task_logs", {
   success: boolean("success").notNull(),
   message: text("message").notNull(),
   context: text("context").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });

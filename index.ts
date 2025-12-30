@@ -8,14 +8,19 @@ import labelsServer from "./api/labels";
 import sendDocumentServer from "./api/send-document";
 import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/documents";
-import { generateSpecs, openAPISpecs, type OpenApiSpecsOptions } from "hono-openapi";
+import {
+  generateSpecs,
+  openAPISpecs,
+  type OpenApiSpecsOptions,
+} from "hono-openapi";
 import webhooksServer from "./api/webhooks";
 import integrationsServer from "./api/integrations";
 import recipientServer from "./api/recipients";
 import playgroundsServer from "./api/playgrounds";
 import suppliersServer from "./api/suppliers";
+import customersServer from "./api/customers";
 import { initializeIntegrationCronJobs } from "./data/integrations/cron";
-import { createMarkdownFromOpenApi } from '@scalar/openapi-to-markdown'
+import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
 
 export let logger: Logger;
 
@@ -30,7 +35,7 @@ export async function init(app: RecommandApp, server: Server) {
   const exclude: RegExp[] = [
     /^\/api\/core(?!\/auth\/verify).*$/, // Exclude all core API endpoints except the auth/verify endpoint
     /^\/api\/peppol.*$/, // Exclude all peppol API endpoints (these have been replaced by the new v1 API)
-    /^\/api\/v1\/integrations.*$/ // Exclude all integrations API endpoints
+    /^\/api\/v1\/integrations.*$/, // Exclude all integrations API endpoints
   ];
 
   // Add OpenAPI documentation
@@ -75,12 +80,14 @@ For additional support or questions, don't hesitate to contact our support team.
           httpBasic: {
             type: "http",
             scheme: "basic",
-            description: "Basic API key authentication. Create a new API key and secret in the Recommand dashboard.",
+            description:
+              "Basic API key authentication. Create a new API key and secret in the Recommand dashboard.",
           },
           jwt: {
             type: "http",
             scheme: "bearer",
-            description: "JWT authentication. Create a new JWT token in the Recommand dashboard.",
+            description:
+              "JWT authentication. Create a new JWT token in the Recommand dashboard.",
           },
         },
       },
@@ -96,7 +103,8 @@ For additional support or questions, don't hesitate to contact our support team.
         },
         {
           name: "Recipients",
-          description: "Interaction with the Peppol directory. For now, this always returns results from the production Peppol directory, even in playground teams.",
+          description:
+            "Interaction with the Peppol directory. For now, this always returns results from the production Peppol directory, even in playground teams.",
         },
         {
           name: "Documents",
@@ -104,31 +112,43 @@ For additional support or questions, don't hesitate to contact our support team.
         },
         {
           name: "Companies",
-          description: "You can manage all companies for a team. Each business you want to send or receive Peppol documents for needs to be registered as a company.",
+          description:
+            "You can manage all companies for a team. Each business you want to send or receive Peppol documents for needs to be registered as a company.",
         },
         {
           name: "Company Identifiers",
-          description: "You can manage all Peppol identifiers for a company. Peppol identifiers are used to identify a company in the Peppol network. They are structured as scheme:identifier, e.g. '0208:1012081766' for the Belgian business with enterprise number 1012081766.",
+          description:
+            "You can manage all Peppol identifiers for a company. Peppol identifiers are used to identify a company in the Peppol network. They are structured as scheme:identifier, e.g. '0208:1012081766' for the Belgian business with enterprise number 1012081766.",
         },
         {
           name: "Company Document Types",
-          description: "You can manage all Peppol document types for a company. Peppol document types are used to identify the type of document that can be received by a company.",
+          description:
+            "You can manage all Peppol document types for a company. Peppol document types are used to identify the type of document that can be received by a company.",
         },
         {
           name: "Company Notification Email Addresses",
-          description: "You can manage all notification email addresses for a company. Notification email addresses are used to receive notifications when a document is received or sent by a company.",
+          description:
+            "You can manage all notification email addresses for a company. Notification email addresses are used to receive notifications when a document is received or sent by a company.",
         },
         {
           name: "Playgrounds",
-          description: "Endpoints for working with playgrounds. Playgrounds are used to test the Recommand API without affecting production data or communicating over the Peppol network. A new playground can be created via the Recommand dashboard by clicking the team switcher in the top left, or via the API outlined below. Usage of the playground is free.",
+          description:
+            "Endpoints for working with playgrounds. Playgrounds are used to test the Recommand API without affecting production data or communicating over the Peppol network. A new playground can be created via the Recommand dashboard by clicking the team switcher in the top left, or via the API outlined below. Usage of the playground is free.",
         },
         {
           name: "Labels",
-          description: "You can manage all labels for a team. Labels are used to organize and categorize your data.",
+          description:
+            "You can manage all labels for a team. Labels are used to organize and categorize your data.",
         },
         {
           name: "Suppliers",
-          description: "You can manage all suppliers (supporting data) for a team. Suppliers are used to organize and categorize your supporting data.",
+          description:
+            "You can manage all suppliers (supporting data) for a team. Suppliers are used to organize and categorize your supporting data.",
+        },
+        {
+          name: "Customers",
+          description:
+            "You can manage all customers (supporting data) for a team. Customers are used to quickly fill in buyer information when sending documents.",
         },
         // {
         //   name: "Integrations",
@@ -137,18 +157,15 @@ For additional support or questions, don't hesitate to contact our support team.
       ],
     },
   };
-  server.get(
-    "/openapi",
-    openAPISpecs(server, specsOptions)
-  );
+  server.get("/openapi", openAPISpecs(server, specsOptions));
   server.get("/llms-full.txt", async (c) => {
     const specs = await generateSpecs(server, specsOptions, undefined, c);
     const markdown = await createMarkdownFromOpenApi(specs);
-    return c.text(markdown)
+    return c.text(markdown);
   });
 }
 
-for(const prefix of ["/peppol/", "/v1/"]) {
+for (const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, sendDocumentServer);
   server.route(prefix, companiesServer);
   server.route(prefix, transmittedDocumentsServer);
@@ -158,12 +175,13 @@ for(const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, webhooksServer);
   server.route(prefix, integrationsServer);
   server.route(prefix, playgroundsServer);
-  
+
   server.route(prefix, suppliersServer);
+  server.route(prefix, customersServer);
   server.route(prefix, labelsServer);
 
-  server.route(prefix, billingProfileServer); 
-  server.route(prefix, subscriptionServer); 
+  server.route(prefix, billingProfileServer);
+  server.route(prefix, subscriptionServer);
 }
 
 export default server;

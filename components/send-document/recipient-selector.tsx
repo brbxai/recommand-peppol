@@ -1,5 +1,5 @@
 import { Input } from "@core/components/ui/input";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import {
   Tooltip,
@@ -14,6 +14,10 @@ interface RecipientSelectorProps {
 
 export function RecipientSelector({ value, onChange }: RecipientSelectorProps) {
   const [inputValue, setInputValue] = useState(value);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;

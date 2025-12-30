@@ -11,7 +11,7 @@ import {
   CollapsibleTrigger,
 } from "@core/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
-import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { Invoice, Party } from "@peppol/utils/parsing/invoice/schemas";
 import { format } from "date-fns";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
@@ -26,6 +26,7 @@ interface InvoiceFormProps {
   onChange: (document: any) => void;
   companyId: string;
   isSelfBilling?: boolean;
+  customerParty?: Party;
 }
 
 export function InvoiceForm({
@@ -33,6 +34,7 @@ export function InvoiceForm({
   onChange,
   companyId,
   isSelfBilling = false,
+  customerParty,
 }: InvoiceFormProps) {
   const [invoice, setInvoice] = useState<Partial<Invoice>>({
     invoiceNumber: "",
@@ -78,7 +80,7 @@ export function InvoiceForm({
             postalZone: company.postalCode,
             country: company.country,
           };
-          
+
           setInvoice((prev) => ({
             ...prev,
             ...(isSelfBilling
@@ -98,6 +100,26 @@ export function InvoiceForm({
     onChange(invoice);
   }, [invoice]);
 
+  useEffect(() => {
+    if (!customerParty) return;
+    setInvoice((prev) => ({
+      ...prev,
+      ...(isSelfBilling
+        ? prev.seller?.name === customerParty.name &&
+          prev.seller?.street === customerParty.street &&
+          prev.seller?.postalZone === customerParty.postalZone &&
+          prev.seller?.country === customerParty.country
+          ? {}
+          : { seller: customerParty }
+        : prev.buyer?.name === customerParty.name &&
+            prev.buyer?.street === customerParty.street &&
+            prev.buyer?.postalZone === customerParty.postalZone &&
+            prev.buyer?.country === customerParty.country
+          ? {}
+          : { buyer: customerParty }),
+    }));
+  }, [customerParty, isSelfBilling]);
+
   const handleFieldChange = (field: keyof Invoice, value: any) => {
     setInvoice((prev) => ({ ...prev, [field]: value }));
   };
@@ -113,7 +135,12 @@ export function InvoiceForm({
   }, [invoice.lines]);
 
   useEffect(() => {
-    if (!requiresExemptionReason && invoice.vat && typeof invoice.vat === "object" && "exemptionReason" in invoice.vat) {
+    if (
+      !requiresExemptionReason &&
+      invoice.vat &&
+      typeof invoice.vat === "object" &&
+      "exemptionReason" in invoice.vat
+    ) {
       setInvoice((prev) => {
         const { vat, ...rest } = prev;
         return rest;
@@ -129,7 +156,9 @@ export function InvoiceForm({
   };
 
   const vatExemptionReason =
-    invoice.vat && typeof invoice.vat === "object" && "exemptionReason" in invoice.vat
+    invoice.vat &&
+    typeof invoice.vat === "object" &&
+    "exemptionReason" in invoice.vat
       ? (invoice.vat.exemptionReason as string) || ""
       : "";
 
@@ -154,7 +183,12 @@ export function InvoiceForm({
               id="issueDate"
               type="date"
               value={invoice.issueDate || ""}
-              onChange={(e) => handleFieldChange("issueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
+              onChange={(e) =>
+                handleFieldChange(
+                  "issueDate",
+                  e.target.value?.trim() ? e.target.value.trim() : null
+                )
+              }
             />
           </div>
           <div>
@@ -163,7 +197,12 @@ export function InvoiceForm({
               id="dueDate"
               type="date"
               value={invoice.dueDate || ""}
-              onChange={(e) => handleFieldChange("dueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
+              onChange={(e) =>
+                handleFieldChange(
+                  "dueDate",
+                  e.target.value?.trim() ? e.target.value.trim() : null
+                )
+              }
             />
           </div>
         </div>
@@ -186,7 +225,11 @@ export function InvoiceForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("buyer")}
         >
-          <span>{isSelfBilling ? "Buyer Information (Auto-populated)" : "Buyer Information *"}</span>
+          <span>
+            {isSelfBilling
+              ? "Buyer Information (Auto-populated)"
+              : "Buyer Information *"}
+          </span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
           />
@@ -206,7 +249,11 @@ export function InvoiceForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("seller")}
         >
-          <span>{isSelfBilling ? "Seller Information *" : "Seller Information (Auto-populated)"}</span>
+          <span>
+            {isSelfBilling
+              ? "Seller Information *"
+              : "Seller Information (Auto-populated)"}
+          </span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
           />

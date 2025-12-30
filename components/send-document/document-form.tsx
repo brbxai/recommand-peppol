@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { Label } from "@core/components/ui/label";
 import { toast } from "@core/components/ui/sonner";
@@ -22,8 +22,13 @@ import {
   ensureFileExtension,
   getDocumentFilename,
 } from "@peppol/utils/document-filename";
+import { useActiveTeam } from "@core/hooks/user";
+import type { Customers } from "@peppol/api/customers";
+import type { Party } from "@peppol/utils/parsing/invoice/schemas";
+import { Combobox } from "@core/components/ui/combobox";
 
 const client = rc<SendDocumentAPI>("peppol");
+const customersClient = rc<Customers>("v1");
 
 interface DocumentFormProps {
   type: "invoice" | "creditNote" | "xml";
@@ -43,6 +48,24 @@ export function DocumentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const lastAutoPdfFilenameRef = useRef<string | null>(null);
+  const lastAutoRecipientRef = useRef<string | null>(null);
+  const activeTeam = useActiveTeam();
+  const [customers, setCustomers] = useState<
+    Array<{
+      id: string;
+      name: string;
+      vatNumber: string | null;
+      enterpriseNumber: string | null;
+      peppolAddresses: string[];
+      address: string;
+      city: string;
+      postalCode: string;
+      country: string;
+      email: string | null;
+      phone: string | null;
+    }>
+  >([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
 
   const getAutoPdfFilename = (): string | null => {
     const docType = formData.documentType;
@@ -103,6 +126,101 @@ export function DocumentForm({
     formData.pdfGeneration?.filename,
     onFormChange,
   ]);
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      if (!activeTeam?.id) {
+        setCustomers([]);
+        return;
+      }
+
+      try {
+        const response = await customersClient[":teamId"]["customers"].$get({
+          param: { teamId: activeTeam.id },
+          query: { page: 1, limit: 100 },
+        });
+        const json = await response.json();
+        if (!json.success || !Array.isArray(json.customers)) {
+          setCustomers([]);
+          return;
+        }
+        setCustomers(
+          json.customers.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            vatNumber: c.vatNumber ?? null,
+            enterpriseNumber: c.enterpriseNumber ?? null,
+            peppolAddresses: Array.isArray(c.peppolAddresses)
+              ? c.peppolAddresses
+              : [],
+            address: c.address,
+            city: c.city,
+            postalCode: c.postalCode,
+            country: c.country,
+            email: c.email ?? null,
+            phone: c.phone ?? null,
+          }))
+        );
+      } catch (error) {
+        setCustomers([]);
+      }
+    };
+
+    fetchCustomers();
+  }, [activeTeam?.id]);
+
+  const selectedCustomer = useMemo(() => {
+    if (!selectedCustomerId || customers.length === 0) {
+      return null;
+    }
+    return customers.find((c) => c.id === selectedCustomerId) ?? null;
+  }, [customers, selectedCustomerId]);
+
+  const customerParty: Party | undefined = useMemo(() => {
+    if (!selectedCustomer) {
+      return undefined;
+    }
+    return {
+      name: selectedCustomer.name,
+      street: selectedCustomer.address,
+      street2: null,
+      city: selectedCustomer.city,
+      postalZone: selectedCustomer.postalCode,
+      country: selectedCustomer.country,
+      vatNumber: selectedCustomer.vatNumber,
+      enterpriseNumber: selectedCustomer.enterpriseNumber,
+      email: selectedCustomer.email,
+      phone: selectedCustomer.phone,
+    };
+  }, [selectedCustomer]);
+
+  useEffect(() => {
+    if (!selectedCustomer) {
+      lastAutoRecipientRef.current = null;
+      return;
+    }
+
+    const autoRecipientRaw = selectedCustomer.peppolAddresses?.[0];
+    const autoRecipient =
+      typeof autoRecipientRaw === "string" ? autoRecipientRaw.trim() : "";
+    if (!autoRecipient) {
+      return;
+    }
+
+    const currentRecipient =
+      typeof formData.recipient === "string" ? formData.recipient.trim() : "";
+
+    const shouldAutoUpdate =
+      !currentRecipient || currentRecipient === lastAutoRecipientRef.current;
+
+    if (shouldAutoUpdate && currentRecipient !== autoRecipient) {
+      lastAutoRecipientRef.current = autoRecipient;
+      onFormChange({
+        ...formData,
+        recipient: autoRecipient,
+      });
+    }
+  }, [selectedCustomer, formData.recipient, onFormChange]);
 
   const handleDocumentChange = (documentData: any) => {
     onFormChange({
@@ -213,6 +331,24 @@ export function DocumentForm({
           />
         </div>
 
+        {type !== "xml" && (
+          <div>
+            <Label htmlFor="customer">Customer</Label>
+            <Combobox
+              value={selectedCustomerId}
+              onValueChange={setSelectedCustomerId}
+              options={customers.map((c) => ({
+                value: c.id,
+                label: c.vatNumber ? `${c.name} - ${c.vatNumber}` : c.name,
+              }))}
+              placeholder="Select a customer..."
+              searchPlaceholder="Search customers..."
+              emptyText="No customers found."
+              disabled={!activeTeam?.id}
+            />
+          </div>
+        )}
+
         <div>
           <Label htmlFor="recipient">Recipient Peppol ID *</Label>
           <RecipientSelector
@@ -236,6 +372,7 @@ export function DocumentForm({
             isSelfBilling={
               formData.documentType === DocumentType.SELF_BILLING_INVOICE
             }
+            customerParty={customerParty}
           />
         )}
         {type === "creditNote" && (
@@ -246,6 +383,7 @@ export function DocumentForm({
             isSelfBilling={
               formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE
             }
+            customerParty={customerParty}
           />
         )}
         {type === "xml" && (

@@ -13,6 +13,7 @@ import {
 } from "@core/components/ui/collapsible";
 import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import type { Party } from "@peppol/utils/parsing/invoice/schemas";
 import { format } from "date-fns";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
@@ -27,6 +28,7 @@ interface CreditNoteFormProps {
   onChange: (document: any) => void;
   companyId: string;
   isSelfBilling?: boolean;
+  customerParty?: Party;
 }
 
 export function CreditNoteForm({
@@ -34,6 +36,7 @@ export function CreditNoteForm({
   onChange,
   companyId,
   isSelfBilling = false,
+  customerParty,
 }: CreditNoteFormProps) {
   const [creditNote, setCreditNote] = useState<Partial<CreditNote>>({
     creditNoteNumber: "",
@@ -77,7 +80,7 @@ export function CreditNoteForm({
             postalZone: company.postalCode,
             country: company.country,
           };
-          
+
           setCreditNote((prev) => ({
             ...prev,
             ...(isSelfBilling
@@ -97,6 +100,26 @@ export function CreditNoteForm({
     onChange(creditNote);
   }, [creditNote]);
 
+  useEffect(() => {
+    if (!customerParty) return;
+    setCreditNote((prev) => ({
+      ...prev,
+      ...(isSelfBilling
+        ? prev.seller?.name === customerParty.name &&
+          prev.seller?.street === customerParty.street &&
+          prev.seller?.postalZone === customerParty.postalZone &&
+          prev.seller?.country === customerParty.country
+          ? {}
+          : { seller: customerParty }
+        : prev.buyer?.name === customerParty.name &&
+            prev.buyer?.street === customerParty.street &&
+            prev.buyer?.postalZone === customerParty.postalZone &&
+            prev.buyer?.country === customerParty.country
+          ? {}
+          : { buyer: customerParty }),
+    }));
+  }, [customerParty, isSelfBilling]);
+
   const handleFieldChange = (field: keyof CreditNote, value: any) => {
     setCreditNote((prev) => ({ ...prev, [field]: value }));
   };
@@ -112,7 +135,12 @@ export function CreditNoteForm({
   }, [creditNote.lines]);
 
   useEffect(() => {
-    if (!requiresExemptionReason && creditNote.vat && typeof creditNote.vat === "object" && "exemptionReason" in creditNote.vat) {
+    if (
+      !requiresExemptionReason &&
+      creditNote.vat &&
+      typeof creditNote.vat === "object" &&
+      "exemptionReason" in creditNote.vat
+    ) {
       setCreditNote((prev) => {
         const { vat, ...rest } = prev;
         return rest;
@@ -128,7 +156,9 @@ export function CreditNoteForm({
   };
 
   const vatExemptionReason =
-    creditNote.vat && typeof creditNote.vat === "object" && "exemptionReason" in creditNote.vat
+    creditNote.vat &&
+    typeof creditNote.vat === "object" &&
+    "exemptionReason" in creditNote.vat
       ? (creditNote.vat.exemptionReason as string) || ""
       : "";
 
@@ -154,7 +184,12 @@ export function CreditNoteForm({
             id="issueDate"
             type="date"
             value={creditNote.issueDate || ""}
-            onChange={(e) => handleFieldChange("issueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
+            onChange={(e) =>
+              handleFieldChange(
+                "issueDate",
+                e.target.value?.trim() ? e.target.value.trim() : null
+              )
+            }
           />
         </div>
 
@@ -206,7 +241,13 @@ export function CreditNoteForm({
                     value={ref.issueDate || ""}
                     onChange={(e) => {
                       const newRefs = [...(creditNote.invoiceReferences || [])];
-                      newRefs[index] = { ...ref, issueDate: e.target.value.length > 0 ? e.target.value.trim() : null };
+                      newRefs[index] = {
+                        ...ref,
+                        issueDate:
+                          e.target.value.length > 0
+                            ? e.target.value.trim()
+                            : null,
+                      };
                       handleFieldChange("invoiceReferences", newRefs);
                     }}
                   />
@@ -216,7 +257,9 @@ export function CreditNoteForm({
                   variant="ghost"
                   size="icon"
                   onClick={() => {
-                    const newRefs = (creditNote.invoiceReferences || []).filter((_, i) => i !== index);
+                    const newRefs = (creditNote.invoiceReferences || []).filter(
+                      (_, i) => i !== index
+                    );
                     handleFieldChange("invoiceReferences", newRefs);
                   }}
                   className="ml-2"
@@ -229,7 +272,10 @@ export function CreditNoteForm({
               type="button"
               variant="outline"
               onClick={() => {
-                const newRefs = [...(creditNote.invoiceReferences || []), { id: "", issueDate: null }];
+                const newRefs = [
+                  ...(creditNote.invoiceReferences || []),
+                  { id: "", issueDate: null },
+                ];
                 handleFieldChange("invoiceReferences", newRefs);
               }}
             >
@@ -245,7 +291,11 @@ export function CreditNoteForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("buyer")}
         >
-          <span>{isSelfBilling ? "Buyer Information (Auto-populated)" : "Buyer Information *"}</span>
+          <span>
+            {isSelfBilling
+              ? "Buyer Information (Auto-populated)"
+              : "Buyer Information *"}
+          </span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
           />
@@ -265,7 +315,11 @@ export function CreditNoteForm({
           className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
           onClick={() => toggleSection("seller")}
         >
-          <span>{isSelfBilling ? "Seller Information *" : "Seller Information (Auto-populated)"}</span>
+          <span>
+            {isSelfBilling
+              ? "Seller Information *"
+              : "Seller Information (Auto-populated)"}
+          </span>
           <ChevronDown
             className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
           />
