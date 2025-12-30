@@ -5,7 +5,7 @@ import {
   transferEvents,
 } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { and, eq, isNull, lt, or, gt, count, gte, lte } from "drizzle-orm";
+import { and, eq, isNull, lt, or, gt, count, gte, lte, desc } from "drizzle-orm";
 import {
   differenceInMinutes,
   isSameDay,
@@ -78,6 +78,15 @@ export async function getCurrentUsage(teamId: string) {
       )
     );
   return transmittedDocuments[0].usage;
+}
+
+export async function getBillingEvents(teamId: string) {
+  const events = await db
+    .select()
+    .from(subscriptionBillingEvents)
+    .where(eq(subscriptionBillingEvents.teamId, teamId))
+    .orderBy(desc(subscriptionBillingEvents.billingDate));
+  return events;
 }
 
 export async function endBillingCycle(billingDate: Date, dryRun: boolean = false): Promise<BillSubscriptionResult[]> {

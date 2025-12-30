@@ -6,6 +6,7 @@ import {
   getActiveSubscription,
   startSubscription,
 } from "@peppol/data/subscriptions";
+import { getBillingEvents } from "@peppol/data/billing";
 import { availablePlans } from "@peppol/data/plans";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { requireTeamAccess } from "@core/lib/auth-middleware";
@@ -66,6 +67,17 @@ const _cancelSubscription = server.post(
   }
 );
 
-export type Subscription = typeof _getActiveSubscription | typeof _startSubscription | typeof _cancelSubscription;
+const _getBillingEvents = server.get(
+  "/:teamId/subscription/billing-events",
+  requireTeamAccess(),
+  describeRoute({hide: true}),
+  zodValidator("param", z.object({ teamId: z.string() })),
+  async (c) => {
+    const events = await getBillingEvents(c.var.team.id);
+    return c.json(actionSuccess({ events }));
+  }
+);
+
+export type Subscription = typeof _getActiveSubscription | typeof _startSubscription | typeof _cancelSubscription | typeof _getBillingEvents;
 
 export default server;

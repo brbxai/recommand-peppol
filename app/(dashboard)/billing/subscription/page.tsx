@@ -27,6 +27,7 @@ import {
   FileText,
   TrendingUp,
   AlertTriangle,
+  Receipt,
 } from "lucide-react";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import {
@@ -63,6 +64,15 @@ import {
   fetchBillingProfile as fetchBillingProfileFromApi,
 } from "@peppol/lib/billing";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@core/components/ui/table";
+import { format } from "date-fns";
 
 const subscriptionClient = rc<Subscription>("v1");
 const billingProfileClient = rc<BillingProfile>("v1");
@@ -78,6 +88,8 @@ export default function Page() {
   const [profileForm, setProfileForm] = useState<BillingProfileFormData>(
     DEFAULT_BILLING_PROFILE_FORM_DATA
   );
+  const [billingEvents, setBillingEvents] = useState<any[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
 
@@ -161,6 +173,39 @@ export default function Page() {
     }
   };
 
+  const fetchBillingEvents = async () => {
+    if (!activeTeam?.id) return;
+
+    setIsLoadingEvents(true);
+    try {
+      const response = await subscriptionClient[":teamId"]["subscription"][
+        "billing-events"
+      ].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const data = await response.json();
+
+      if (data.success && data.events) {
+        setBillingEvents(
+          data.events.map((event: any) => ({
+            ...event,
+            billingDate: new Date(event.billingDate),
+            billingPeriodStart: new Date(event.billingPeriodStart),
+            billingPeriodEnd: new Date(event.billingPeriodEnd),
+            createdAt: new Date(event.createdAt),
+            updatedAt: new Date(event.updatedAt),
+            paymentDate: event.paymentDate ? new Date(event.paymentDate) : null,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching billing events:", error);
+      toast.error("Failed to load billing events");
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
   useEffect(() => {
     if (isPlayground) {
       return;
@@ -168,6 +213,7 @@ export default function Page() {
     fetchSubscription();
     fetchCurrentUsage();
     fetchBillingProfile();
+    fetchBillingEvents();
   }, [activeTeam?.id, isPlayground]);
 
   const handleCancelSubscription = async () => {
@@ -245,7 +291,7 @@ export default function Page() {
     >
       <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2 items-start">
-          <div>
+          <div className="space-y-6">
             {currentSubscription ? (
               <Card className="border-l-4 border-l-primary">
                 <CardHeader className="pb-3">
@@ -299,7 +345,7 @@ export default function Page() {
                             {currentSubscription.billingConfig
                               .includedMonthlyDocuments -
                               currentUsage >
-                            0
+                              0
                               ? `${currentSubscription.billingConfig.includedMonthlyDocuments - currentUsage} documents remaining this month`
                               : `${currentUsage - currentSubscription.billingConfig.includedMonthlyDocuments} documents over limit`}
                           </p>
@@ -445,6 +491,118 @@ export default function Page() {
                 </CardHeader>
               </Card>
             )}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Billing History
+                </CardTitle>
+                <CardDescription>
+                  Overview of all invoices and billing events
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingEvents ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : billingEvents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">
+                      No billing events found
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Billing Date</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Documents</TableHead>
+                        <TableHead>Amount (excl. VAT)</TableHead>
+                        <TableHead>VAT</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {billingEvents.map((event) => (
+                        <TableRow key={event.id}>
+                          <TableCell className="font-mono">
+                            {event.invoiceReference
+                              ? `INV-${event.invoiceReference.toString().padStart(6, "0")}`
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {format(event.billingDate, "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {format(event.billingPeriodStart, "MMM d")} -{" "}
+                            {format(event.billingPeriodEnd, "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm">
+                                {parseFloat(event.usedQty).toLocaleString()} total
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {parseFloat(event.usedQtyIncoming).toLocaleString()}{" "}
+                                incoming,{" "}
+                                {parseFloat(event.usedQtyOutgoing).toLocaleString()}{" "}
+                                outgoing
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            €{parseFloat(event.totalAmountExcl).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm">
+                                €{parseFloat(event.vatAmount).toFixed(2)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {parseFloat(event.vatPercentage).toFixed(1)}% (
+                                {event.vatCategory})
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            €{parseFloat(event.totalAmountIncl).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                event.paymentStatus === "paid"
+                                  ? "success"
+                                  : event.paymentStatus === "pending" ||
+                                    event.paymentStatus === "open"
+                                    ? "secondary"
+                                    : event.paymentStatus === "failed" ||
+                                      event.paymentStatus === "expired" ||
+                                      event.paymentStatus === "canceled"
+                                      ? "destructive"
+                                      : "outline"
+                              }
+                            >
+                              {event.paymentStatus === "paid" && (
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                              )}
+                              {event.paymentStatus === "none" && (
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                              )}
+                              {event.paymentStatus.charAt(0).toUpperCase() +
+                                event.paymentStatus.slice(1)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <div>
@@ -613,15 +771,15 @@ export default function Page() {
             </Card>
           </div>
         </div>
-
-        {activeTeam?.id && (
-          <PlansGrid
-            currentSubscription={currentSubscription}
-            teamId={activeTeam.id}
-            onSubscriptionUpdate={setCurrentSubscription}
-          />
-        )}
       </div>
+
+      {activeTeam?.id && (
+        <PlansGrid
+          currentSubscription={currentSubscription}
+          teamId={activeTeam.id}
+          onSubscriptionUpdate={setCurrentSubscription}
+        />
+      )}
     </PageTemplate>
   );
 }
