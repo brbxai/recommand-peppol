@@ -27,6 +27,7 @@ import {
   FileText,
   TrendingUp,
   AlertTriangle,
+  Receipt,
 } from "lucide-react";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import {
@@ -63,6 +64,14 @@ import {
   fetchBillingProfile as fetchBillingProfileFromApi,
 } from "@peppol/lib/billing";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@core/components/ui/table";
 
 const subscriptionClient = rc<Subscription>("v1");
 const billingProfileClient = rc<BillingProfile>("v1");
@@ -71,6 +80,8 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentSubscription, setCurrentSubscription] =
     useState<SubscriptionType | null>(null);
+  const [futureSubscription, setFutureSubscription] =
+    useState<SubscriptionType | null>(null);
   const [currentUsage, setCurrentUsage] = useState(-1);
   const [billingProfile, setBillingProfile] =
     useState<BillingProfileData | null>(null);
@@ -78,6 +89,8 @@ export default function Page() {
   const [profileForm, setProfileForm] = useState<BillingProfileFormData>(
     DEFAULT_BILLING_PROFILE_FORM_DATA
   );
+  const [billingEvents, setBillingEvents] = useState<any[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
 
@@ -95,23 +108,45 @@ export default function Page() {
       );
       const data = await response.json();
 
-      if (!data.success || !data.subscription) {
+      if (!data.success) {
         setCurrentSubscription(null);
+        setFutureSubscription(null);
         return;
       }
 
-      setCurrentSubscription({
-        ...data.subscription,
-        createdAt: new Date(data.subscription.createdAt),
-        updatedAt: new Date(data.subscription.updatedAt),
-        startDate: new Date(data.subscription.startDate),
-        endDate: data.subscription.endDate
-          ? new Date(data.subscription.endDate)
-          : null,
-        lastBilledAt: data.subscription.lastBilledAt
-          ? new Date(data.subscription.lastBilledAt)
-          : null,
-      });
+      if (data.subscription) {
+        setCurrentSubscription({
+          ...data.subscription,
+          createdAt: new Date(data.subscription.createdAt),
+          updatedAt: new Date(data.subscription.updatedAt),
+          startDate: new Date(data.subscription.startDate),
+          endDate: data.subscription.endDate
+            ? new Date(data.subscription.endDate)
+            : null,
+          lastBilledAt: data.subscription.lastBilledAt
+            ? new Date(data.subscription.lastBilledAt)
+            : null,
+        });
+      } else {
+        setCurrentSubscription(null);
+      }
+
+      if (data.futureSubscription) {
+        setFutureSubscription({
+          ...data.futureSubscription,
+          createdAt: new Date(data.futureSubscription.createdAt),
+          updatedAt: new Date(data.futureSubscription.updatedAt),
+          startDate: new Date(data.futureSubscription.startDate),
+          endDate: data.futureSubscription.endDate
+            ? new Date(data.futureSubscription.endDate)
+            : null,
+          lastBilledAt: data.futureSubscription.lastBilledAt
+            ? new Date(data.futureSubscription.lastBilledAt)
+            : null,
+        });
+      } else {
+        setFutureSubscription(null);
+      }
     } catch (error) {
       console.error("Error fetching subscription:", error);
       toast.error("Failed to load subscription");
@@ -153,9 +188,44 @@ export default function Page() {
         city: billingProfile.city,
         country: billingProfile.country,
         vatNumber: billingProfile.vatNumber || "",
+        billingEmail: billingProfile.billingEmail || null,
+        billingPeppolAddress: billingProfile.billingPeppolAddress || null,
       });
     } else {
       setBillingProfile(null);
+    }
+  };
+
+  const fetchBillingEvents = async () => {
+    if (!activeTeam?.id) return;
+
+    setIsLoadingEvents(true);
+    try {
+      const response = await subscriptionClient[":teamId"]["subscription"][
+        "billing-events"
+      ].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const data = await response.json();
+
+      if (data.success && data.events) {
+        setBillingEvents(
+          data.events.map((event: any) => ({
+            ...event,
+            billingDate: new Date(event.billingDate),
+            billingPeriodStart: new Date(event.billingPeriodStart),
+            billingPeriodEnd: new Date(event.billingPeriodEnd),
+            createdAt: new Date(event.createdAt),
+            updatedAt: new Date(event.updatedAt),
+            paymentDate: event.paymentDate ? new Date(event.paymentDate) : null,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching billing events:", error);
+      toast.error("Failed to load billing events");
+    } finally {
+      setIsLoadingEvents(false);
     }
   };
 
@@ -166,6 +236,7 @@ export default function Page() {
     fetchSubscription();
     fetchCurrentUsage();
     fetchBillingProfile();
+    fetchBillingEvents();
   }, [activeTeam?.id, isPlayground]);
 
   const handleCancelSubscription = async () => {
@@ -179,7 +250,7 @@ export default function Page() {
       });
 
       const data = await response.json();
-      setCurrentSubscription(null);
+      fetchSubscription();
       toast.success("Subscription cancelled successfully");
     } catch (error) {
       toast.error("Failed to cancel subscription");
@@ -243,7 +314,7 @@ export default function Page() {
     >
       <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2 items-start">
-          <div>
+          <div className="space-y-6">
             {currentSubscription ? (
               <Card className="border-l-4 border-l-primary">
                 <CardHeader className="pb-3">
@@ -297,7 +368,7 @@ export default function Page() {
                             {currentSubscription.billingConfig
                               .includedMonthlyDocuments -
                               currentUsage >
-                            0
+                              0
                               ? `${currentSubscription.billingConfig.includedMonthlyDocuments - currentUsage} documents remaining this month`
                               : `${currentUsage - currentSubscription.billingConfig.includedMonthlyDocuments} documents over limit`}
                           </p>
@@ -352,6 +423,19 @@ export default function Page() {
                           ).toLocaleDateString()}
                         </p>
                       </div>
+                      {currentSubscription.endDate && (
+                        <div>
+                          <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                            End Date
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(
+                              currentSubscription.endDate
+                            ).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-4">
                       <div>
@@ -393,7 +477,7 @@ export default function Page() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="pt-6">
+                {(!currentSubscription.endDate || futureSubscription) && <CardFooter className="pt-6">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive">
@@ -408,9 +492,7 @@ export default function Page() {
                           Cancel Subscription?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action cannot be undone. You will lose access to
-                          your current plan features immediately. Billing will
-                          be prorated for the current month.
+                          You will lose access to your current plan features at the end of the current month.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -425,7 +507,7 @@ export default function Page() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </CardFooter>
+                </CardFooter>}
               </Card>
             ) : (
               <Card className="border-dashed border-2 border-muted-foreground/25">
@@ -443,6 +525,213 @@ export default function Page() {
                 </CardHeader>
               </Card>
             )}
+            {futureSubscription && (
+              <Card className="border-l-4">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl flex items-center gap-2">
+                        {futureSubscription.planName} Plan
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        Scheduled subscription change
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      Scheduled
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          {futureSubscription.billingConfig.basePrice === 0
+                            ? "Pricing Model"
+                            : "Monthly Price"}
+                        </div>
+                        {futureSubscription.billingConfig.basePrice === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            Volume-based
+                          </p>
+                        ) : (
+                          <p className="text-2xl font-bold text-primary">
+                            €
+                            {futureSubscription.billingConfig.basePrice.toFixed(
+                              2
+                            )}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          Start Date
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(
+                            futureSubscription.startDate
+                          ).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          Included Documents
+                        </div>
+                        {futureSubscription.billingConfig
+                          .includedMonthlyDocuments === 0 ? (
+                          <p className="text-sm text-muted-foreground">∞</p>
+                        ) : (
+                          <p className="text-lg font-semibold">
+                            {
+                              futureSubscription.billingConfig
+                                .includedMonthlyDocuments
+                            }
+                            <span className="text-sm font-normal text-muted-foreground ml-1">
+                              per month
+                            </span>
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-medium mb-1">
+                          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                          {futureSubscription.billingConfig
+                            .includedMonthlyDocuments === 0
+                            ? "Price per Document"
+                            : "Overage Rate"}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          €
+                          {futureSubscription.billingConfig.documentOveragePrice.toFixed(
+                            2
+                          )}{" "}
+                          per document
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4" />
+                  Billing History
+                </CardTitle>
+                <CardDescription>
+                  Overview of all invoices and billing events
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingEvents ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : billingEvents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground">
+                      No billing events found
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Billing Date</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead>Documents</TableHead>
+                        <TableHead>Amount (excl. VAT)</TableHead>
+                        <TableHead>VAT</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Payment Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {billingEvents.map((event) => (
+                        <TableRow key={event.id}>
+                          <TableCell className="font-mono">
+                            {event.invoiceReference
+                              ? `INV-${event.invoiceReference.toString().padStart(6, "0")}`
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {event.billingDate.toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {event.billingPeriodStart.toLocaleDateString()} -{" "}
+                            {event.billingPeriodEnd.toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm">
+                                {parseFloat(event.usedQty).toLocaleString()} total
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {parseFloat(event.usedQtyIncoming).toLocaleString()}{" "}
+                                incoming,{" "}
+                                {parseFloat(event.usedQtyOutgoing).toLocaleString()}{" "}
+                                outgoing
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            €{parseFloat(event.totalAmountExcl).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm">
+                                €{parseFloat(event.vatAmount).toFixed(2)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {parseFloat(event.vatPercentage).toFixed(1)}% (
+                                {event.vatCategory})
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            €{parseFloat(event.totalAmountIncl).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                event.paymentStatus === "paid"
+                                  ? "success"
+                                  : event.paymentStatus === "pending" ||
+                                    event.paymentStatus === "open"
+                                    ? "secondary"
+                                    : event.paymentStatus === "failed" ||
+                                      event.paymentStatus === "expired" ||
+                                      event.paymentStatus === "canceled"
+                                      ? "destructive"
+                                      : "outline"
+                              }
+                            >
+                              {event.paymentStatus === "paid" && (
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                              )}
+                              {event.paymentStatus === "none" && (
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                              )}
+                              {event.paymentStatus.charAt(0).toUpperCase() +
+                                event.paymentStatus.slice(1)}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <div>
@@ -502,6 +791,18 @@ export default function Page() {
                         {billingProfile.postalCode} {billingProfile.city}
                         <br />
                         {billingProfile.country}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-1">Billing Email</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {billingProfile.billingEmail || "Not set"}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-foreground mb-1">Billing Peppol Address</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {billingProfile.billingPeppolAddress || "Not set"}
                       </p>
                     </div>
                     {billingProfile.vatNumber && (
@@ -599,15 +900,18 @@ export default function Page() {
             </Card>
           </div>
         </div>
-
-        {activeTeam?.id && (
-          <PlansGrid
-            currentSubscription={currentSubscription}
-            teamId={activeTeam.id}
-            onSubscriptionUpdate={setCurrentSubscription}
-          />
-        )}
       </div>
+
+      {activeTeam?.id && (
+        <PlansGrid
+          currentSubscription={currentSubscription}
+          teamId={activeTeam.id}
+          onSubscriptionUpdate={(subscription) => {
+            setCurrentSubscription(subscription);
+            fetchSubscription();
+          }}
+        />
+      )}
     </PageTemplate>
   );
 }

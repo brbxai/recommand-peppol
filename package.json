@@ -28,6 +28,7 @@
     "decimal.js": "^10.5.0",
     "dotenv": "^16.4.7",
     "drizzle-orm": "0.39.3",
+    "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.0.9",
     "hono-openapi": "^0.4.6",
     "jszip": "^3.10.1",

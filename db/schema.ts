@@ -11,6 +11,7 @@ import {
   type AnyPgColumn,
   index,
   primaryKey,
+  serial,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { isNotNull, SQL, sql } from "drizzle-orm";
@@ -101,6 +102,10 @@ export const billingProfiles = pgTable("peppol_billing_profiles", {
   city: text("city").notNull(),
   country: validCountryCodes("country").notNull(),
   vatNumber: text("vat_number"),
+  billingEmail: text("billing_email"),
+  billingPeppolAddress: text("billing_peppol_address"),
+
+  isManuallyBilled: boolean("is_manually_billed").notNull().default(false), // Set to true if the billing profile has to be billed manually, e.g. by an admin
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -151,11 +156,14 @@ export const subscriptionBillingEvents = pgTable(
     }).notNull(),
     totalAmountExcl: decimal("total_amount_excl").notNull(),
     vatAmount: decimal("vat_amount").notNull(),
+    vatCategory: text("vat_category").notNull(),
+    vatPercentage: decimal("vat_percentage").notNull(),
     totalAmountIncl: decimal("total_amount_incl").notNull(),
     billingConfig: jsonb("billing_config").$type<BillingConfig>().notNull(),
     usedQty: decimal("used_qty").notNull(),
+    usedQtyIncoming: decimal("used_qty_incoming").notNull(),
+    usedQtyOutgoing: decimal("used_qty_outgoing").notNull(),
     includedQty: decimal("included_qty").notNull(),
-    overageQty: decimal("overage_qty").notNull(),
 
     // Payment
     amountDue: decimal("amount_due").notNull(),
@@ -166,6 +174,10 @@ export const subscriptionBillingEvents = pgTable(
     paidAmount: decimal("paid_amount"),
     paymentMethod: text("payment_method"),
     paymentDate: timestamp("payment_date"),
+
+    // Invoice
+    invoiceId: text("invoice_id").unique(),
+    invoiceReference: serial("invoice_reference").unique(),
 
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

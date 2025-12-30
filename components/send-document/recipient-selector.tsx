@@ -31,7 +31,7 @@ export function RecipientSelector({ value, onChange }: RecipientSelectorProps) {
         <Input
           value={inputValue}
           onChange={handleInputChange}
-          placeholder="0208:0123456789"
+          placeholder="0208:1234567894"
           required
         />
         <Tooltip>

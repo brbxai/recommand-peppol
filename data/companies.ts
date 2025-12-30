@@ -117,7 +117,7 @@ export async function getCompanyByPeppolId({
   return results[0].peppol_companies;
 }
 
-export async function createCompany(company: InsertCompany): Promise<Company> {
+export async function createCompany(company: InsertCompany & { skipDefaultCompanySetup: boolean }): Promise<Company> {
   const teamExtension = await getTeamExtension(company.teamId);
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
@@ -133,7 +133,9 @@ export async function createCompany(company: InsertCompany): Promise<Company> {
       "Company Created",
       `Company ${createdCompany.name} has been created. It is ${createdCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
     );
-    await setupCompanyDefaults({ company: createdCompany, isPlayground: isPlaygroundTeam, useTestNetwork });
+    if (!company.skipDefaultCompanySetup) {
+      await setupCompanyDefaults({ company: createdCompany, isPlayground: isPlaygroundTeam, useTestNetwork });
+    }
   } catch (error) {
     sendSystemAlert(
       "Company Creation Failed",

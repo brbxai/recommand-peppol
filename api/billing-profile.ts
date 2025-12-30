@@ -7,9 +7,8 @@ import {
 } from "@peppol/data/billing-profile";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { createFirstPayment, processFirstPayment, processPayment } from "@peppol/data/mollie";
-import { endBillingCycle, getCurrentUsage } from "@peppol/data/billing";
-import { endOfMonth, subMonths } from "date-fns";
-import { requireAdmin, requireTeamAccess } from "@core/lib/auth-middleware";
+import { getCurrentUsage } from "@peppol/data/billing";
+import { requireTeamAccess } from "@core/lib/auth-middleware";
 import { zodValidCountryCodes } from "@peppol/db/schema";
 import { describeRoute } from "hono-openapi";
 
@@ -25,6 +24,8 @@ export type BillingProfileData = {
   city: string;
   country: string;
   vatNumber: string | null;
+  billingEmail: string | null;
+  billingPeppolAddress: string | null;
   firstPaymentId: string | null;
   firstPaymentStatus: 'none' | 'open' | 'pending' | 'authorized' | 'paid' | 'canceled' | 'expired' | 'failed';
   isMandateValidated: boolean;
@@ -33,7 +34,7 @@ export type BillingProfileData = {
 const _getBillingProfile = server.get(
   "/:teamId/billing-profile",
   requireTeamAccess(),
-  describeRoute({hide: true}),
+  describeRoute({ hide: true }),
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {
@@ -51,7 +52,7 @@ const _getBillingProfile = server.get(
 const _upsertBillingProfile = server.put(
   "/:teamId/billing-profile",
   requireTeamAccess(),
-  describeRoute({hide: true}),
+  describeRoute({ hide: true }),
   zodValidator("param", z.object({ teamId: z.string() })),
   zodValidator(
     "json",
@@ -62,6 +63,8 @@ const _upsertBillingProfile = server.put(
       city: z.string(),
       country: zodValidCountryCodes,
       vatNumber: z.string().optional().nullable(),
+      billingEmail: z.string().email().optional().nullable(),
+      billingPeppolAddress: z.string().optional().nullable(),
     })
   ),
   async (c) => {
@@ -77,7 +80,7 @@ const _upsertBillingProfile = server.put(
       return c.json(actionFailure("Billing profile customer not found"), 404);
     }
 
-    if(billingProfile.isMandateValidated) {
+    if (billingProfile.isMandateValidated) {
       return c.json(actionSuccess({ billingProfile, checkoutUrl: null }));
     }
 
@@ -93,22 +96,10 @@ const _upsertBillingProfile = server.put(
   }
 );
 
-const _endBillingCycle = server.post(
-  "/:teamId/billing-profile/end-billing-cycle",
-  requireAdmin(),
-  describeRoute({hide: true}),
-  zodValidator("param", z.object({ teamId: z.string() })),
-  async (c) => {
-    const endOfPreviousMonth = endOfMonth(subMonths(new Date(), 1));
-    await endBillingCycle(c.req.param("teamId"), endOfPreviousMonth);
-    return c.json(actionSuccess());
-  }
-);
-
 const _getCurrentUsage = server.get(
   "/:teamId/billing-profile/current-usage",
   requireTeamAccess(),
-  describeRoute({hide: true}),
+  describeRoute({ hide: true }),
   zodValidator("param", z.object({ teamId: z.string() })),
   async (c) => {
     try {
@@ -143,10 +134,9 @@ server.post(
   }
 )
 
-export type BillingProfile = 
-  | typeof _getBillingProfile 
+export type BillingProfile =
+  | typeof _getBillingProfile
   | typeof _upsertBillingProfile
-  | typeof _endBillingCycle
   | typeof _getCurrentUsage;
 
 export default server;

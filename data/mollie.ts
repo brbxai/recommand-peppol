@@ -3,6 +3,7 @@ import { db } from "@recommand/db";
 import { billingProfiles, subscriptionBillingEvents } from "@peppol/db/schema";
 import { eq } from "drizzle-orm";
 import Decimal from "decimal.js";
+import { sendTelegramNotification } from "@peppol/utils/system-notifications/telegram";
 
 if (!process.env.MOLLIE_API_KEY) {
   throw new Error("MOLLIE_API_KEY is not set");
@@ -112,7 +113,7 @@ export async function requestPayment(
     mandateId: mollieMandateId,
     sequenceType: SequenceType.recurring,
     description: `Recommand Peppol - ${billingEventId}`,
-    webhookUrl: `https://mbp-2.tail407c63.ts.net/api/peppol/mollie/payment-webhook`, // TODO: make this dynamic with the BASE_URL
+    webhookUrl: `${process.env.BASE_URL}/api/peppol/mollie/payment-webhook`,
     metadata: {
       billingProfileId: billingProfileId,
       billingEventId: billingEventId,
@@ -176,4 +177,5 @@ export async function processPayment(paymentId: string) {
         )
       );
   }
+  sendTelegramNotification(`Payment ${paymentId} failed for billing event ${(payment.metadata as any).billingEventId} with status ${payment.status}`);
 }

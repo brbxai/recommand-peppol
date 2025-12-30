@@ -46,7 +46,7 @@ describe("selfBillingCreditNoteToUBL", () => {
         city: "STAD",
         postalZone: "1234",
         country: "BE",
-        vatNumber: "BE1234567890",
+        vatNumber: "BE1234567894",
         street2: null,
       },
       buyer: {
@@ -55,7 +55,7 @@ describe("selfBillingCreditNoteToUBL", () => {
         city: "STAD",
         postalZone: "1234",
         country: "BE",
-        vatNumber: "BE1234567890",
+        vatNumber: "BE1234567894",
         street2: null,
       },
       lines: [
@@ -155,7 +155,7 @@ describe("selfBillingCreditNoteToUBL", () => {
         city: "Seller City",
         postalZone: "1000",
         country: "BE",
-        vatNumber: "BE0123456789",
+        vatNumber: "BE1234567894",
         street2: null,
       },
       buyer: {
@@ -624,8 +624,8 @@ describe("selfBillingCreditNoteToUBL", () => {
           city: "Seller City",
           postalZone: "1000",
           country: "BE",
-          vatNumber: "BE0123456789",
-          enterpriseNumber: "0123456789",
+          vatNumber: "BE1234567894",
+          enterpriseNumber: "1234567894",
           street2: null,
         },
         buyer: {
@@ -661,7 +661,7 @@ describe("selfBillingCreditNoteToUBL", () => {
 
       await validateXml(xml, "enterprise number");
 
-      expect(xml).toContain('<cbc:CompanyID>0123456789</cbc:CompanyID>');
+      expect(xml).toContain('<cbc:CompanyID>1234567894</cbc:CompanyID>');
       expect(xml).toContain('<cbc:CompanyID>9876543210</cbc:CompanyID>');
 
       const parser = new XMLParser({
@@ -675,7 +675,7 @@ describe("selfBillingCreditNoteToUBL", () => {
       const supplierEnterpriseNumber = parsed.CreditNote.AccountingSupplierParty.Party.PartyLegalEntity.CompanyID;
       const customerEnterpriseNumber = parsed.CreditNote.AccountingCustomerParty.Party.PartyLegalEntity.CompanyID;
 
-      expect(supplierEnterpriseNumber).toBe("0123456789");
+      expect(supplierEnterpriseNumber).toBe("1234567894");
       expect(customerEnterpriseNumber).toBe("9876543210");
 
       const parsedCreditNote = parseSelfBillingCreditNoteFromXML(xml);
@@ -693,7 +693,7 @@ describe("selfBillingCreditNoteToUBL", () => {
           city: "Seller City",
           postalZone: "1000",
           country: "BE",
-          vatNumber: "BE0123456789",
+          vatNumber: "BE1234567894",
           enterpriseNumber: null,
           street2: null,
         },
@@ -744,7 +744,7 @@ describe("selfBillingCreditNoteToUBL", () => {
           postalZone: "1000",
           country: "BE",
           vatNumber: null,
-          enterpriseNumber: "0123456789",
+          enterpriseNumber: "1234567894",
           street2: null,
         },
         buyer: {
@@ -797,7 +797,7 @@ describe("selfBillingCreditNoteToUBL", () => {
 
       expect(xml).toContain('cbc:ID>O</cbc:ID>');
       expect(xml).toContain("Not subject to VAT according to local legislation");
-      expect(xml).toContain('<cbc:CompanyID>0123456789</cbc:CompanyID>');
+      expect(xml).toContain('<cbc:CompanyID>1234567894</cbc:CompanyID>');
 
       const parsed = parseSelfBillingCreditNoteFromXML(xml);
       expect(parsed.lines[0].vat.category).toBe("O");

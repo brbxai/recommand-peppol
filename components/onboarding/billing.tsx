@@ -1,4 +1,3 @@
-import { Button } from "@core/components/ui/button";
 import { BillingProfileForm, DEFAULT_BILLING_PROFILE_FORM_DATA, type BillingProfileFormData } from "../billing-profile-form";
 import { useState, useEffect, useRef } from "react";
 import { Loader2 } from "lucide-react";
@@ -34,6 +33,8 @@ export default function BillingOnboarding({ onComplete }: { onComplete: () => Pr
                     city: profileFormRef.current.city.length > 0 ? profileFormRef.current.city : billingProfile?.city ?? "",
                     country: profileFormRef.current.country != "BE" ? profileFormRef.current.country : billingProfile?.country ?? "BE",
                     vatNumber: profileFormRef.current.vatNumber && profileFormRef.current.vatNumber.length > 0 ? profileFormRef.current.vatNumber : billingProfile?.vatNumber ?? "",
+                    billingEmail: profileFormRef.current.billingEmail && profileFormRef.current.billingEmail.length > 0 ? profileFormRef.current.billingEmail : billingProfile?.billingEmail ?? null,
+                    billingPeppolAddress: profileFormRef.current.billingPeppolAddress && profileFormRef.current.billingPeppolAddress.length > 0 ? profileFormRef.current.billingPeppolAddress : billingProfile?.billingPeppolAddress ?? null,
                 });
             }
 
