@@ -26,6 +26,13 @@ import { useActiveTeam } from "@core/hooks/user";
 import type { Customers } from "@peppol/api/customers";
 import type { Party } from "@peppol/utils/parsing/invoice/schemas";
 import { Combobox } from "@core/components/ui/combobox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@core/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+import { PartyForm } from "./party-form";
 
 const client = rc<SendDocumentAPI>("peppol");
 const customersClient = rc<Customers>("v1");
@@ -36,6 +43,7 @@ interface DocumentFormProps {
   onFormChange: (data: Partial<SendDocument>) => void;
   selectedCompanyId: string;
   onCompanyChange: (companyId: string) => void;
+  mode: "billing" | "developer";
 }
 
 export function DocumentForm({
@@ -44,6 +52,7 @@ export function DocumentForm({
   onFormChange,
   selectedCompanyId,
   onCompanyChange,
+  mode,
 }: DocumentFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -66,6 +75,9 @@ export function DocumentForm({
     }>
   >([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [isCounterpartyOpen, setIsCounterpartyOpen] = useState(
+    mode === "developer"
+  );
 
   const getAutoPdfFilename = (): string | null => {
     const docType = formData.documentType;
@@ -194,6 +206,41 @@ export function DocumentForm({
     };
   }, [selectedCustomer]);
 
+  const counterpartyKey: "buyer" | "seller" | null = useMemo(() => {
+    if (type === "xml") return null;
+    if (
+      formData.documentType === DocumentType.SELF_BILLING_INVOICE ||
+      formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE
+    ) {
+      return "seller";
+    }
+    return "buyer";
+  }, [formData.documentType, type]);
+
+  const counterpartyLabel = useMemo(() => {
+    return counterpartyKey === "seller" ? "Seller details" : "Buyer details";
+  }, [counterpartyKey]);
+
+  const counterpartyParty: Party | undefined = useMemo(() => {
+    if (!counterpartyKey) return undefined;
+    const doc: any = formData.document;
+    const party = doc?.[counterpartyKey];
+    return party && typeof party === "object" ? (party as Party) : undefined;
+  }, [counterpartyKey, formData.document]);
+
+  const handleCounterpartyChange = (party: Party) => {
+    if (!counterpartyKey) return;
+    const doc: any = formData.document;
+    if (!doc || typeof doc !== "object") return;
+    onFormChange({
+      ...formData,
+      document: {
+        ...doc,
+        [counterpartyKey]: party,
+      },
+    });
+  };
+
   useEffect(() => {
     if (!selectedCustomer) {
       lastAutoRecipientRef.current = null;
@@ -221,6 +268,10 @@ export function DocumentForm({
       });
     }
   }, [selectedCustomer, formData.recipient, onFormChange]);
+
+  useEffect(() => {
+    setIsCounterpartyOpen(mode === "developer");
+  }, [mode, selectedCustomerId, selectedCompanyId, formData.documentType]);
 
   const handleDocumentChange = (documentData: any) => {
     onFormChange({
@@ -332,35 +383,96 @@ export function DocumentForm({
         </div>
 
         {type !== "xml" && (
-          <div>
-            <Label htmlFor="customer">Customer</Label>
-            <Combobox
-              value={selectedCustomerId}
-              onValueChange={setSelectedCustomerId}
-              options={customers.map((c) => ({
-                value: c.id,
-                label: c.vatNumber ? `${c.name} - ${c.vatNumber}` : c.name,
-              }))}
-              placeholder="Select a customer..."
-              searchPlaceholder="Search customers..."
-              emptyText="No customers found."
-              disabled={!activeTeam?.id}
-            />
-          </div>
-        )}
+          <Card className="p-4">
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="customer">Customer</Label>
+                <Combobox
+                  value={selectedCustomerId}
+                  onValueChange={setSelectedCustomerId}
+                  options={customers.map((c) => ({
+                    value: c.id,
+                    label: c.vatNumber ? `${c.name} - ${c.vatNumber}` : c.name,
+                  }))}
+                  placeholder="Select a customer..."
+                  searchPlaceholder="Search customers..."
+                  emptyText="No customers found."
+                  disabled={!activeTeam?.id}
+                />
+              </div>
 
-        <div>
-          <Label htmlFor="recipient">Recipient Peppol ID *</Label>
-          <RecipientSelector
-            value={formData.recipient || ""}
-            onChange={handleRecipientChange}
-          />
-        </div>
+              <div>
+                <Label htmlFor="recipient">Recipient Peppol ID *</Label>
+                <RecipientSelector
+                  value={formData.recipient || ""}
+                  onChange={handleRecipientChange}
+                />
+              </div>
+
+              {counterpartyKey && (
+                <Collapsible
+                  open={isCounterpartyOpen}
+                  onOpenChange={setIsCounterpartyOpen}
+                >
+                  <CollapsibleTrigger className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary">
+                    <span>{counterpartyLabel}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${isCounterpartyOpen ? "rotate-180" : ""}`}
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4">
+                    <PartyForm
+                      party={counterpartyParty || {}}
+                      onChange={handleCounterpartyChange as any}
+                      required
+                      disabled={false}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </div>
+          </Card>
+        )}
 
         <EmailOptions
           value={formData.email}
           onChange={handleEmailOptionsChange}
         />
+
+        {type !== "xml" && (
+          <Card className="p-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="pdf-generation-enabled">
+                    Include generated PDF
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Generates a PDF of the document and embeds it as an
+                    attachment.
+                  </p>
+                </div>
+                <Switch
+                  id="pdf-generation-enabled"
+                  checked={formData.pdfGeneration?.enabled === true}
+                  onCheckedChange={handlePdfGenerationToggle}
+                />
+              </div>
+
+              {mode === "developer" && formData.pdfGeneration?.enabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-generation-filename">PDF filename</Label>
+                  <Input
+                    id="pdf-generation-filename"
+                    value={formData.pdfGeneration.filename ?? ""}
+                    onChange={(e) => handlePdfFilenameChange(e.target.value)}
+                    placeholder={getAutoPdfFilename() ?? "document.pdf"}
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
 
       <div className="border-t pt-6">
@@ -373,6 +485,8 @@ export function DocumentForm({
               formData.documentType === DocumentType.SELF_BILLING_INVOICE
             }
             customerParty={customerParty}
+            mode={mode}
+            groupedCounterpartyKey={counterpartyKey}
           />
         )}
         {type === "creditNote" && (
@@ -384,6 +498,8 @@ export function DocumentForm({
               formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE
             }
             customerParty={customerParty}
+            mode={mode}
+            groupedCounterpartyKey={counterpartyKey}
           />
         )}
         {type === "xml" && (
@@ -399,45 +515,6 @@ export function DocumentForm({
               onFormChange({ ...formData, processId: id })
             }
           />
-        )}
-
-        {type !== "xml" && (
-          <div className="mt-6">
-            <Card className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="pdf-generation-enabled">
-                      Include generated PDF
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Generates a PDF of the document and embeds it as an
-                      attachment.
-                    </p>
-                  </div>
-                  <Switch
-                    id="pdf-generation-enabled"
-                    checked={formData.pdfGeneration?.enabled === true}
-                    onCheckedChange={handlePdfGenerationToggle}
-                  />
-                </div>
-
-                {formData.pdfGeneration?.enabled && (
-                  <div className="space-y-2">
-                    <Label htmlFor="pdf-generation-filename">
-                      PDF filename
-                    </Label>
-                    <Input
-                      id="pdf-generation-filename"
-                      value={formData.pdfGeneration.filename ?? ""}
-                      onChange={(e) => handlePdfFilenameChange(e.target.value)}
-                      placeholder={getAutoPdfFilename() ?? "document.pdf"}
-                    />
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
         )}
       </div>
 

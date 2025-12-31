@@ -29,6 +29,8 @@ interface CreditNoteFormProps {
   companyId: string;
   isSelfBilling?: boolean;
   customerParty?: Party;
+  mode: "billing" | "developer";
+  groupedCounterpartyKey: "buyer" | "seller" | null;
 }
 
 export function CreditNoteForm({
@@ -37,6 +39,8 @@ export function CreditNoteForm({
   companyId,
   isSelfBilling = false,
   customerParty,
+  mode,
+  groupedCounterpartyKey,
 }: CreditNoteFormProps) {
   const [creditNote, setCreditNote] = useState<Partial<CreditNote>>({
     creditNoteNumber: "",
@@ -46,16 +50,33 @@ export function CreditNoteForm({
     attachments: [],
     ...document,
   });
-  const [openSections, setOpenSections] = useState({
-    buyer: true,
+  const [openSections, setOpenSections] = useState(() => ({
+    buyer: false,
     seller: false,
-    payment: false,
+    payment: mode === "billing",
     notes: false,
     lines: true,
     creditedInvoices: false,
     attachments: false,
-  });
+  }));
   const activeTeam = useActiveTeam();
+
+  const isSameParty = (a: any, b: any) => {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return (
+      a.name === b.name &&
+      a.street === b.street &&
+      a.street2 === b.street2 &&
+      a.city === b.city &&
+      a.postalZone === b.postalZone &&
+      a.country === b.country &&
+      a.vatNumber === b.vatNumber &&
+      a.enterpriseNumber === b.enterpriseNumber &&
+      a.email === b.email &&
+      a.phone === b.phone
+    );
+  };
 
   // Auto-populate company info when company changes
   useEffect(() => {
@@ -101,6 +122,25 @@ export function CreditNoteForm({
   }, [creditNote]);
 
   useEffect(() => {
+    if (!document || typeof document !== "object") {
+      return;
+    }
+    const doc: any = document;
+    setCreditNote((prev) => {
+      const nextBuyer = doc.buyer;
+      const nextSeller = doc.seller;
+      let next = prev;
+      if (nextBuyer && !isSameParty(prev.buyer, nextBuyer)) {
+        next = { ...next, buyer: nextBuyer };
+      }
+      if (nextSeller && !isSameParty(prev.seller, nextSeller)) {
+        next = { ...next, seller: nextSeller };
+      }
+      return next;
+    });
+  }, [document]);
+
+  useEffect(() => {
     if (!customerParty) return;
     setCreditNote((prev) => ({
       ...prev,
@@ -120,6 +160,17 @@ export function CreditNoteForm({
     }));
   }, [customerParty, isSelfBilling]);
 
+  useEffect(() => {
+    if (mode !== "billing") {
+      return;
+    }
+    setOpenSections((prev) => ({
+      ...prev,
+      payment: true,
+      attachments: false,
+    }));
+  }, [mode]);
+
   const handleFieldChange = (field: keyof CreditNote, value: any) => {
     setCreditNote((prev) => ({ ...prev, [field]: value }));
   };
@@ -127,6 +178,11 @@ export function CreditNoteForm({
   const toggleSection = (section: keyof typeof openSections) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
+
+  const showBuyerOutsideGroup =
+    mode === "developer" && groupedCounterpartyKey === "seller";
+  const showSellerOutsideGroup =
+    mode === "developer" && groupedCounterpartyKey === "buyer";
 
   const requiresExemptionReason = useMemo(() => {
     return (creditNote.lines || []).some(
@@ -286,53 +342,57 @@ export function CreditNoteForm({
         </CollapsibleContent>
       </Collapsible>
 
-      <Collapsible open={openSections.buyer}>
-        <CollapsibleTrigger
-          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
-          onClick={() => toggleSection("buyer")}
-        >
-          <span>
-            {isSelfBilling
-              ? "Buyer Information (Auto-populated)"
-              : "Buyer Information *"}
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-4">
-          <PartyForm
-            party={creditNote.buyer || {}}
-            onChange={(buyer) => handleFieldChange("buyer", buyer)}
-            required={!isSelfBilling}
-            disabled={isSelfBilling}
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {showBuyerOutsideGroup && (
+        <Collapsible open={openSections.buyer}>
+          <CollapsibleTrigger
+            className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+            onClick={() => toggleSection("buyer")}
+          >
+            <span>
+              {isSelfBilling
+                ? "Buyer Information (Auto-populated)"
+                : "Buyer Information *"}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <PartyForm
+              party={creditNote.buyer || {}}
+              onChange={(buyer) => handleFieldChange("buyer", buyer)}
+              required={!isSelfBilling}
+              disabled={isSelfBilling}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
-      <Collapsible open={openSections.seller}>
-        <CollapsibleTrigger
-          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
-          onClick={() => toggleSection("seller")}
-        >
-          <span>
-            {isSelfBilling
-              ? "Seller Information *"
-              : "Seller Information (Auto-populated)"}
-          </span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-4">
-          <PartyForm
-            party={creditNote.seller || {}}
-            onChange={(seller) => handleFieldChange("seller", seller)}
-            required={isSelfBilling}
-            disabled={!isSelfBilling}
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {showSellerOutsideGroup && (
+        <Collapsible open={openSections.seller}>
+          <CollapsibleTrigger
+            className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+            onClick={() => toggleSection("seller")}
+          >
+            <span>
+              {isSelfBilling
+                ? "Seller Information *"
+                : "Seller Information (Auto-populated)"}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <PartyForm
+              party={creditNote.seller || {}}
+              onChange={(seller) => handleFieldChange("seller", seller)}
+              required={isSelfBilling}
+              disabled={!isSelfBilling}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       <Collapsible open={openSections.lines}>
         <CollapsibleTrigger
@@ -387,25 +447,27 @@ export function CreditNoteForm({
         </CollapsibleContent>
       </Collapsible>
 
-      <Collapsible open={openSections.attachments}>
-        <CollapsibleTrigger
-          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
-          onClick={() => toggleSection("attachments")}
-        >
-          <span>Attachments</span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform ${openSections.attachments ? "rotate-180" : ""}`}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-4">
-          <AttachmentsEditor
-            attachments={creditNote.attachments || []}
-            onChange={(attachments) =>
-              handleFieldChange("attachments", attachments)
-            }
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {mode !== "billing" && (
+        <Collapsible open={openSections.attachments}>
+          <CollapsibleTrigger
+            className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+            onClick={() => toggleSection("attachments")}
+          >
+            <span>Attachments</span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${openSections.attachments ? "rotate-180" : ""}`}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <AttachmentsEditor
+              attachments={creditNote.attachments || []}
+              onChange={(attachments) =>
+                handleFieldChange("attachments", attachments)
+              }
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       <Collapsible open={openSections.notes}>
         <CollapsibleTrigger

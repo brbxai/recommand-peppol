@@ -3,11 +3,21 @@ import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
 import { Switch } from "@core/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@core/components/ui/select";
 import { Button } from "@core/components/ui/button";
 import { Plus, Trash2, Mail } from "lucide-react";
 import { Card } from "@core/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@core/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@core/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 
 interface EmailOptionsProps {
@@ -33,7 +43,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (checked) {
       onChange({
         when,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(subject && { subject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -65,7 +75,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when,
-        to: (emailList || emails).filter(e => e),
+        to: (emailList || emails).filter((e) => e),
         ...(subject && { subject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -77,7 +87,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when: newWhen,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(subject && { subject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -89,7 +99,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(newSubject && { subject: newSubject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -101,7 +111,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(subject && { subject }),
         ...(newBody && { htmlBody: newBody }),
       });
@@ -181,7 +191,9 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
 
               <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-medium">
                 <span>Custom Email Content (Optional)</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4">
                 <div>
@@ -204,7 +216,9 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     rows={4}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    You can use HTML tags for formatting. The document will be attached as XML, plus any embedded attachments (optionally including a generated PDF).
+                    You can use HTML tags for formatting. The document will be
+                    attached as XML, plus any embedded attachments (optionally
+                    including a generated PDF).
                   </p>
                 </div>
               </CollapsibleContent>
