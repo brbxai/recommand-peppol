@@ -68,16 +68,12 @@ import {
 } from "@peppol/utils/parsing/message-level-response/schemas";
 import { messageLevelResponseToXML } from "@peppol/utils/parsing/message-level-response/to-xml";
 import { ulid } from "ulid";
-import {
-  renderDocumentHtml,
-  renderDocumentPdf,
-} from "@peppol/utils/document-renderer";
+import { renderDocumentPdf } from "@peppol/utils/document-renderer";
 import {
   ensureFileExtension,
   getDocumentFilename,
   type ParsedDocument as FilenameParsedDocument,
 } from "@peppol/utils/document-filename";
-import type { TransmittedDocument } from "@peppol/data/transmitted-documents";
 
 const server = new Server();
 
@@ -119,21 +115,6 @@ type SendDocumentContext = Context<
   }
 >;
 
-const renderSendDocumentPreviewParamSchema = z.object({
-  companyId: z.string(),
-  type: z.enum(["html"]),
-});
-
-const _renderSendDocumentPreview = server.post(
-  "/:companyId/sendDocument/render/:type",
-  requireIntegrationSupportedCompanyAccess(),
-  requireValidSubscription(),
-  describeRoute({ hide: true }),
-  zodValidator("param", renderSendDocumentPreviewParamSchema),
-  zodValidator("json", sendDocumentSchema),
-  _renderSendDocumentPreviewImplementation
-);
-
 const _sendDocument = server.post(
   "/:companyId/sendDocument",
   requireIntegrationSupportedCompanyAccess(),
@@ -152,543 +133,30 @@ const _sendDocumentMinimal = server.post(
   _sendDocumentImplementation
 );
 
-async function prepareOutgoingDocument(args: {
-  input: z.infer<typeof sendDocumentSchema>;
-  company: any;
-  senderAddress: string;
-  transmittedDocumentId: string;
-}): Promise<{
-  xmlDocument: string;
-  doctypeId: string;
-  type: SupportedDocumentType;
-  probableType: SupportedDocumentType;
-  parsedDocument: FilenameParsedDocument | null;
-  recipientAddress: string;
-}> {
-  const { input, company, senderAddress, transmittedDocumentId } = args;
-  const document = input.document;
-  const rawPdfFilename = input.pdfGeneration?.filename?.trim();
-  const resolvePdfFilename = (
-    type: SupportedDocumentType,
-    parsedForName: FilenameParsedDocument | null
-  ) => {
-    const base =
-      rawPdfFilename && rawPdfFilename.length > 0
-        ? rawPdfFilename
-        : getDocumentFilename(type, parsedForName);
-    return ensureFileExtension(base, "pdf");
-  };
-
-  let xmlDocument: string | null = null;
-  let type: SupportedDocumentType = "unknown";
-  let probableType: SupportedDocumentType = "unknown";
-  let parsedDocument: FilenameParsedDocument | null = null;
-  let doctypeId: string = INVOICE_DOCUMENT_TYPE_INFO.docTypeId;
-
-  let recipientAddress = input.recipient;
-  if (!recipientAddress.includes(":")) {
-    const numberOnlyRecipient = recipientAddress.replace(/[^0-9]/g, "");
-    recipientAddress = "0208:" + numberOnlyRecipient;
-  }
-
-  if (input.documentType === DocumentType.INVOICE) {
-    const invoice = document as Invoice;
-
-    const parsedInvoice = sendInvoiceSchema.safeParse(invoice);
-    if (!parsedInvoice.success) {
-      throw new Error(
-        "Invalid invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-      );
-    }
-
-    if (!invoice.seller) {
-      invoice.seller = {
-        vatNumber: company.vatNumber,
-        enterpriseNumber: company.enterpriseNumber,
-        name: company.name,
-        street: company.address,
-        city: company.city,
-        postalZone: company.postalCode,
-        country: company.country,
-      };
-    }
-    if (!invoice.issueDate) {
-      invoice.issueDate = formatISO(new Date(), { representation: "date" });
-    }
-    if (!invoice.dueDate) {
-      invoice.dueDate = formatISO(addMonths(new Date(invoice.issueDate), 1), {
-        representation: "date",
-      });
-    }
-
-    let ublInvoice = invoiceToUBL({
-      invoice,
-      senderAddress,
-      recipientAddress,
-      isDocumentValidationEnforced:
-        company.isOutgoingDocumentValidationEnforced,
-    });
-    let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
-
-    if (input.pdfGeneration?.enabled) {
-      const parsedForPdf = (parsed.parsedDocument as Invoice) ?? invoice;
-      const pdfFilename = resolvePdfFilename("invoice", parsedForPdf);
-      const pdfBuffer = await renderDocumentPdf({
-        id: transmittedDocumentId,
-        type: "invoice",
-        parsed: parsedForPdf,
-      } as any);
-      const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-      const existingAttachments = Array.isArray(invoice.attachments)
-        ? (invoice.attachments as Attachment[])
-        : [];
-      const nextAttachments = existingAttachments.filter(
-        (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-      );
-      nextAttachments.push({
-        id: pdfFilename,
-        filename: pdfFilename,
-        mimeCode: "application/pdf",
-        description: null,
-        embeddedDocument: pdfBase64,
-        url: null,
-      });
-      invoice.attachments = nextAttachments;
-
-      ublInvoice = invoiceToUBL({
-        invoice,
-        senderAddress,
-        recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
-      });
-      parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
-    }
-
-    xmlDocument = ublInvoice;
-    type = "invoice";
-
-    if (parsed.parsedDocument) {
-      parsedDocument = parsed.parsedDocument as Invoice;
-      type = parsed.type;
-    } else {
-      parsedDocument = invoice;
-    }
-  } else if (input.documentType === DocumentType.CREDIT_NOTE) {
-    const creditNote = document as CreditNote;
-
-    const parsedCreditNote = sendCreditNoteSchema.safeParse(creditNote);
-    if (!parsedCreditNote.success) {
-      throw new Error(
-        "Invalid credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-      );
-    }
-
-    if (!creditNote.seller) {
-      creditNote.seller = {
-        vatNumber: company.vatNumber,
-        enterpriseNumber: company.enterpriseNumber,
-        name: company.name,
-        street: company.address,
-        city: company.city,
-        postalZone: company.postalCode,
-        country: company.country,
-      };
-    }
-    if (!creditNote.issueDate) {
-      creditNote.issueDate = formatISO(new Date(), {
-        representation: "date",
-      });
-    }
-
-    doctypeId = CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId;
-    let ublCreditNote = creditNoteToUBL({
-      creditNote,
-      senderAddress,
-      recipientAddress,
-      isDocumentValidationEnforced:
-        company.isOutgoingDocumentValidationEnforced,
-    });
-    let parsed = parseDocument(
-      doctypeId,
-      ublCreditNote,
-      company,
-      senderAddress
-    );
-
-    if (input.pdfGeneration?.enabled) {
-      const parsedForPdf = (parsed.parsedDocument as CreditNote) ?? creditNote;
-      const pdfFilename = resolvePdfFilename("creditNote", parsedForPdf);
-      const pdfBuffer = await renderDocumentPdf({
-        id: transmittedDocumentId,
-        type: "creditNote",
-        parsed: parsedForPdf,
-      } as any);
-      const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-      const existingAttachments = Array.isArray(creditNote.attachments)
-        ? (creditNote.attachments as Attachment[])
-        : [];
-      const nextAttachments = existingAttachments.filter(
-        (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-      );
-      nextAttachments.push({
-        id: pdfFilename,
-        filename: pdfFilename,
-        mimeCode: "application/pdf",
-        description: null,
-        embeddedDocument: pdfBase64,
-        url: null,
-      });
-      creditNote.attachments = nextAttachments;
-
-      ublCreditNote = creditNoteToUBL({
-        creditNote,
-        senderAddress,
-        recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
-      });
-      parsed = parseDocument(doctypeId, ublCreditNote, company, senderAddress);
-    }
-
-    xmlDocument = ublCreditNote;
-    type = "creditNote";
-
-    if (parsed.parsedDocument) {
-      parsedDocument = parsed.parsedDocument as CreditNote;
-      type = parsed.type;
-    } else {
-      parsedDocument = creditNote;
-    }
-  } else if (input.documentType === DocumentType.SELF_BILLING_INVOICE) {
-    const invoice = document as SelfBillingInvoice;
-
-    const parsedInvoice = sendSelfBillingInvoiceSchema.safeParse(invoice);
-    if (!parsedInvoice.success) {
-      throw new Error(
-        "Invalid self billing invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-      );
-    }
-
-    if (!invoice.buyer) {
-      invoice.buyer = {
-        vatNumber: company.vatNumber,
-        enterpriseNumber: company.enterpriseNumber,
-        name: company.name,
-        street: company.address,
-        city: company.city,
-        postalZone: company.postalCode,
-        country: company.country,
-      };
-    }
-    if (!invoice.issueDate) {
-      invoice.issueDate = formatISO(new Date(), { representation: "date" });
-    }
-    if (!invoice.dueDate) {
-      invoice.dueDate = formatISO(addMonths(new Date(invoice.issueDate), 1), {
-        representation: "date",
-      });
-    }
-
-    doctypeId = SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO.docTypeId;
-    let ublInvoice = selfBillingInvoiceToUBL({
-      selfBillingInvoice: invoice,
-      senderAddress,
-      recipientAddress,
-      isDocumentValidationEnforced:
-        company.isOutgoingDocumentValidationEnforced,
-    });
-    let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
-
-    if (input.pdfGeneration?.enabled) {
-      const parsedForPdf =
-        (parsed.parsedDocument as SelfBillingInvoice) ?? invoice;
-      const pdfFilename = resolvePdfFilename(
-        "selfBillingInvoice",
-        parsedForPdf
-      );
-      const pdfBuffer = await renderDocumentPdf({
-        id: transmittedDocumentId,
-        type: "selfBillingInvoice",
-        parsed: parsedForPdf,
-      } as any);
-      const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-      const existingAttachments = Array.isArray(invoice.attachments)
-        ? (invoice.attachments as Attachment[])
-        : [];
-      const nextAttachments = existingAttachments.filter(
-        (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-      );
-      nextAttachments.push({
-        id: pdfFilename,
-        filename: pdfFilename,
-        mimeCode: "application/pdf",
-        description: null,
-        embeddedDocument: pdfBase64,
-        url: null,
-      });
-      invoice.attachments = nextAttachments;
-
-      ublInvoice = selfBillingInvoiceToUBL({
-        selfBillingInvoice: invoice,
-        senderAddress,
-        recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
-      });
-      parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
-    }
-
-    xmlDocument = ublInvoice;
-    type = "selfBillingInvoice";
-
-    if (parsed.parsedDocument) {
-      parsedDocument = parsed.parsedDocument as SelfBillingInvoice;
-      type = parsed.type;
-    } else {
-      parsedDocument = invoice;
-    }
-  } else if (input.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE) {
-    const selfBillingCreditNote = document as SelfBillingCreditNote;
-
-    const parsedCreditNote = sendSelfBillingCreditNoteSchema.safeParse(
-      selfBillingCreditNote
-    );
-    if (!parsedCreditNote.success) {
-      throw new Error(
-        "Invalid self billing credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-      );
-    }
-
-    if (!selfBillingCreditNote.buyer) {
-      selfBillingCreditNote.buyer = {
-        vatNumber: company.vatNumber,
-        enterpriseNumber: company.enterpriseNumber,
-        name: company.name,
-        street: company.address,
-        city: company.city,
-        postalZone: company.postalCode,
-        country: company.country,
-      };
-    }
-    if (!selfBillingCreditNote.issueDate) {
-      selfBillingCreditNote.issueDate = formatISO(new Date(), {
-        representation: "date",
-      });
-    }
-
-    doctypeId = SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId;
-    let ublSelfBillingCreditNote = selfBillingCreditNoteToUBL({
-      selfBillingCreditNote,
-      senderAddress,
-      recipientAddress,
-      isDocumentValidationEnforced:
-        company.isOutgoingDocumentValidationEnforced,
-    });
-    let parsed = parseDocument(
-      doctypeId,
-      ublSelfBillingCreditNote,
-      company,
-      senderAddress
-    );
-
-    if (input.pdfGeneration?.enabled) {
-      const parsedForPdf =
-        (parsed.parsedDocument as SelfBillingCreditNote) ??
-        selfBillingCreditNote;
-      const pdfFilename = resolvePdfFilename(
-        "selfBillingCreditNote",
-        parsedForPdf
-      );
-      const pdfBuffer = await renderDocumentPdf({
-        id: transmittedDocumentId,
-        type: "selfBillingCreditNote",
-        parsed: parsedForPdf,
-      } as any);
-      const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-      const existingAttachments = Array.isArray(
-        selfBillingCreditNote.attachments
-      )
-        ? (selfBillingCreditNote.attachments as Attachment[])
-        : [];
-      const nextAttachments = existingAttachments.filter(
-        (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-      );
-      nextAttachments.push({
-        id: pdfFilename,
-        filename: pdfFilename,
-        mimeCode: "application/pdf",
-        description: null,
-        embeddedDocument: pdfBase64,
-        url: null,
-      });
-      selfBillingCreditNote.attachments = nextAttachments;
-
-      ublSelfBillingCreditNote = selfBillingCreditNoteToUBL({
-        selfBillingCreditNote,
-        senderAddress,
-        recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
-      });
-      parsed = parseDocument(
-        doctypeId,
-        ublSelfBillingCreditNote,
-        company,
-        senderAddress
-      );
-    }
-
-    xmlDocument = ublSelfBillingCreditNote;
-    type = "selfBillingCreditNote";
-
-    if (parsed.parsedDocument) {
-      parsedDocument = parsed.parsedDocument as SelfBillingCreditNote;
-      type = parsed.type;
-    } else {
-      parsedDocument = selfBillingCreditNote;
-    }
-  } else if (input.documentType === DocumentType.MESSAGE_LEVEL_RESPONSE) {
-    if (input.pdfGeneration?.enabled) {
-      throw new Error(
-        "PDF generation is not supported for message level responses."
-      );
-    }
-    const messageLevelResponse = document as MessageLevelResponse;
-
-    if (!messageLevelResponse.id) {
-      messageLevelResponse.id = Bun.randomUUIDv7();
-    }
-    if (!messageLevelResponse.issueDate) {
-      messageLevelResponse.issueDate = formatISO(new Date(), {
-        representation: "date",
-      });
-    }
-
-    const parsedMessageLevelResponse =
-      messageLevelResponseSchema.safeParse(messageLevelResponse);
-    if (!parsedMessageLevelResponse.success) {
-      throw new Error(
-        "Invalid message level response data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
-      );
-    }
-
-    xmlDocument = messageLevelResponseToXML({
-      messageLevelResponse,
-      senderAddress,
-      recipientAddress,
-    });
-    type = "messageLevelResponse";
-    doctypeId = MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO.docTypeId;
-
-    const parsed = parseDocument(
-      doctypeId,
-      xmlDocument,
-      company,
-      senderAddress
-    );
-
-    if (parsed.parsedDocument) {
-      parsedDocument = parsed.parsedDocument as MessageLevelResponse;
-      type = parsed.type;
-    } else {
-      parsedDocument = messageLevelResponse;
-    }
-  } else if (input.documentType === DocumentType.XML) {
-    if (input.pdfGeneration?.enabled) {
-      throw new Error("PDF generation is not supported for raw XML documents.");
-    }
-    xmlDocument = document as string;
-    if (input.doctypeId) {
-      doctypeId = input.doctypeId;
-    } else {
-      doctypeId = detectDoctypeId(xmlDocument) || "";
-      if (!doctypeId) {
-        throw new Error(
-          "Document type could not be detected automatically from your XML document. Please provide the doctypeId manually."
-        );
-      }
-    }
-
-    const parsed = parseDocument(
-      doctypeId,
-      xmlDocument,
-      company,
-      senderAddress
-    );
-
-    parsedDocument = parsed.parsedDocument;
-    type = parsed.type;
-    probableType = parsed.probableType;
-  } else {
-    throw new Error("Invalid document type provided.");
-  }
-
-  if (!xmlDocument) {
-    throw new Error("Document could not be parsed.");
-  }
-
-  return {
-    xmlDocument,
-    doctypeId,
-    type,
-    probableType,
-    parsedDocument,
-    recipientAddress,
-  };
-}
-
-async function _renderSendDocumentPreviewImplementation(c: any) {
-  try {
-    const { type: outputType } = c.req.valid("param");
-    if (outputType !== "html") {
-      return c.json(actionFailure("Invalid preview type"), 400);
-    }
-
-    const input = c.req.valid("json");
-    const transmittedDocumentId = "draft_" + ulid();
-    const company = c.var.company;
-    const senderIdentifier = await getSendingCompanyIdentifier(company.id);
-    const senderAddress = `${senderIdentifier.scheme}:${senderIdentifier.identifier}`;
-
-    const prepared = await prepareOutgoingDocument({
-      input,
-      company,
-      senderAddress,
-      transmittedDocumentId,
-    });
-
-    if (prepared.type === "unknown" || !prepared.parsedDocument) {
-      return c.json(
-        actionFailure("Preview not available for this document"),
-        400
-      );
-    }
-
-    const docForRender = {
-      id: transmittedDocumentId,
-      type: prepared.type,
-      parsed: prepared.parsedDocument,
-    } as unknown as TransmittedDocument;
-
-    const html = await renderDocumentHtml(docForRender);
-    return c.html(html);
-  } catch (error) {
-    return c.json(
-      actionFailure(
-        error instanceof Error ? error.message : "Failed to render preview"
-      ),
-      400
-    );
-  }
-}
-
 async function _sendDocumentImplementation(c: SendDocumentContext) {
   try {
     const input = c.req.valid("json");
+    const document = input.document;
     const isPlayground = c.get("team").isPlayground;
     const useTestNetwork = c.get("team").useTestNetwork ?? false;
     const transmittedDocumentId = "doc_" + ulid();
+    const rawPdfFilename = input.pdfGeneration?.filename?.trim();
+    const resolvePdfFilename = (
+      type: SupportedDocumentType,
+      parsedForName: FilenameParsedDocument | null
+    ) => {
+      const base =
+        rawPdfFilename && rawPdfFilename.length > 0
+          ? rawPdfFilename
+          : getDocumentFilename(type, parsedForName);
+      return ensureFileExtension(base, "pdf");
+    };
+
+    let xmlDocument: string | null = null;
+    let type: SupportedDocumentType = "unknown";
+    let probableType: SupportedDocumentType = "unknown";
+    let parsedDocument: FilenameParsedDocument | null = null;
+    let doctypeId: string = INVOICE_DOCUMENT_TYPE_INFO.docTypeId;
 
     // Get senderId, countryC1 from company
     const company = c.var.company;
@@ -696,31 +164,482 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     const senderAddress = `${senderIdentifier.scheme}:${senderIdentifier.identifier}`;
     const countryC1 = company.country;
 
-    let prepared;
-    try {
-      prepared = await prepareOutgoingDocument({
-        input,
-        company,
-        senderAddress,
-        transmittedDocumentId,
-      });
-    } catch (error) {
-      return c.json(
-        actionFailure(
-          error instanceof Error
-            ? error.message
-            : "Invalid document data provided."
-        ),
-        400
-      );
+    // Parse recipient
+    let recipientAddress = input.recipient;
+    if (!recipientAddress.includes(":")) {
+      const numberOnlyRecipient = recipientAddress.replace(/[^0-9]/g, "");
+      recipientAddress = "0208:" + numberOnlyRecipient;
     }
 
-    const xmlDocument = prepared.xmlDocument;
-    const doctypeId = prepared.doctypeId;
-    const type = prepared.type;
-    const probableType = prepared.probableType;
-    const parsedDocument = prepared.parsedDocument;
-    const recipientAddress = prepared.recipientAddress;
+    if (input.documentType === DocumentType.INVOICE) {
+      const invoice = document as Invoice;
+
+      // Check the invoice corresponds to the required zod schema
+      const parsedInvoice = sendInvoiceSchema.safeParse(invoice);
+      if (!parsedInvoice.success) {
+        return c.json(
+          actionFailure(
+            "Invalid invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+          ),
+          400
+        );
+      }
+
+      if (!invoice.seller) {
+        invoice.seller = {
+          vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
+          name: c.var.company.name,
+          street: c.var.company.address,
+          city: c.var.company.city,
+          postalZone: c.var.company.postalCode,
+          country: c.var.company.country,
+        };
+      }
+      if (!invoice.issueDate) {
+        invoice.issueDate = formatISO(new Date(), { representation: "date" });
+      }
+      if (!invoice.dueDate) {
+        invoice.dueDate = formatISO(addMonths(new Date(invoice.issueDate), 1), {
+          representation: "date",
+        });
+      }
+      let ublInvoice = invoiceToUBL({
+        invoice,
+        senderAddress,
+        recipientAddress,
+        isDocumentValidationEnforced:
+          company.isOutgoingDocumentValidationEnforced,
+      });
+      let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
+
+      if (input.pdfGeneration?.enabled) {
+        const parsedForPdf = (parsed.parsedDocument as Invoice) ?? invoice;
+        const pdfFilename = resolvePdfFilename("invoice", parsedForPdf);
+        const pdfBuffer = await renderDocumentPdf({
+          id: transmittedDocumentId,
+          type: "invoice",
+          parsed: parsedForPdf,
+        } as any);
+        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
+        const existingAttachments = Array.isArray(invoice.attachments)
+          ? (invoice.attachments as Attachment[])
+          : [];
+        const nextAttachments = existingAttachments.filter(
+          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
+        );
+        nextAttachments.push({
+          id: pdfFilename,
+          filename: pdfFilename,
+          mimeCode: "application/pdf",
+          description: null,
+          embeddedDocument: pdfBase64,
+          url: null,
+        });
+        invoice.attachments = nextAttachments;
+
+        ublInvoice = invoiceToUBL({
+          invoice,
+          senderAddress,
+          recipientAddress,
+          isDocumentValidationEnforced:
+            company.isOutgoingDocumentValidationEnforced,
+        });
+        parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
+      }
+
+      xmlDocument = ublInvoice;
+      type = "invoice";
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as Invoice;
+        type = parsed.type;
+      } else {
+        parsedDocument = invoice;
+      }
+    } else if (input.documentType === DocumentType.CREDIT_NOTE) {
+      const creditNote = document as CreditNote;
+
+      // Check the credit note corresponds to the required zod schema
+      const parsedCreditNote = sendCreditNoteSchema.safeParse(creditNote);
+      if (!parsedCreditNote.success) {
+        return c.json(
+          actionFailure(
+            "Invalid credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+          ),
+          400
+        );
+      }
+
+      if (!creditNote.seller) {
+        creditNote.seller = {
+          vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
+          name: c.var.company.name,
+          street: c.var.company.address,
+          city: c.var.company.city,
+          postalZone: c.var.company.postalCode,
+          country: c.var.company.country,
+        };
+      }
+      if (!creditNote.issueDate) {
+        creditNote.issueDate = formatISO(new Date(), {
+          representation: "date",
+        });
+      }
+      doctypeId = CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId;
+      let ublCreditNote = creditNoteToUBL({
+        creditNote,
+        senderAddress,
+        recipientAddress,
+        isDocumentValidationEnforced:
+          company.isOutgoingDocumentValidationEnforced,
+      });
+      let parsed = parseDocument(
+        doctypeId,
+        ublCreditNote,
+        company,
+        senderAddress
+      );
+
+      if (input.pdfGeneration?.enabled) {
+        const parsedForPdf =
+          (parsed.parsedDocument as CreditNote) ?? creditNote;
+        const pdfFilename = resolvePdfFilename("creditNote", parsedForPdf);
+        const pdfBuffer = await renderDocumentPdf({
+          id: transmittedDocumentId,
+          type: "creditNote",
+          parsed: parsedForPdf,
+        } as any);
+        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
+        const existingAttachments = Array.isArray(creditNote.attachments)
+          ? (creditNote.attachments as Attachment[])
+          : [];
+        const nextAttachments = existingAttachments.filter(
+          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
+        );
+        nextAttachments.push({
+          id: pdfFilename,
+          filename: pdfFilename,
+          mimeCode: "application/pdf",
+          description: null,
+          embeddedDocument: pdfBase64,
+          url: null,
+        });
+        creditNote.attachments = nextAttachments;
+
+        ublCreditNote = creditNoteToUBL({
+          creditNote,
+          senderAddress,
+          recipientAddress,
+          isDocumentValidationEnforced:
+            company.isOutgoingDocumentValidationEnforced,
+        });
+        parsed = parseDocument(
+          doctypeId,
+          ublCreditNote,
+          company,
+          senderAddress
+        );
+      }
+
+      xmlDocument = ublCreditNote;
+      type = "creditNote";
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as CreditNote;
+        type = parsed.type;
+      } else {
+        parsedDocument = creditNote;
+      }
+    } else if (input.documentType === DocumentType.SELF_BILLING_INVOICE) {
+      const invoice = document as SelfBillingInvoice;
+
+      // Check the invoice corresponds to the required zod schema
+      const parsedInvoice = sendSelfBillingInvoiceSchema.safeParse(invoice);
+      if (!parsedInvoice.success) {
+        return c.json(
+          actionFailure(
+            "Invalid self billing invoice data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+          ),
+          400
+        );
+      }
+
+      if (!invoice.buyer) {
+        invoice.buyer = {
+          vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
+          name: c.var.company.name,
+          street: c.var.company.address,
+          city: c.var.company.city,
+          postalZone: c.var.company.postalCode,
+          country: c.var.company.country,
+        };
+      }
+      if (!invoice.issueDate) {
+        invoice.issueDate = formatISO(new Date(), { representation: "date" });
+      }
+      if (!invoice.dueDate) {
+        invoice.dueDate = formatISO(addMonths(new Date(invoice.issueDate), 1), {
+          representation: "date",
+        });
+      }
+      doctypeId = SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO.docTypeId;
+      let ublInvoice = selfBillingInvoiceToUBL({
+        selfBillingInvoice: invoice,
+        senderAddress,
+        recipientAddress,
+        isDocumentValidationEnforced:
+          company.isOutgoingDocumentValidationEnforced,
+      });
+      let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
+
+      if (input.pdfGeneration?.enabled) {
+        const parsedForPdf =
+          (parsed.parsedDocument as SelfBillingInvoice) ?? invoice;
+        const pdfFilename = resolvePdfFilename(
+          "selfBillingInvoice",
+          parsedForPdf
+        );
+        const pdfBuffer = await renderDocumentPdf({
+          id: transmittedDocumentId,
+          type: "selfBillingInvoice",
+          parsed: parsedForPdf,
+        } as any);
+        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
+        const existingAttachments = Array.isArray(invoice.attachments)
+          ? (invoice.attachments as Attachment[])
+          : [];
+        const nextAttachments = existingAttachments.filter(
+          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
+        );
+        nextAttachments.push({
+          id: pdfFilename,
+          filename: pdfFilename,
+          mimeCode: "application/pdf",
+          description: null,
+          embeddedDocument: pdfBase64,
+          url: null,
+        });
+        invoice.attachments = nextAttachments;
+
+        ublInvoice = selfBillingInvoiceToUBL({
+          selfBillingInvoice: invoice,
+          senderAddress,
+          recipientAddress,
+          isDocumentValidationEnforced:
+            company.isOutgoingDocumentValidationEnforced,
+        });
+        parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
+      }
+
+      xmlDocument = ublInvoice;
+      type = "selfBillingInvoice";
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as SelfBillingInvoice;
+        type = parsed.type;
+      } else {
+        parsedDocument = invoice;
+      }
+    } else if (input.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE) {
+      const selfBillingCreditNote = document as SelfBillingCreditNote;
+
+      // Check the credit note corresponds to the required zod schema
+      const parsedCreditNote = sendSelfBillingCreditNoteSchema.safeParse(
+        selfBillingCreditNote
+      );
+      if (!parsedCreditNote.success) {
+        return c.json(
+          actionFailure(
+            "Invalid self billing credit note data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+          ),
+          400
+        );
+      }
+
+      if (!selfBillingCreditNote.buyer) {
+        selfBillingCreditNote.buyer = {
+          vatNumber: c.var.company.vatNumber,
+          enterpriseNumber: c.var.company.enterpriseNumber,
+          name: c.var.company.name,
+          street: c.var.company.address,
+          city: c.var.company.city,
+          postalZone: c.var.company.postalCode,
+          country: c.var.company.country,
+        };
+      }
+      if (!selfBillingCreditNote.issueDate) {
+        selfBillingCreditNote.issueDate = formatISO(new Date(), {
+          representation: "date",
+        });
+      }
+      doctypeId = SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId;
+      let ublSelfBillingCreditNote = selfBillingCreditNoteToUBL({
+        selfBillingCreditNote,
+        senderAddress,
+        recipientAddress,
+        isDocumentValidationEnforced:
+          company.isOutgoingDocumentValidationEnforced,
+      });
+      let parsed = parseDocument(
+        doctypeId,
+        ublSelfBillingCreditNote,
+        company,
+        senderAddress
+      );
+
+      if (input.pdfGeneration?.enabled) {
+        const parsedForPdf =
+          (parsed.parsedDocument as SelfBillingCreditNote) ??
+          selfBillingCreditNote;
+        const pdfFilename = resolvePdfFilename(
+          "selfBillingCreditNote",
+          parsedForPdf
+        );
+        const pdfBuffer = await renderDocumentPdf({
+          id: transmittedDocumentId,
+          type: "selfBillingCreditNote",
+          parsed: parsedForPdf,
+        } as any);
+        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
+        const existingAttachments = Array.isArray(
+          selfBillingCreditNote.attachments
+        )
+          ? (selfBillingCreditNote.attachments as Attachment[])
+          : [];
+        const nextAttachments = existingAttachments.filter(
+          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
+        );
+        nextAttachments.push({
+          id: pdfFilename,
+          filename: pdfFilename,
+          mimeCode: "application/pdf",
+          description: null,
+          embeddedDocument: pdfBase64,
+          url: null,
+        });
+        selfBillingCreditNote.attachments = nextAttachments;
+
+        ublSelfBillingCreditNote = selfBillingCreditNoteToUBL({
+          selfBillingCreditNote,
+          senderAddress,
+          recipientAddress,
+          isDocumentValidationEnforced:
+            company.isOutgoingDocumentValidationEnforced,
+        });
+        parsed = parseDocument(
+          doctypeId,
+          ublSelfBillingCreditNote,
+          company,
+          senderAddress
+        );
+      }
+
+      xmlDocument = ublSelfBillingCreditNote;
+      type = "selfBillingCreditNote";
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as SelfBillingCreditNote;
+        type = parsed.type;
+      } else {
+        parsedDocument = selfBillingCreditNote;
+      }
+    } else if (input.documentType === DocumentType.MESSAGE_LEVEL_RESPONSE) {
+      if (input.pdfGeneration?.enabled) {
+        return c.json(
+          actionFailure(
+            "PDF generation is not supported for message level responses."
+          ),
+          400
+        );
+      }
+      const messageLevelResponse = document as MessageLevelResponse;
+
+      if (!messageLevelResponse.id) {
+        messageLevelResponse.id = Bun.randomUUIDv7();
+      }
+      if (!messageLevelResponse.issueDate) {
+        messageLevelResponse.issueDate = formatISO(new Date(), {
+          representation: "date",
+        });
+      }
+
+      // Check the message level response corresponds to the required zod schema
+      const parsedMessageLevelResponse =
+        messageLevelResponseSchema.safeParse(messageLevelResponse);
+      if (!parsedMessageLevelResponse.success) {
+        return c.json(
+          actionFailure(
+            "Invalid message level response data provided. The document you provided does not correspond to the required json object as laid out by our api reference. If unsure, don't hesitate to contact support@recommand.eu"
+          ),
+          400
+        );
+      }
+
+      xmlDocument = messageLevelResponseToXML({
+        messageLevelResponse,
+        senderAddress,
+        recipientAddress,
+      });
+      type = "messageLevelResponse";
+      doctypeId = MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO.docTypeId;
+
+      const parsed = parseDocument(
+        doctypeId,
+        xmlDocument,
+        company,
+        senderAddress
+      );
+
+      if (parsed.parsedDocument) {
+        parsedDocument = parsed.parsedDocument as MessageLevelResponse;
+        type = parsed.type;
+      } else {
+        parsedDocument = messageLevelResponse;
+      }
+    } else if (input.documentType === DocumentType.XML) {
+      if (input.pdfGeneration?.enabled) {
+        return c.json(
+          actionFailure(
+            "PDF generation is not supported for raw XML documents."
+          ),
+          400
+        );
+      }
+      xmlDocument = document as string;
+      if (input.doctypeId) {
+        doctypeId = input.doctypeId;
+      } else {
+        doctypeId = detectDoctypeId(xmlDocument) || "";
+        if (!doctypeId) {
+          return c.json(
+            actionFailure(
+              "Document type could not be detected automatically from your XML document. Please provide the doctypeId manually."
+            ),
+            400
+          );
+        }
+      }
+
+      const parsed = parseDocument(
+        doctypeId,
+        xmlDocument,
+        company,
+        senderAddress
+      );
+
+      parsedDocument = parsed.parsedDocument;
+      type = parsed.type;
+      probableType = parsed.probableType; // We don't want to block if something goes wrong with the parsing, so we use the probableType for XML documents
+    } else {
+      return c.json(actionFailure("Invalid document type provided."), 400);
+    }
+
+    if (!xmlDocument) {
+      return c.json(actionFailure("Document could not be parsed."), 400);
+    }
 
     const validation: ValidationResponse =
       await validateXmlDocument(xmlDocument);
@@ -998,9 +917,6 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
   }
 }
 
-export type SendDocument =
-  | typeof _sendDocument
-  | typeof _sendDocumentMinimal
-  | typeof _renderSendDocumentPreview;
+export type SendDocument = typeof _sendDocument | typeof _sendDocumentMinimal;
 
 export default server;
