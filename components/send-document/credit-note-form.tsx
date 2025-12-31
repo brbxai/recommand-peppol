@@ -42,6 +42,7 @@ export function CreditNoteForm({
   mode,
   groupedCounterpartyKey,
 }: CreditNoteFormProps) {
+  const activeTeam = useActiveTeam();
   const [creditNote, setCreditNote] = useState<Partial<CreditNote>>({
     creditNoteNumber: "",
     issueDate: format(new Date(), "yyyy-MM-dd"),
@@ -59,7 +60,15 @@ export function CreditNoteForm({
     creditedInvoices: false,
     attachments: false,
   }));
-  const activeTeam = useActiveTeam();
+  useEffect(() => {
+    setCreditNote({
+      creditNoteNumber: "",
+      issueDate: format(new Date(), "yyyy-MM-dd"),
+      lines: [],
+      invoiceReferences: [],
+      attachments: [],
+    });
+  }, [activeTeam?.id]);
 
   const isSameParty = (a: any, b: any) => {
     if (!a && !b) return true;

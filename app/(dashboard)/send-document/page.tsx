@@ -19,6 +19,7 @@ import { useLocalStorageState } from "@peppol/utils/react-hooks";
 import { rc } from "@recommand/lib/client";
 import type { PreviewDocument as PreviewDocumentApi } from "@peppol/api/preview-document";
 import { useEffect, useMemo } from "react";
+import { useActiveTeam } from "@core/hooks/user";
 
 function getFormType(documentType: string): "invoice" | "creditNote" | "xml" {
   switch (documentType) {
@@ -53,6 +54,7 @@ function getDocumentDescription(documentType: string): string {
 }
 
 export default function SendDocumentPage() {
+  const activeTeam = useActiveTeam();
   const [documentType, setDocumentType] = useState<string>(
     DocumentType.INVOICE
   );
@@ -85,6 +87,21 @@ export default function SendDocumentPage() {
   const handleFormChange = (data: Partial<SendDocument>) => {
     setFormData(data);
   };
+
+  useEffect(() => {
+    setDocumentType(DocumentType.INVOICE);
+    setSelectedCompanyId("");
+    setFormData({
+      documentType: DocumentType.INVOICE,
+      recipient: "",
+      document: {
+        invoiceNumber: "",
+        lines: [],
+      } as any,
+    });
+    setPreviewHtml(null);
+    setIsPreviewLoading(false);
+  }, [activeTeam?.id]);
 
   const handleDocumentTypeChange = (value: string) => {
     setDocumentType(value);
@@ -333,6 +350,7 @@ export default function SendDocumentPage() {
                 </p>
               </div>
               <DocumentForm
+                key={activeTeam?.id ?? "no-team"}
                 type={getFormType(documentType)}
                 formData={formData}
                 onFormChange={handleFormChange}

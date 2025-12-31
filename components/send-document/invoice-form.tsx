@@ -40,6 +40,7 @@ export function InvoiceForm({
   mode,
   groupedCounterpartyKey,
 }: InvoiceFormProps) {
+  const activeTeam = useActiveTeam();
   const [invoice, setInvoice] = useState<Partial<Invoice>>({
     invoiceNumber: "",
     issueDate: format(new Date(), "yyyy-MM-dd"),
@@ -59,7 +60,18 @@ export function InvoiceForm({
     lines: true,
     attachments: false,
   }));
-  const activeTeam = useActiveTeam();
+  useEffect(() => {
+    setInvoice({
+      invoiceNumber: "",
+      issueDate: format(new Date(), "yyyy-MM-dd"),
+      dueDate: format(
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        "yyyy-MM-dd"
+      ),
+      lines: [],
+      attachments: [],
+    });
+  }, [activeTeam?.id]);
 
   const isSameParty = (a: any, b: any) => {
     if (!a && !b) return true;
