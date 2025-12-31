@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
@@ -18,8 +18,11 @@ import type { Companies } from "@peppol/api/companies";
 import { useActiveTeam } from "@core/hooks/user";
 import { AttachmentsEditor } from "./attachments-editor";
 import { isTaxExemptionReasonRequired } from "@peppol/utils/parsing/invoice/calculations";
+import type { DocumentDefaults } from "@peppol/api/document-defaults";
+import { DocumentType } from "@peppol/utils/parsing/send-document";
 
 const companiesClient = rc<Companies>("peppol");
+const sendDocumentClient = rc<DocumentDefaults>("peppol");
 
 interface InvoiceFormProps {
   document: any;
@@ -60,6 +63,8 @@ export function InvoiceForm({
     lines: true,
     attachments: false,
   }));
+  const lastAutoInvoiceNumberRef = useRef<string | null>(null);
+  const lastAutoIbanRef = useRef<string | null>(null);
   useEffect(() => {
     setInvoice({
       invoiceNumber: "",
@@ -71,7 +76,9 @@ export function InvoiceForm({
       lines: [],
       attachments: [],
     });
-  }, [activeTeam?.id]);
+    lastAutoInvoiceNumberRef.current = null;
+    lastAutoIbanRef.current = null;
+  }, [activeTeam?.id, companyId]);
 
   const isSameParty = (a: any, b: any) => {
     if (!a && !b) return true;
@@ -128,6 +135,108 @@ export function InvoiceForm({
 
     loadCompanyInfo();
   }, [companyId, activeTeam?.id, isSelfBilling]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!companyId) return;
+
+      const documentType = isSelfBilling
+        ? DocumentType.SELF_BILLING_INVOICE
+        : DocumentType.INVOICE;
+
+      try {
+        const response = await sendDocumentClient[":companyId"][
+          "documentDefaults"
+        ].$get({
+          param: { companyId },
+          query: { documentType },
+        });
+        const json: any = await response.json();
+        if (!json?.success) return;
+
+        const suggestedNumberRaw = json?.documentNumber;
+        const suggestedNumber =
+          typeof suggestedNumberRaw === "string"
+            ? suggestedNumberRaw.trim()
+            : "";
+
+        const suggestedIbanRaw = json?.iban;
+        const suggestedIban =
+          typeof suggestedIbanRaw === "string" ? suggestedIbanRaw.trim() : "";
+
+        setInvoice((prev) => {
+          let next = prev;
+
+          // Handle invoice number suggestion
+          const currentNumber = (prev.invoiceNumber || "").trim();
+          const shouldAutoNumber =
+            !currentNumber ||
+            currentNumber === lastAutoInvoiceNumberRef.current;
+
+          if (suggestedNumber) {
+            if (shouldAutoNumber && currentNumber !== suggestedNumber) {
+              lastAutoInvoiceNumberRef.current = suggestedNumber;
+              next = { ...next, invoiceNumber: suggestedNumber };
+            }
+          } else if (
+            suggestedNumberRaw === null &&
+            lastAutoInvoiceNumberRef.current &&
+            currentNumber === lastAutoInvoiceNumberRef.current
+          ) {
+            // Clear auto-filled number when no suggestion available
+            lastAutoInvoiceNumberRef.current = null;
+            next = { ...next, invoiceNumber: "" };
+          }
+
+          // Handle IBAN suggestion
+          const pm = Array.isArray(prev.paymentMeans) ? prev.paymentMeans : [];
+          const currentIbans = pm
+            .map((p: any) => (typeof p?.iban === "string" ? p.iban.trim() : ""))
+            .filter(Boolean);
+          const currentIban = currentIbans[0] ?? "";
+          const shouldAutoIban =
+            currentIbans.length === 0 ||
+            currentIban === lastAutoIbanRef.current;
+
+          if (suggestedIban) {
+            if (shouldAutoIban && currentIban !== suggestedIban) {
+              lastAutoIbanRef.current = suggestedIban;
+              const nextPaymentMeans =
+                pm.length === 0
+                  ? [
+                      {
+                        paymentMethod: "credit_transfer",
+                        reference: "",
+                        iban: suggestedIban,
+                      },
+                    ]
+                  : pm.map((p: any, idx: number) =>
+                      idx === 0 ? { ...p, iban: suggestedIban } : p
+                    );
+              next = { ...next, paymentMeans: nextPaymentMeans as any };
+            }
+          } else if (
+            suggestedIbanRaw === null &&
+            lastAutoIbanRef.current &&
+            currentIban === lastAutoIbanRef.current
+          ) {
+            // Clear auto-filled IBAN when no suggestion available
+            lastAutoIbanRef.current = null;
+            const nextPaymentMeans = pm.map((p: any, idx: number) =>
+              idx === 0 ? { ...p, iban: "" } : p
+            );
+            next = { ...next, paymentMeans: nextPaymentMeans as any };
+          }
+
+          return next;
+        });
+      } catch {
+        return;
+      }
+    };
+
+    run();
+  }, [companyId, isSelfBilling, mode]);
 
   useEffect(() => {
     onChange(invoice);

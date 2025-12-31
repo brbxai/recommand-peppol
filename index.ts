@@ -7,6 +7,7 @@ import billingServer from "./api/billing";
 import companiesServer from "./api/companies";
 import labelsServer from "./api/labels";
 import sendDocumentServer from "./api/send-document";
+import documentDefaultsServer from "./api/document-defaults";
 import previewDocumentServer from "./api/preview-document";
 import receiveDocumentServer from "./api/internal/receive-document";
 import transmittedDocumentsServer from "./api/documents";
@@ -169,6 +170,7 @@ For additional support or questions, don't hesitate to contact our support team.
 
 for (const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, sendDocumentServer);
+  server.route(prefix, documentDefaultsServer);
   server.route(prefix, previewDocumentServer);
   server.route(prefix, companiesServer);
   server.route(prefix, transmittedDocumentsServer);
