@@ -17,7 +17,7 @@ import { DocumentType } from "@peppol/utils/parsing/send-document";
 import type { SendDocument } from "@peppol/utils/parsing/send-document";
 import { useLocalStorageState } from "@peppol/utils/react-hooks";
 import { rc } from "@recommand/lib/client";
-import type { SendDocument as SendDocumentApi } from "@peppol/api/send-document";
+import type { PreviewDocument as PreviewDocumentApi } from "@peppol/api/preview-document";
 import { useEffect, useMemo } from "react";
 
 function getFormType(documentType: string): "invoice" | "creditNote" | "xml" {
@@ -80,7 +80,7 @@ export default function SendDocumentPage() {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [, setIsPreviewLoading] = useState(false);
 
-  const client = useMemo(() => rc<SendDocumentApi>("peppol"), []);
+  const client = useMemo(() => rc<PreviewDocumentApi>("peppol"), []);
 
   const handleFormChange = (data: Partial<SendDocument>) => {
     setFormData(data);
@@ -210,9 +210,9 @@ export default function SendDocumentPage() {
     const handle = window.setTimeout(async () => {
       try {
         setIsPreviewLoading(false);
-        const response = await client[":companyId"]["sendDocument"]["render"][
-          ":type"
-        ].$post({
+        const response = await client[":companyId"]["previewDocument"][
+          "render"
+        ][":type"].$post({
           param: { companyId: selectedCompanyId, type: "html" },
           json: formData as SendDocument,
         });
