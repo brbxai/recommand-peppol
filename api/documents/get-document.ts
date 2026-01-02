@@ -65,6 +65,12 @@ async function _getTransmittedDocumentImplementation(c: GetTransmittedDocumentCo
         if (!document) {
           return c.json(actionFailure("Document not found"), 404);
         }
+
+        // Currently not mentioned in the API docs yet, so we can still roll this back if needed
+        if (c.req.header("accept")?.toLowerCase().startsWith("application/xml") && document.xml) {
+          c.header("Content-Type", "application/xml; charset=utf-8");
+          return c.body(document.xml);
+        }
   
         return c.json(actionSuccess({ document }));
       } catch (error) {
