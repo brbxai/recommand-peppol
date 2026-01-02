@@ -11,7 +11,6 @@ export type Company = {
   enterpriseNumber: string | null;
   vatNumber: string | null;
   isSmpRecipient: boolean;
-  isOutgoingDocumentValidationEnforced: boolean;
 };
 
 export type CompanyFormData = Omit<Company, 'id'>;
@@ -25,5 +24,4 @@ export const defaultCompanyFormData: CompanyFormData = {
   enterpriseNumber: null,
   vatNumber: null,
   isSmpRecipient: true,
-  isOutgoingDocumentValidationEnforced: true,
 }; 

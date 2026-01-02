@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_companies" DROP COLUMN "is_outgoing_document_validation_enforced";

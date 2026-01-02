@@ -126,8 +126,7 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
         invoice,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       const parsed = parseDocument(
         INVOICE_DOCUMENT_TYPE_INFO.docTypeId,
@@ -167,8 +166,7 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
         creditNote,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       const parsed = parseDocument(
         CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId,
@@ -214,8 +212,7 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
         selfBillingInvoice: invoice,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       const parsed = parseDocument(
         SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO.docTypeId,
@@ -256,8 +253,7 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
         selfBillingCreditNote: creditNote,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       const parsed = parseDocument(
         SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId,

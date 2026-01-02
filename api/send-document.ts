@@ -208,8 +208,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         invoice,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
 
@@ -242,8 +241,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           invoice,
           senderAddress,
           recipientAddress,
-          isDocumentValidationEnforced:
-            company.isOutgoingDocumentValidationEnforced,
+          isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
       }
@@ -292,8 +290,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         creditNote,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(
         doctypeId,
@@ -332,8 +329,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           creditNote,
           senderAddress,
           recipientAddress,
-          isDocumentValidationEnforced:
-            company.isOutgoingDocumentValidationEnforced,
+          isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(
           doctypeId,
@@ -390,8 +386,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         selfBillingInvoice: invoice,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
 
@@ -428,8 +423,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           selfBillingInvoice: invoice,
           senderAddress,
           recipientAddress,
-          isDocumentValidationEnforced:
-            company.isOutgoingDocumentValidationEnforced,
+          isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
       }
@@ -480,8 +474,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         selfBillingCreditNote,
         senderAddress,
         recipientAddress,
-        isDocumentValidationEnforced:
-          company.isOutgoingDocumentValidationEnforced,
+        isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(
         doctypeId,
@@ -526,8 +519,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
           selfBillingCreditNote,
           senderAddress,
           recipientAddress,
-          isDocumentValidationEnforced:
-            company.isOutgoingDocumentValidationEnforced,
+          isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(
           doctypeId,
@@ -643,31 +635,29 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
 
     const validation: ValidationResponse =
       await validateXmlDocument(xmlDocument);
-    if (company.isOutgoingDocumentValidationEnforced) {
-      if (validation.result === "invalid") {
-        // Only stop sending if explicitly invalid
-        // Transform into key (ruleCode) value (errorMessage) object
-        const errors: Record<string, string[]> = validation.errors.reduce(
-          (acc: Record<string, string[]>, error) => {
-            const ruleErrors = acc[error.fieldName] || [];
-            const message = `${error.ruleCode}: ${error.errorMessage}`;
-            if (!ruleErrors.includes(message)) {
-              acc[error.fieldName] = [...ruleErrors, message];
-            }
-            return acc;
-          },
-          {}
-        );
-        return c.json(
-          actionFailure({
-            root: [
-              "Document validation failed. Please ensure your document complies with EN16931 and PEPPOL BIS 3.0 requirements.",
-            ],
-            ...errors,
-          }),
-          400
-        );
-      }
+    if (validation.result === "invalid") {
+      // Only stop sending if explicitly invalid
+      // Transform into key (ruleCode) value (errorMessage) object
+      const errors: Record<string, string[]> = validation.errors.reduce(
+        (acc: Record<string, string[]>, error) => {
+          const ruleErrors = acc[error.fieldName] || [];
+          const message = `${error.ruleCode}: ${error.errorMessage}`;
+          if (!ruleErrors.includes(message)) {
+            acc[error.fieldName] = [...ruleErrors, message];
+          }
+          return acc;
+        },
+        {}
+      );
+      return c.json(
+        actionFailure({
+          root: [
+            "Document validation failed. Please ensure your document complies with EN16931 and PEPPOL BIS 3.0 requirements.",
+          ],
+          ...errors,
+        }),
+        400
+      );
     }
 
     let sentPeppol = false;
