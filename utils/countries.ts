@@ -28,6 +28,12 @@ export const COUNTRIES: CountryInfo[] = [
         flag: "🇨🇦",
     },
     {
+        code: "HR",
+        name: "Croatia",
+        flag: "🇭🇷",
+        defaultVatScheme: "9934",
+    },
+    {
         code: "DK",
         name: "Denmark",
         flag: "🇩🇰",
