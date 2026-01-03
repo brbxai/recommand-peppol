@@ -22,10 +22,10 @@ import { cleanVatNumber } from "@peppol/utils/util";
 import { COUNTRIES } from "@peppol/utils/countries";
 import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
 import { getMinimalTeamMembers } from "@core/data/team-members";
+import { TZDate } from "@date-fns/tz";
 
 // TODO: list usage per company
 // TODO: add VAT and totals to the invoice
-// TODO: ensure all billing happens in UTC
 // TODO: combine all subscriptions for a team into a single invoice
 
 export type BillSubscriptionResult = {
@@ -68,8 +68,8 @@ export type BillSubscriptionResult = {
 }
 
 export async function getCurrentUsage(teamId: string) {
-  const s = startOfMonth(new Date());
-  const e = endOfMonth(new Date());
+  const s = startOfMonth(TZDate.tz("UTC"));
+  const e = endOfMonth(TZDate.tz("UTC"));
   const transmittedDocuments = await db
     .select({
       usage: count(),

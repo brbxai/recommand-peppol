@@ -7,6 +7,7 @@ import { endOfMonth, format, subMonths } from "date-fns";
 import { requireAdmin } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
 import ExcelJS from "exceljs";
+import { TZDate } from "@date-fns/tz";
 
 const server = new Server();
 
@@ -17,7 +18,8 @@ const _endBillingCycle = server.post(
   zodValidator("query", z.object({ dryRun: z.string().optional().default("false") })),
   async (c) => {
     try {
-      const endOfPreviousMonth = endOfMonth(subMonths(new Date(), 1));
+      // End of previous month (UTC)
+      const endOfPreviousMonth = endOfMonth(subMonths(TZDate.tz("UTC"), 1));
       const isDryRun = c.req.query("dryRun") === "true";
       console.log("Ending billing cycle for all teams on", endOfPreviousMonth, "with dry run", isDryRun);
       const results = await endBillingCycle(endOfPreviousMonth, isDryRun);

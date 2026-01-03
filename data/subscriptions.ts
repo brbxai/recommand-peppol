@@ -109,7 +109,7 @@ export async function startSubscription(
       if (isUpgrade) {
         endDate = new Date();
       } else {
-        endDate = endOfMonth(new TZDate(new Date(), "UTC"));
+        endDate = endOfMonth(TZDate.tz("UTC"));
       }
     }
 
@@ -142,7 +142,7 @@ export async function startSubscription(
 export async function cancelSubscription(teamId: string) {
   return await db.transaction(async (tx) => {
     // End the subscription at the end of the current month (UTC)
-    const endDate = endOfMonth(new TZDate(new Date(), "UTC"));
+    const endDate = endOfMonth(TZDate.tz("UTC"));
 
     const activeSubscription = await getActiveSubscription(teamId, tx);
     if (!activeSubscription) {
