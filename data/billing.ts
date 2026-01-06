@@ -27,6 +27,8 @@ import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
 import { getMinimalTeamMembers } from "@core/data/team-members";
 import { TZDate } from "@date-fns/tz";
 import type { Mandate } from "@mollie/api-client";
+import { render } from "@react-email/render";
+import { InvoiceEmail } from "@peppol/emails/invoice-email";
 
 export type SubscriptionBillingLine = {
   subscriptionId: string;
@@ -828,6 +830,20 @@ async function sendInvoiceAsBRBX(
     }
   };
 
+  const htmlBody = await render(
+    InvoiceEmail({
+      companyName: info.companyName,
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmountExcl: info.totalAmountExcl,
+      totalVatAmount: info.totalVatAmount,
+      totalAmountIncl: info.totalAmountIncl,
+      vatPercentage: info.vatPercentage,
+      vatCategory: info.vatCategory,
+      vatExemptionReason: info.vatExemptionReason,
+      lines: info.lines,
+    })
+  );
+
   const response = await fetch(`https://app.recommand.eu/api/v1/${companyId}/send`, {
     method: "POST",
     headers: {
@@ -838,10 +854,14 @@ async function sendInvoiceAsBRBX(
       documentType: "invoice",
       recipient,
       document: invoice,
-      email: dryRun ? undefined : {
-        to: emailRecipients,
-        when: "always",
-        subject: "Recommand invoice " + invoice.invoiceNumber,
+      email: {
+        to: dryRun ? ["support@recommand.eu"] : emailRecipients,
+        when: dryRun ? "always" : "on_peppol_failure",
+        subject: `${dryRun ? "[DRY RUN] - " : ""}Recommand invoice ${invoice.invoiceNumber}`,
+        htmlBody: htmlBody,
+      },
+      pdfGeneration: {
+        enabled: true,
       }
     }),
   });
