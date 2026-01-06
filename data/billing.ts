@@ -653,12 +653,12 @@ async function calculateSubscription({
   const totalAmountExcl = baseAmount.plus(overageAmountExcl).toNearest(0.01);
 
   // Generate description for invoice line
-  let lineDescription = `${formatISO(billingPeriodStartInclusive, { representation: "date" })} - ${formatISO(billingPeriodEndInclusive, { representation: "date" })}\n`;
+  let lineDescription = `${formatISO(billingPeriodStartInclusive, { representation: "date" })} - ${formatISO(billingPeriodEndInclusive, { representation: "date" })}\n\n`;
   lineDescription += `Incoming: ${incomingUsageDecimal.toString()} documents\n`;
   lineDescription += `Outgoing: ${outgoingUsageDecimal.toString()} documents\n`;
   lineDescription += `Included in subscription: ${includedUsage} documents\n`;
   lineDescription += `Base price: € ${baseAmount.toNearest(0.01).toString()}\n`;
-  lineDescription += `Overage: ${overageAmountExcl.toString()} documents\n`;
+  lineDescription += `Overage: ${toBeBilledIncoming.toString()} in, ${toBeBilledOutgoing.toString()} out\n`;
   lineDescription += `Overage price per document: € ${incomingDocumentOveragePrice.toString()} in, € ${outgoingDocumentOveragePrice.toString()} out\n`;
   lineDescription += `\n`;
   lineDescription += `Per company usage:\n`;
