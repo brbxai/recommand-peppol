@@ -657,7 +657,7 @@ async function calculateSubscription({
   lineDescription += `Incoming: ${incomingUsageDecimal.toString()} documents\n`;
   lineDescription += `Outgoing: ${outgoingUsageDecimal.toString()} documents\n`;
   lineDescription += `Included in subscription: ${includedUsage} documents\n`;
-  lineDescription += `Base price: € ${baseAmount.toString()}\n`;
+  lineDescription += `Base price: € ${baseAmount.toNearest(0.01).toString()}\n`;
   lineDescription += `Overage: ${overageAmountExcl.toString()} documents\n`;
   lineDescription += `Overage price per document: € ${incomingDocumentOveragePrice.toString()} in, € ${outgoingDocumentOveragePrice.toString()} out\n`;
   lineDescription += `\n`;
