@@ -76,6 +76,7 @@ export type TeamBillingResult = {
   billingEventId: string | null;
   invoiceId: string | null;
   invoiceReference: number | null;
+  lineTotalExcl: number;
   totalAmountExcl: number;
   vatCategory: VatCategory;
   vatPercentage: number;
@@ -184,6 +185,7 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
         billingEventId: null,
         invoiceId: null,
         invoiceReference: null,
+        lineTotalExcl: 0,
         totalAmountExcl: 0,
         vatCategory: "S",
         vatPercentage: 0,
@@ -472,6 +474,7 @@ async function billTeam({
     billingEventId: billingEventId,
     invoiceId: invoiceId,
     invoiceReference: invoiceReference,
+    lineTotalExcl: x.lineTotalExcl,
     totalAmountExcl: totalAmountExcl.toNumber(),
     vatCategory: vatStrategy.vatCategory,
     vatPercentage: vatStrategy.percentage.toNumber(),
