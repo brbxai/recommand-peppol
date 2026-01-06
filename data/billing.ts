@@ -659,13 +659,13 @@ async function calculateSubscription({
   lineDescription += `Included in subscription: ${includedUsage} documents\n`;
   lineDescription += `Base price: € ${baseAmount.toString()}\n`;
   lineDescription += `Overage: ${overageAmountExcl.toString()} documents\n`;
-  lineDescription += `Overage price per document: € ${incomingDocumentOveragePrice.toString()} IN, € ${outgoingDocumentOveragePrice.toString()} OUT\n`;
+  lineDescription += `Overage price per document: € ${incomingDocumentOveragePrice.toString()} in, € ${outgoingDocumentOveragePrice.toString()} out\n`;
   lineDescription += `\n`;
   lineDescription += `Per company usage:\n`;
   // Add document usage per company
   for (const companyId in perCompanyUsage) {
     const company = perCompanyUsage[companyId];
-    lineDescription += `- ${company.companyName}: ${company.incomingUsage.toString()} IN, ${company.outgoingUsage.toString()} OUT\n`;
+    lineDescription += `- ${company.companyName}: ${company.incomingUsage.toString()} in, ${company.outgoingUsage.toString()} out\n`;
   }
 
   return {
