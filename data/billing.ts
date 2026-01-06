@@ -77,12 +77,12 @@ export type TeamBillingResult = {
   invoiceId: string | null;
   invoiceReference: number | null;
   lineTotalExcl: number;
-  totalAmountExcl: number;
+  totalAmountExcl: number | null;
   vatCategory: VatCategory;
   vatPercentage: number;
   vatExemptionReason: string | null;
-  vatAmount: number;
-  totalAmountIncl: number;
+  vatAmount: number | null;
+  totalAmountIncl: number | null;
   billingDate: string;
   billingPeriodStart: string;
   billingPeriodEnd: string | null;
@@ -450,7 +450,7 @@ async function billTeam({
     }
   }
 
-  return billingLine.map(x => ({
+  return billingLine.map((x, i) => ({
     status: "success",
     message: "",
     billingProfileId: billingProfile.id,
@@ -475,12 +475,12 @@ async function billTeam({
     invoiceId: invoiceId,
     invoiceReference: invoiceReference,
     lineTotalExcl: x.lineTotalExcl,
-    totalAmountExcl: totalAmountExcl.toNumber(),
+    totalAmountExcl: i === 0 ? totalAmountExcl.toNumber() : null,
     vatCategory: vatStrategy.vatCategory,
     vatPercentage: vatStrategy.percentage.toNumber(),
     vatExemptionReason: vatStrategy.vatExemptionReason,
-    vatAmount: totalVatAmount.toNumber(),
-    totalAmountIncl: totalAmountIncl.toNumber(),
+    vatAmount: i === 0 ? totalVatAmount.toNumber() : null,
+    totalAmountIncl: i === 0 ? totalAmountIncl.toNumber() : null,
     billingDate: billingDate.toISOString(),
     billingPeriodStart: x.billingPeriodStart.toISOString(),
     billingPeriodEnd: x.billingPeriodEnd.toISOString(),
