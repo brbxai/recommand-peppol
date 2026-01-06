@@ -578,7 +578,7 @@ async function calculateSubscription({
   const incomingUsageByCompany = await db
     .select({ companyId: companies.id, companyName: companies.name, incomingUsage: count() })
     .from(transferEvents)
-    .innerJoin(companies, eq(transferEvents.companyId, companies.id))
+    .leftJoin(companies, eq(transferEvents.companyId, companies.id))
     .where(
       and(
         eq(transferEvents.teamId, subscription.teamId),
@@ -591,7 +591,7 @@ async function calculateSubscription({
   const outgoingUsageByCompany = await db
     .select({ companyId: companies.id, companyName: companies.name, outgoingUsage: count() })
     .from(transferEvents)
-    .innerJoin(companies, eq(transferEvents.companyId, companies.id))
+    .leftJoin(companies, eq(transferEvents.companyId, companies.id))
     .where(
       and(
         eq(transferEvents.teamId, subscription.teamId),
@@ -606,17 +606,17 @@ async function calculateSubscription({
   let outgoingUsageDecimal = new Decimal(0);
   const perCompanyUsage: Record<string, { companyName: string, incomingUsage: Decimal, outgoingUsage: Decimal }> = {};
   for (const company of incomingUsageByCompany) {
-    if (!perCompanyUsage[company.companyId]) {
-      perCompanyUsage[company.companyId] = { companyName: company.companyName, incomingUsage: new Decimal(0), outgoingUsage: new Decimal(0) };
+    if (!perCompanyUsage[company.companyId ?? "unknown"]) {
+      perCompanyUsage[company.companyId ?? "unknown"] = { companyName: company.companyName ?? "Deleted companies", incomingUsage: new Decimal(0), outgoingUsage: new Decimal(0) };
     }
-    perCompanyUsage[company.companyId].incomingUsage = perCompanyUsage[company.companyId].incomingUsage.plus(company.incomingUsage);
+    perCompanyUsage[company.companyId ?? "unknown"].incomingUsage = perCompanyUsage[company.companyId ?? "unknown"].incomingUsage.plus(company.incomingUsage);
     incomingUsageDecimal = incomingUsageDecimal.plus(company.incomingUsage);
   }
   for (const company of outgoingUsageByCompany) {
-    if (!perCompanyUsage[company.companyId]) {
-      perCompanyUsage[company.companyId] = { companyName: company.companyName, incomingUsage: new Decimal(0), outgoingUsage: new Decimal(0) };
+    if (!perCompanyUsage[company.companyId ?? "unknown"]) {
+      perCompanyUsage[company.companyId ?? "unknown"] = { companyName: company.companyName ?? "Deleted companies", incomingUsage: new Decimal(0), outgoingUsage: new Decimal(0) };
     }
-    perCompanyUsage[company.companyId].outgoingUsage = perCompanyUsage[company.companyId].outgoingUsage.plus(company.outgoingUsage);
+    perCompanyUsage[company.companyId ?? "unknown"].outgoingUsage = perCompanyUsage[company.companyId ?? "unknown"].outgoingUsage.plus(company.outgoingUsage);
     outgoingUsageDecimal = outgoingUsageDecimal.plus(company.outgoingUsage);
   }
 
