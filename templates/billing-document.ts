@@ -201,7 +201,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
         </div>
       </div>
 
-      {{#paymentMeans}}
+      {{#paymentMeans.length}}
         <div class="px-8 py-6 border-t border-slate-200">
           <p class="text-xs font-semibold tracking-wide uppercase text-slate-500 mb-3">Payment Information</p>
           <div class="space-y-3 text-sm">
@@ -219,7 +219,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             {{/paymentMeans}}
           </div>
         </div>
-      {{/paymentMeans}}
+      {{/paymentMeans.length}}
     </div>
   </body>
 </html>`;

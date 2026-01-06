@@ -23,6 +23,7 @@ import { COUNTRIES } from "@peppol/utils/countries";
 import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
 import { getMinimalTeamMembers } from "@core/data/team-members";
 import { TZDate } from "@date-fns/tz";
+import type { Mandate } from "@mollie/api-client";
 
 // TODO: list usage per company
 // TODO: add VAT and totals to the invoice
@@ -95,7 +96,6 @@ export async function getBillingEvents(teamId: string) {
 }
 
 export async function endBillingCycle(billingDate: Date, dryRun: boolean = false): Promise<BillSubscriptionResult[]> {
-  const results: BillSubscriptionResult[] = [];
   const toBeBilled = await db
     .select()
     .from(subscriptions)
@@ -113,38 +113,49 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
         )
       )
     )
-    .orderBy(subscriptions.teamId);
+    .orderBy(subscriptions.teamId, subscriptions.startDate);
 
-  for (const subscription of toBeBilled) {
+  const groupedByTeam = toBeBilled.reduce((acc, subscription) => {
+    acc[subscription.teamId] = [...(acc[subscription.teamId] || []), subscription];
+    return acc;
+  }, {} as Record<string, typeof subscriptions.$inferSelect[]>);
+
+  const results: BillSubscriptionResult[] = [];
+  for (const teamId in groupedByTeam) {
     try {
-      const result = await billSubscription(subscription, billingDate, dryRun);
-      results.push(result);
+      const result = await billTeam({
+        teamId: teamId,
+        toBeBilledSubscriptions: groupedByTeam[teamId],
+        billingDate: billingDate,
+        dryRun: dryRun,
+      });
+      results.push(...result);
     } catch (error) {
       console.error(
-        `Error ending billing cycle for subscription ${subscription.id}: ${error}`
+        `Error ending billing cycle for team ${teamId}: ${error}`
       );
-      sendTelegramNotification(`Error billing subscription ${subscription.id} for team ${subscription.teamId}: ${error}`);
+      sendTelegramNotification(`Error billing team ${teamId}: ${error}`);
       results.push({
         status: "error",
         message: error?.toString() ?? "Unknown error",
         billingProfileId: "BILLING FAILED: " + error?.toString(),
         isManuallyBilled: false,
-        teamId: subscription.teamId,
-        subscriptionId: subscription.id,
+        teamId: teamId,
+        subscriptionId: "",
         companyName: "",
         companyStreet: "",
         companyPostalCode: "",
         companyCity: "",
         companyCountry: "",
         companyVatNumber: "",
-        subscriptionStartDate: subscription.startDate,
-        subscriptionEndDate: subscription.endDate,
-        subscriptionLastBilledAt: subscription.lastBilledAt?.toISOString() ?? null,
-        planId: subscription.planId,
-        includedMonthlyDocuments: subscription.billingConfig.includedMonthlyDocuments,
-        basePrice: subscription.billingConfig.basePrice,
-        incomingDocumentOveragePrice: subscription.billingConfig.incomingDocumentOveragePrice !== undefined ? subscription.billingConfig.incomingDocumentOveragePrice : subscription.billingConfig.documentOveragePrice,
-        outgoingDocumentOveragePrice: subscription.billingConfig.outgoingDocumentOveragePrice !== undefined ? subscription.billingConfig.outgoingDocumentOveragePrice : subscription.billingConfig.documentOveragePrice,
+        subscriptionStartDate: new Date(),
+        subscriptionEndDate: null,
+        subscriptionLastBilledAt: null,
+        planId: null,
+        includedMonthlyDocuments: 0,
+        basePrice: 0,
+        incomingDocumentOveragePrice: 0,
+        outgoingDocumentOveragePrice: 0,
         billingEventId: null,
         invoiceId: null,
         invoiceReference: null,
@@ -167,13 +178,20 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
   return results;
 }
 
-async function billSubscription(
-  subscription: typeof subscriptions.$inferSelect,
-  billingDate: Date,
-  dryRun: boolean = false
-): Promise<BillSubscriptionResult> {
+async function billTeam({
+  teamId,
+  toBeBilledSubscriptions,
+  billingDate,
+  dryRun = false,
+}: {
+  teamId: string;
+  toBeBilledSubscriptions: typeof subscriptions.$inferSelect[];
+  billingDate: Date;
+  dryRun?: boolean;
+}): Promise<BillSubscriptionResult[]> {
+
   // Get billing profile for team
-  const billingProfile = await getBillingProfile(subscription.teamId);
+  const billingProfile = await getBillingProfile(teamId);
 
   // Check if billing profile mandate is validated
   if (!billingProfile.isMandateValidated) {
@@ -204,6 +222,42 @@ async function billSubscription(
       billingProfile.id
     );
   }
+
+  // Bill each subscription
+  const results: BillSubscriptionResult[] = [];
+  for (const subscription of toBeBilledSubscriptions) {
+    const result = await billSubscription({
+      mandate,
+      billingProfile,
+      subscription,
+      billingDate,
+      dryRun,
+    });
+    results.push(result);
+  }
+
+  // TODO: send payment request to mollie for team
+  // TODO: create invoice for team
+  // TODO: send invoice to customer
+
+  return results;
+}
+
+async function billSubscription({
+  mandate,
+  billingProfile,
+  subscription,
+  billingDate,
+  dryRun = false,
+}: {
+  mandate: Mandate;
+  billingProfile: typeof billingProfiles.$inferSelect;
+  subscription: typeof subscriptions.$inferSelect;
+  billingDate: Date;
+  dryRun?: boolean;
+}
+): Promise<BillSubscriptionResult> {
+
   const mollieMandateId = mandate.id;
 
   // Get billing period
@@ -380,7 +434,7 @@ async function billSubscription(
 
       // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
       await requestPayment(
-        billingProfile.mollieCustomerId,
+        billingProfile.mollieCustomerId!,
         mollieMandateId,
         billingProfile.id,
         billingEventId,
