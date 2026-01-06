@@ -141,9 +141,6 @@ export const subscriptionBillingEvents = pgTable(
       .$defaultFn(() => "sbe_" + ulid()),
     teamId: text("team_id") // Not linked to teams table, as we don't want to delete the subscription billing events when the team is deleted
       .notNull(),
-    subscriptionId: text("subscription_id")
-      .references(() => subscriptions.id)
-      .notNull(),
     billingProfileId: text("billing_profile_id")
       .references(() => billingProfiles.id)
       .notNull(),
@@ -159,11 +156,11 @@ export const subscriptionBillingEvents = pgTable(
     vatCategory: text("vat_category").notNull(),
     vatPercentage: decimal("vat_percentage").notNull(),
     totalAmountIncl: decimal("total_amount_incl").notNull(),
-    billingConfig: jsonb("billing_config").$type<BillingConfig>().notNull(),
     usedQty: decimal("used_qty").notNull(),
     usedQtyIncoming: decimal("used_qty_incoming").notNull(),
     usedQtyOutgoing: decimal("used_qty_outgoing").notNull(),
-    includedQty: decimal("included_qty").notNull(),
+    overageQtyIncoming: decimal("overage_qty_incoming").notNull(),
+    overageQtyOutgoing: decimal("overage_qty_outgoing").notNull(),
 
     // Payment
     amountDue: decimal("amount_due").notNull(),
@@ -183,6 +180,38 @@ export const subscriptionBillingEvents = pgTable(
       .defaultNow()
       .notNull(),
     updatedAt: autoUpdateTimestamp(),
+  }
+);
+
+export const subscriptionBillingEventLines = pgTable(
+  "peppol_subscription_billing_event_lines",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "sbel_" + ulid()),
+    subscriptionBillingEventId: text("subscription_billing_event_id")
+      .references(() => subscriptionBillingEvents.id)
+      .notNull(),
+    subscriptionId: text("subscription_id").notNull(),
+    subscriptionStartDate: timestamp("subscription_start_date", { withTimezone: true }).notNull(),
+    subscriptionEndDate: timestamp("subscription_end_date", { withTimezone: true }).notNull(),
+    subscriptionLastBilledAt: timestamp("subscription_last_billed_at", { withTimezone: true }).notNull(),
+    billingConfig: jsonb("billing_config").$type<BillingConfig>().notNull(),
+    planId: text("plan_id"),
+    includedMonthlyDocuments: decimal("included_monthly_documents").notNull(),
+    basePrice: decimal("base_price").notNull(),
+    incomingDocumentOveragePrice: decimal("incoming_document_overage_price").notNull(),
+    outgoingDocumentOveragePrice: decimal("outgoing_document_overage_price").notNull(),
+    usedQty: decimal("used_qty").notNull(),
+    usedQtyIncoming: decimal("used_qty_incoming").notNull(),
+    usedQtyOutgoing: decimal("used_qty_outgoing").notNull(),
+    overageQtyIncoming: decimal("overage_qty_incoming").notNull(),
+    overageQtyOutgoing: decimal("overage_qty_outgoing").notNull(),
+
+    // Invoice line details
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    totalAmountExcl: decimal("total_amount_excl").notNull(),
   }
 );
 

@@ -176,6 +176,6 @@ export async function processPayment(paymentId: string) {
           (payment.metadata as any).billingEventId
         )
       );
+    sendTelegramNotification(`Payment ${paymentId} failed for billing event ${(payment.metadata as any).billingEventId} with status ${payment.status}`);
   }
-  sendTelegramNotification(`Payment ${paymentId} failed for billing event ${(payment.metadata as any).billingEventId} with status ${payment.status}`);
 }

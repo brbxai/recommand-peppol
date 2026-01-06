@@ -1,23 +1,26 @@
 import {
   billingProfiles,
+  companies,
+  subscriptionBillingEventLines,
   subscriptionBillingEvents,
   subscriptions,
   transferEvents,
 } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { and, eq, isNull, lt, or, gt, count, gte, lte, desc } from "drizzle-orm";
+import { and, eq, isNull, lt, or, gt, count, gte, lte, desc, inArray } from "drizzle-orm";
 import {
   differenceInMinutes,
   isSameDay,
   startOfMonth,
   addMilliseconds,
   endOfMonth,
+  formatISO,
 } from "date-fns";
 import Decimal from "decimal.js";
 import { getBillingProfile } from "./billing-profile";
 import { getMandate, requestPayment } from "./mollie";
 import { sendTelegramNotification } from "@peppol/utils/system-notifications/telegram";
-import { BillingConfigSchema } from "./plans";
+import { BillingConfigSchema, type BillingConfig } from "./plans";
 import { cleanVatNumber } from "@peppol/utils/util";
 import { COUNTRIES } from "@peppol/utils/countries";
 import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
@@ -25,11 +28,31 @@ import { getMinimalTeamMembers } from "@core/data/team-members";
 import { TZDate } from "@date-fns/tz";
 import type { Mandate } from "@mollie/api-client";
 
-// TODO: list usage per company
-// TODO: add VAT and totals to the invoice
-// TODO: combine all subscriptions for a team into a single invoice
+export type SubscriptionBillingLine = {
+  subscriptionId: string;
+  billingConfig: BillingConfig;
+  subscriptionStartDate: Date;
+  subscriptionEndDate: Date | null;
+  billingPeriodStart: Date;
+  billingPeriodEnd: Date;
+  subscriptionLastBilledAt: string | null;
+  planId: string | null;
+  includedMonthlyDocuments: number;
+  basePrice: number;
+  incomingDocumentOveragePrice: number;
+  outgoingDocumentOveragePrice: number;
 
-export type BillSubscriptionResult = {
+  lineName: string;
+  lineDescription: string;
+  lineTotalExcl: number;
+  usedQty: number;
+  usedQtyIncoming: number;
+  usedQtyOutgoing: number;
+  overageQtyIncoming: number;
+  overageQtyOutgoing: number;
+}
+
+export type TeamBillingResult = {
   status: "success" | "error";
   message: string;
   billingProfileId: string;
@@ -42,8 +65,8 @@ export type BillSubscriptionResult = {
   companyCity: string;
   companyCountry: string;
   companyVatNumber: string | null;
-  subscriptionStartDate: Date;
-  subscriptionEndDate: Date | null;
+  subscriptionStartDate: string;
+  subscriptionEndDate: string | null;
   subscriptionLastBilledAt: string | null;
   planId: string | null;
   includedMonthlyDocuments: number;
@@ -59,13 +82,14 @@ export type BillSubscriptionResult = {
   vatExemptionReason: string | null;
   vatAmount: number;
   totalAmountIncl: number;
-  billingDate: Date;
+  billingDate: string;
   billingPeriodStart: string;
-  billingPeriodEnd: string;
+  billingPeriodEnd: string | null;
   usedQty: number;
   usedQtyIncoming: number;
   usedQtyOutgoing: number;
-  includedQty: number;
+  overageQtyIncoming: number;
+  overageQtyOutgoing: number;
 }
 
 export async function getCurrentUsage(teamId: string) {
@@ -95,12 +119,13 @@ export async function getBillingEvents(teamId: string) {
   return events;
 }
 
-export async function endBillingCycle(billingDate: Date, dryRun: boolean = false): Promise<BillSubscriptionResult[]> {
+export async function endBillingCycle(billingDate: Date, dryRun: boolean = false, teamId?: string): Promise<TeamBillingResult[]> {
   const toBeBilled = await db
     .select()
     .from(subscriptions)
     .where(
       and(
+        teamId ? eq(subscriptions.teamId, teamId) : undefined,
         lt(subscriptions.startDate, billingDate),
         or(
           isNull(subscriptions.lastBilledAt), // Subscription has not been billed yet
@@ -120,7 +145,7 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
     return acc;
   }, {} as Record<string, typeof subscriptions.$inferSelect[]>);
 
-  const results: BillSubscriptionResult[] = [];
+  const results: TeamBillingResult[] = [];
   for (const teamId in groupedByTeam) {
     try {
       const result = await billTeam({
@@ -138,7 +163,7 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
       results.push({
         status: "error",
         message: error?.toString() ?? "Unknown error",
-        billingProfileId: "BILLING FAILED: " + error?.toString(),
+        billingProfileId: "",
         isManuallyBilled: false,
         teamId: teamId,
         subscriptionId: "",
@@ -148,7 +173,7 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
         companyCity: "",
         companyCountry: "",
         companyVatNumber: "",
-        subscriptionStartDate: new Date(),
+        subscriptionStartDate: "",
         subscriptionEndDate: null,
         subscriptionLastBilledAt: null,
         planId: null,
@@ -165,13 +190,14 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
         vatExemptionReason: null,
         vatAmount: 0,
         totalAmountIncl: 0,
-        billingDate: billingDate,
+        billingDate: billingDate.toISOString(),
         billingPeriodStart: "",
-        billingPeriodEnd: "",
+        billingPeriodEnd: null,
         usedQty: 0,
         usedQtyIncoming: 0,
         usedQtyOutgoing: 0,
-        includedQty: 0,
+        overageQtyIncoming: 0,
+        overageQtyOutgoing: 0,
       });
     }
   }
@@ -188,7 +214,7 @@ async function billTeam({
   toBeBilledSubscriptions: typeof subscriptions.$inferSelect[];
   billingDate: Date;
   dryRun?: boolean;
-}): Promise<BillSubscriptionResult[]> {
+}): Promise<TeamBillingResult[]> {
 
   // Get billing profile for team
   const billingProfile = await getBillingProfile(teamId);
@@ -208,7 +234,13 @@ async function billTeam({
       billingProfile.id
     );
   }
-  const mandate = await getMandate(billingProfile.mollieCustomerId);
+  let mandate: Mandate | null = null;
+  try {
+    mandate = await getMandate(billingProfile.mollieCustomerId);
+  } catch (error) {
+    console.error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
+    throw new Error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
+  }
   if (!mandate) {
     // Update billing profile mandate status
     await db
@@ -224,41 +256,246 @@ async function billTeam({
   }
 
   // Bill each subscription
-  const results: BillSubscriptionResult[] = [];
+  const billingLine: SubscriptionBillingLine[] = [];
   for (const subscription of toBeBilledSubscriptions) {
-    const result = await billSubscription({
-      mandate,
-      billingProfile,
+    billingLine.push(await calculateSubscription({
       subscription,
       billingDate,
-      dryRun,
-    });
-    results.push(result);
+    }));
   }
 
-  // TODO: send payment request to mollie for team
-  // TODO: create invoice for team
-  // TODO: send invoice to customer
+  // Determine VAT strategy
+  const vatStrategy = determineVatStrategy(billingProfile);
 
-  return results;
+  // Calculate totals
+  const totalAmountExcl = billingLine.reduce((acc, curr) => acc.plus(curr.lineTotalExcl), new Decimal(0)).toNearest(0.01);
+  const totalVatAmount = totalAmountExcl.times(vatStrategy.percentage).div(100).toNearest(0.01);
+  const totalAmountIncl = totalAmountExcl.plus(totalVatAmount).toNearest(0.01);
+
+  // Determine billing period
+  let billingPeriodStart: Date | null = null;
+  let billingPeriodEnd: Date | null = null;
+  for (const result of billingLine) {
+    if (!billingPeriodStart || result.billingPeriodStart < billingPeriodStart) {
+      billingPeriodStart = result.billingPeriodStart;
+    }
+    if (!billingPeriodEnd || result.billingPeriodEnd && billingPeriodEnd && result.billingPeriodEnd > billingPeriodEnd) {
+      billingPeriodEnd = result.billingPeriodEnd;
+    }
+  }
+
+  if(!billingPeriodStart) {
+    throw new Error(
+      `Billing period start is not set for team ${teamId}`
+    );
+  }
+
+  if (!billingPeriodEnd) {
+    billingPeriodEnd = billingDate;
+  }
+
+  let usedQty = new Decimal(0);
+  let usedQtyIncoming = new Decimal(0);
+  let usedQtyOutgoing = new Decimal(0);
+  let overageQtyIncoming = new Decimal(0);
+  let overageQtyOutgoing = new Decimal(0);
+  for (const result of billingLine) {
+    usedQty = usedQty.plus(result.usedQty);
+    usedQtyIncoming = usedQtyIncoming.plus(result.usedQtyIncoming);
+    usedQtyOutgoing = usedQtyOutgoing.plus(result.usedQtyOutgoing);
+    overageQtyIncoming = overageQtyIncoming.plus(result.overageQtyIncoming);
+    overageQtyOutgoing = overageQtyOutgoing.plus(result.overageQtyOutgoing);
+  }
+
+  // Create billing event for team
+  let invoiceReference: number | null = null;
+  let billingEventId: string | null = null;
+
+  // Create billing event
+  if (!dryRun) {
+    await db.transaction(async (tx) => {
+      if (!billingProfile.isManuallyBilled) {
+        const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
+          .insert(subscriptionBillingEvents)
+          .values({
+            teamId,
+            billingProfileId: billingProfile.id,
+            billingDate: billingDate,
+            billingPeriodStart,
+            billingPeriodEnd,
+            totalAmountExcl: totalAmountExcl.toFixed(2),
+            vatAmount: totalVatAmount.toFixed(2),
+            vatCategory: vatStrategy.vatCategory,
+            vatPercentage: vatStrategy.percentage.toFixed(2),
+            totalAmountIncl: totalAmountIncl.toFixed(2),
+            usedQty: usedQty.toFixed(2),
+            usedQtyIncoming: usedQtyIncoming.toFixed(2),
+            usedQtyOutgoing: usedQtyOutgoing.toFixed(2),
+            overageQtyIncoming: overageQtyIncoming.toFixed(2),
+            overageQtyOutgoing: overageQtyOutgoing.toFixed(2),
+            amountDue: totalAmountIncl.toFixed(2),
+            paymentStatus: totalAmountIncl.gt(0) ? "none" : "paid",
+            paymentId: null,
+            paidAmount: totalAmountIncl.gt(0) ? null : new Decimal(0).toFixed(2),
+            paymentMethod: totalAmountIncl.gt(0) ? null : "auto-reconcile",
+            paymentDate: totalAmountIncl.gt(0) ? null : new Date(),
+          })
+          .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
+        billingEventId = _billingEventId;
+
+        if (!billingEventId) {
+          throw new Error(
+            `Failed to create billing event for team ${teamId}`
+          );
+        }
+
+        // Create billing event lines
+        for (const result of billingLine) {
+          await tx
+            .insert(subscriptionBillingEventLines)
+            .values({
+              subscriptionBillingEventId: billingEventId!,
+              subscriptionId: result.subscriptionId,
+              billingConfig: result.billingConfig,
+              subscriptionStartDate: result.subscriptionStartDate,
+              subscriptionEndDate: result.subscriptionEndDate ?? billingPeriodEnd,
+              subscriptionLastBilledAt: result.subscriptionLastBilledAt ? new Date(result.subscriptionLastBilledAt) : billingPeriodStart,
+              planId: result.planId,
+              includedMonthlyDocuments: result.includedMonthlyDocuments.toFixed(2),
+              basePrice: result.basePrice.toFixed(2),
+              incomingDocumentOveragePrice: result.incomingDocumentOveragePrice.toFixed(2),
+              outgoingDocumentOveragePrice: result.outgoingDocumentOveragePrice.toFixed(2),
+              usedQty: result.usedQty.toFixed(2),
+              usedQtyIncoming: result.usedQtyIncoming.toFixed(2),
+              usedQtyOutgoing: result.usedQtyOutgoing.toFixed(2),
+              overageQtyIncoming: result.overageQtyIncoming.toFixed(2),
+              overageQtyOutgoing: result.overageQtyOutgoing.toFixed(2),
+              name: result.lineName,
+              description: result.lineDescription,
+              totalAmountExcl: result.lineTotalExcl.toFixed(2),
+            });
+        }
+      }
+
+      // Update lastBilledAt date
+      await tx
+        .update(subscriptions)
+        .set({ lastBilledAt: billingDate })
+        .where(inArray(subscriptions.id, toBeBilledSubscriptions.map(subscription => subscription.id)));
+    });
+
+    if (!billingProfile.isManuallyBilled) {
+      if (!billingEventId) {
+        throw new Error(
+          `Failed to request payment for team ${teamId} due to missing billing event id`
+        );
+      }
+
+      // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
+      await requestPayment(
+        billingProfile.mollieCustomerId!,
+        mandate.id,
+        billingProfile.id,
+        billingEventId,
+        totalAmountIncl.toFixed(2)
+      );
+    }
+  }
+
+  // Create invoice for team
+  let invoiceId: string | null = null;
+  if (!billingProfile.isManuallyBilled) {
+    invoiceId = await sendInvoiceAsBRBX({
+      teamId: teamId,
+      companyName: billingProfile.companyName,
+      companyStreet: billingProfile.address,
+      companyPostalCode: billingProfile.postalCode,
+      companyCity: billingProfile.city,
+      companyCountry: billingProfile.country,
+      companyVatNumber: billingProfile.vatNumber ?? null,
+      invoiceReference: invoiceReference,
+      totalAmountExcl: totalAmountExcl.toNumber(),
+      totalVatAmount: totalVatAmount.toNumber(),
+      vatCategory: vatStrategy.vatCategory,
+      vatPercentage: vatStrategy.percentage.toNumber(),
+      vatExemptionReason: vatStrategy.vatExemptionReason,
+      totalAmountIncl: totalAmountIncl.toNumber(),
+      lines: billingLine.map(x => ({
+        planId: x.planId ?? null,
+        name: x.lineName,
+        description: x.lineDescription,
+        netPriceAmount: x.lineTotalExcl.toFixed(2),
+        netAmount: x.lineTotalExcl.toFixed(2),
+        vat: {
+          category: vatStrategy.vatCategory,
+          percentage: vatStrategy.percentage.toFixed(2),
+        },
+      })),
+    }, billingProfile, dryRun);
+
+    // Update billing event with invoice id and reference
+    if (!dryRun) {
+      if(!invoiceId) {
+        throw new Error(
+          `Failed to finalize billing for team ${teamId} due to missing invoice id`
+        );
+      }
+      console.log("Updating billing event with invoice id", invoiceId, "for billing event", billingEventId);
+      await db
+        .update(subscriptionBillingEvents)
+        .set({ invoiceId: invoiceId })
+        .where(eq(subscriptionBillingEvents.id, billingEventId!));
+    }
+  }
+
+  return billingLine.map(x => ({
+    status: "success",
+    message: "",
+    billingProfileId: billingProfile.id,
+    isManuallyBilled: billingProfile.isManuallyBilled,
+    teamId: teamId,
+    subscriptionId: x.subscriptionId,
+    companyName: billingProfile.companyName,
+    companyStreet: billingProfile.address,
+    companyPostalCode: billingProfile.postalCode,
+    companyCity: billingProfile.city,
+    companyCountry: billingProfile.country,
+    companyVatNumber: billingProfile.vatNumber,
+    subscriptionStartDate: x.subscriptionStartDate.toISOString(),
+    subscriptionEndDate: x.subscriptionEndDate?.toISOString() ?? null,
+    subscriptionLastBilledAt: x.subscriptionLastBilledAt,
+    planId: x.planId,
+    includedMonthlyDocuments: x.includedMonthlyDocuments,
+    basePrice: x.basePrice,
+    incomingDocumentOveragePrice: x.incomingDocumentOveragePrice,
+    outgoingDocumentOveragePrice: x.outgoingDocumentOveragePrice,
+    billingEventId: billingEventId,
+    invoiceId: invoiceId,
+    invoiceReference: invoiceReference,
+    totalAmountExcl: totalAmountExcl.toNumber(),
+    vatCategory: vatStrategy.vatCategory,
+    vatPercentage: vatStrategy.percentage.toNumber(),
+    vatExemptionReason: vatStrategy.vatExemptionReason,
+    vatAmount: totalVatAmount.toNumber(),
+    totalAmountIncl: totalAmountIncl.toNumber(),
+    billingDate: billingDate.toISOString(),
+    billingPeriodStart: billingPeriodStart.toISOString(),
+    billingPeriodEnd: billingPeriodEnd.toISOString(),
+    usedQty: x.usedQty,
+    usedQtyIncoming: x.usedQtyIncoming,
+    usedQtyOutgoing: x.usedQtyOutgoing,
+    overageQtyIncoming: x.overageQtyIncoming,
+    overageQtyOutgoing: x.overageQtyOutgoing,
+  }));
 }
 
-async function billSubscription({
-  mandate,
-  billingProfile,
+async function calculateSubscription({
   subscription,
   billingDate,
-  dryRun = false,
 }: {
-  mandate: Mandate;
-  billingProfile: typeof billingProfiles.$inferSelect;
   subscription: typeof subscriptions.$inferSelect;
   billingDate: Date;
-  dryRun?: boolean;
-}
-): Promise<BillSubscriptionResult> {
-
-  const mollieMandateId = mandate.id;
+}): Promise<SubscriptionBillingLine> {
 
   // Get billing period
   const subscriptionHasEnded =
@@ -270,6 +507,12 @@ async function billSubscription({
   const billingPeriodEndInclusive = subscriptionHasEnded
     ? subscription.endDate!
     : billingDate;
+
+  if(billingPeriodStartInclusive > billingPeriodEndInclusive) {
+    throw new Error(
+      `Billing period start is after billing period end for subscription ${subscription.id}`
+    );
+  }
 
   // Validate billing config
   if (!subscription.billingConfig) {
@@ -315,9 +558,9 @@ async function billSubscription({
     billingPeriodEndInclusive,
     billingPeriodStartInclusive
   );
-  const monthlyMinutes = new Decimal(30).times(24).times(60); // 30 days * 24 hours * 60 minutes
+  const monthlyMinutes = new Decimal(31).times(24).times(60); // 31 days * 24 hours * 60 minutes
   let billingRatio = new Decimal(minutesInPeriod).div(monthlyMinutes);
-  if (billingRatio.gt(1) || isEntireMonth) {
+  if (isEntireMonth) {
     billingRatio = new Decimal(1);
   }
   if (subscriptionHasEnded) {
@@ -329,9 +572,10 @@ async function billSubscription({
   }
 
   // Get usage for the billing period
-  const [{ incomingUsage }] = await db
-    .select({ incomingUsage: count() })
+  const incomingUsageByCompany = await db
+    .select({ companyId: companies.id, companyName: companies.name, incomingUsage: count() })
     .from(transferEvents)
+    .innerJoin(companies, eq(transferEvents.companyId, companies.id))
     .where(
       and(
         eq(transferEvents.teamId, subscription.teamId),
@@ -339,10 +583,12 @@ async function billSubscription({
         lte(transferEvents.createdAt, billingPeriodEndInclusive),
         eq(transferEvents.direction, "incoming")
       )
-    );
-  const [{ outgoingUsage }] = await db
-    .select({ outgoingUsage: count() })
+    )
+    .groupBy(companies.id);
+  const outgoingUsageByCompany = await db
+    .select({ companyId: companies.id, companyName: companies.name, outgoingUsage: count() })
     .from(transferEvents)
+    .innerJoin(companies, eq(transferEvents.companyId, companies.id))
     .where(
       and(
         eq(transferEvents.teamId, subscription.teamId),
@@ -350,9 +596,27 @@ async function billSubscription({
         lte(transferEvents.createdAt, billingPeriodEndInclusive),
         eq(transferEvents.direction, "outgoing")
       )
-    );
-  const incomingUsageDecimal = new Decimal(incomingUsage);
-  const outgoingUsageDecimal = new Decimal(outgoingUsage);
+    )
+    .groupBy(companies.id);
+
+  let incomingUsageDecimal = new Decimal(0);
+  let outgoingUsageDecimal = new Decimal(0);
+  const perCompanyUsage: Record<string, { companyName: string, incomingUsage: Decimal, outgoingUsage: Decimal }> = {};
+  for (const company of incomingUsageByCompany) {
+    if (!perCompanyUsage[company.companyId]) {
+      perCompanyUsage[company.companyId] = { companyName: company.companyName, incomingUsage: new Decimal(0), outgoingUsage: new Decimal(0) };
+    }
+    perCompanyUsage[company.companyId].incomingUsage = perCompanyUsage[company.companyId].incomingUsage.plus(company.incomingUsage);
+    incomingUsageDecimal = incomingUsageDecimal.plus(company.incomingUsage);
+  }
+  for (const company of outgoingUsageByCompany) {
+    if (!perCompanyUsage[company.companyId]) {
+      perCompanyUsage[company.companyId] = { companyName: company.companyName, incomingUsage: new Decimal(0), outgoingUsage: new Decimal(0) };
+    }
+    perCompanyUsage[company.companyId].outgoingUsage = perCompanyUsage[company.companyId].outgoingUsage.plus(company.outgoingUsage);
+    outgoingUsageDecimal = outgoingUsageDecimal.plus(company.outgoingUsage);
+  }
+
   const usageDecimal = incomingUsageDecimal.plus(outgoingUsageDecimal);
 
   // Calculate billing amount
@@ -361,145 +625,73 @@ async function billSubscription({
   const incomingDocumentOveragePrice = billingConfig.incomingDocumentOveragePrice !== undefined ? billingConfig.incomingDocumentOveragePrice : billingConfig.documentOveragePrice;
   const outgoingDocumentOveragePrice = billingConfig.outgoingDocumentOveragePrice !== undefined ? billingConfig.outgoingDocumentOveragePrice : billingConfig.documentOveragePrice;
 
-  const amountIncomingExcl = Decimal.max(0, incomingUsageDecimal).times(incomingDocumentOveragePrice);
-  const amountOutgoingExcl = Decimal.max(0, outgoingUsageDecimal).times(outgoingDocumentOveragePrice);
-
-  const includedPrice = Decimal.min(incomingDocumentOveragePrice, outgoingDocumentOveragePrice); // For the included documents, the lowest price is used to keep it simple
-  const amountIncludedExcl = includedPrice.mul(includedUsage);
-
-  const overageAmountExcl = Decimal.max(0, amountIncomingExcl.plus(amountOutgoingExcl).minus(amountIncludedExcl));
-  const totalAmountExcl = baseAmount.plus(overageAmountExcl);
-
-  // Add VAT
-  const vat = calculateVat(billingProfile);
-  const vatAmount = totalAmountExcl.times(vat.percentage).div(100);
-  const totalAmountIncl = totalAmountExcl.plus(vatAmount);
-
-  let invoiceReference: number | null = null;
-  let billingEventId: string | null = null;
-
-  // Create billing event
-  if (!dryRun) {
-    await db.transaction(async (tx) => {
-      if (!billingProfile.isManuallyBilled) {
-        const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
-          .insert(subscriptionBillingEvents)
-          .values({
-            teamId: subscription.teamId,
-            subscriptionId: subscription.id,
-            billingProfileId: billingProfile.id,
-            billingDate: billingDate,
-            billingPeriodStart: billingPeriodStartInclusive,
-            billingPeriodEnd: billingPeriodEndInclusive,
-            totalAmountExcl: totalAmountExcl.toFixed(2),
-            vatAmount: vatAmount.toFixed(2),
-            vatCategory: vat.vatCategory,
-            vatPercentage: vat.percentage.toFixed(2),
-            totalAmountIncl: totalAmountIncl.toFixed(2),
-            billingConfig: billingConfig,
-            usedQty: usageDecimal.toString(),
-            usedQtyIncoming: incomingUsageDecimal.toString(),
-            usedQtyOutgoing: outgoingUsageDecimal.toString(),
-            includedQty: includedUsage.toString(),
-            amountDue: totalAmountIncl.toFixed(2),
-            paymentStatus: "none",
-            paymentId: null,
-            paidAmount: null,
-            paymentMethod: null,
-            paymentDate: null,
-          })
-          .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
-        billingEventId = _billingEventId;
-
-        if (!billingEventId) {
-          throw new Error(
-            `Failed to create billing event for subscription ${subscription.id}`
-          );
-        }
-      }
-
-      // Update lastBilledAt date
-      await tx
-        .update(subscriptions)
-        .set({ lastBilledAt: billingDate })
-        .where(eq(subscriptions.id, subscription.id));
-    });
-
-    if (!billingProfile.isManuallyBilled) {
-      if (!billingEventId) {
-        throw new Error(
-          `Failed to request payment for subscription ${subscription.id} due to missing billing event id`
-        );
-      }
-
-      // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
-      await requestPayment(
-        billingProfile.mollieCustomerId!,
-        mollieMandateId,
-        billingProfile.id,
-        billingEventId,
-        totalAmountIncl.toFixed(2)
-      );
-    }
+  // We have to determine how many documents have to be billed for the overage
+  let toBeBilledIncoming: Decimal = incomingUsageDecimal;
+  let toBeBilledOutgoing: Decimal = outgoingUsageDecimal;
+  // First subtract from the incoming documents
+  let remainingIncludedUsage = new Decimal(includedUsage);
+  if (incomingUsageDecimal.gt(remainingIncludedUsage)) {
+    toBeBilledIncoming = incomingUsageDecimal.minus(remainingIncludedUsage);
+    remainingIncludedUsage = new Decimal(0);
+  } else {
+    toBeBilledIncoming = new Decimal(0);
+    remainingIncludedUsage = remainingIncludedUsage.minus(incomingUsageDecimal);
+  }
+  // Then subtract from the outgoing documents
+  if (outgoingUsageDecimal.gt(remainingIncludedUsage)) {
+    toBeBilledOutgoing = outgoingUsageDecimal.minus(remainingIncludedUsage);
+    remainingIncludedUsage = new Decimal(0);
+  } else {
+    toBeBilledOutgoing = new Decimal(0);
+    remainingIncludedUsage = remainingIncludedUsage.minus(outgoingUsageDecimal);
   }
 
-  const info: BillSubscriptionResult = {
-    status: "success",
-    message: "Successfully billed subscription",
-    billingProfileId: billingProfile.id,
-    isManuallyBilled: billingProfile.isManuallyBilled,
-    teamId: subscription.teamId,
+  const overageAmountExcl = toBeBilledIncoming.times(incomingDocumentOveragePrice).plus(toBeBilledOutgoing.times(outgoingDocumentOveragePrice));
+  const totalAmountExcl = baseAmount.plus(overageAmountExcl).toNearest(0.01);
+
+  // Generate description for invoice line
+  let lineDescription = `${formatISO(billingPeriodStartInclusive, { representation: "date" })} - ${formatISO(billingPeriodEndInclusive, { representation: "date" })}\n`;
+  lineDescription += `Incoming: ${incomingUsageDecimal.toString()} documents\n`;
+  lineDescription += `Outgoing: ${outgoingUsageDecimal.toString()} documents\n`;
+  lineDescription += `Included in subscription: ${includedUsage} documents\n`;
+  lineDescription += `Base price: € ${baseAmount.toString()}\n`;
+  lineDescription += `Overage: ${overageAmountExcl.toString()} documents\n`;
+  lineDescription += `Overage price per document: € ${incomingDocumentOveragePrice.toString()} IN, € ${outgoingDocumentOveragePrice.toString()} OUT\n`;
+  lineDescription += `\n`;
+  lineDescription += `Per company usage:\n`;
+  // Add document usage per company
+  for (const companyId in perCompanyUsage) {
+    const company = perCompanyUsage[companyId];
+    lineDescription += `- ${company.companyName}: ${company.incomingUsage.toString()} IN, ${company.outgoingUsage.toString()} OUT\n`;
+  }
+
+  return {
     subscriptionId: subscription.id,
-    companyName: billingProfile.companyName,
-    companyStreet: billingProfile.address,
-    companyPostalCode: billingProfile.postalCode,
-    companyCity: billingProfile.city,
-    companyCountry: billingProfile.country,
-    companyVatNumber: billingProfile.vatNumber,
+    billingConfig: subscription.billingConfig,
     subscriptionStartDate: subscription.startDate,
     subscriptionEndDate: subscription.endDate,
+    billingPeriodStart: billingPeriodStartInclusive,
+    billingPeriodEnd: billingPeriodEndInclusive,
     subscriptionLastBilledAt: subscription.lastBilledAt?.toISOString() ?? null,
     planId: subscription.planId,
     includedMonthlyDocuments: billingConfig.includedMonthlyDocuments,
     basePrice: billingConfig.basePrice,
     incomingDocumentOveragePrice,
-    outgoingDocumentOveragePrice: billingConfig.outgoingDocumentOveragePrice !== undefined ? billingConfig.outgoingDocumentOveragePrice : billingConfig.documentOveragePrice,
-    billingEventId: billingEventId,
-    invoiceId: null,
-    invoiceReference: invoiceReference,
-    totalAmountExcl: totalAmountExcl.toNumber(),
-    vatCategory: vat.vatCategory,
-    vatPercentage: vat.percentage.toNumber(),
-    vatExemptionReason: vat.vatExemptionReason,
-    vatAmount: vatAmount.toNumber(),
-    totalAmountIncl: totalAmountIncl.toNumber(),
-    billingDate: billingDate,
-    billingPeriodStart: billingPeriodStartInclusive.toISOString(),
-    billingPeriodEnd: billingPeriodEndInclusive.toISOString(),
+    outgoingDocumentOveragePrice,
+
+    // Invoice line
+    lineName: billingConfig.name,
+    lineDescription: lineDescription,
+    lineTotalExcl: totalAmountExcl.toNumber(),
     usedQty: usageDecimal.toNumber(),
     usedQtyIncoming: incomingUsageDecimal.toNumber(),
     usedQtyOutgoing: outgoingUsageDecimal.toNumber(),
-    includedQty: includedUsage,
+    overageQtyIncoming: toBeBilledIncoming.toNumber(),
+    overageQtyOutgoing: toBeBilledOutgoing.toNumber(),
   };
-
-  // Send invoice to customer
-  if (!billingProfile.isManuallyBilled) {
-    const invoiceId = await sendInvoiceAsBRBX(info, billingProfile, dryRun);
-    info.invoiceId = invoiceId;
-
-    // Update billing event with invoice id and reference
-    if (!dryRun) {
-      await db
-        .update(subscriptionBillingEvents)
-        .set({ invoiceId: invoiceId })
-        .where(eq(subscriptionBillingEvents.id, billingEventId!));
-    }
-  }
-
-  return info;
 }
 
-function calculateVat(billingProfile: typeof billingProfiles.$inferSelect): { percentage: Decimal, vatCategory: VatCategory, vatExemptionReason: string | null } {
+function determineVatStrategy(billingProfile: typeof billingProfiles.$inferSelect): { percentage: Decimal, vatCategory: VatCategory, vatExemptionReason: string | null } {
   // Clean the vat number
   let vatNumber = cleanVatNumber(billingProfile.vatNumber);
   if (!vatNumber) {
@@ -524,10 +716,36 @@ function calculateVat(billingProfile: typeof billingProfiles.$inferSelect): { pe
 }
 
 async function sendInvoiceAsBRBX(
-  info: BillSubscriptionResult,
+  info: {
+    teamId: string;
+    companyName: string;
+    companyStreet: string;
+    companyPostalCode: string;
+    companyCity: string;
+    companyCountry: string;
+    companyVatNumber: string | null;
+    invoiceReference: number | null;
+    totalAmountExcl: number;
+    totalVatAmount: number;
+    vatCategory: VatCategory;
+    vatPercentage: number;
+    vatExemptionReason: string | null;
+    totalAmountIncl: number;
+    lines: {
+      planId: string | null;
+      name: string;
+      description: string;
+      netPriceAmount: string;
+      netAmount: string;
+      vat: {
+        category: VatCategory;
+        percentage: string;
+      };
+    }[];
+  },
   billingProfile: typeof billingProfiles.$inferSelect,
   dryRun: boolean = false
-) {
+): Promise<string> {
   const companyId = dryRun
     ? process.env.BRBX_BILLING_DRY_RUN_COMPANY_ID
     : process.env.BRBX_BILLING_LIVE_COMPANY_ID;
@@ -578,17 +796,33 @@ async function sendInvoiceAsBRBX(
       country: info.companyCountry,
       vatNumber: info.companyVatNumber,
     },
-    lines: [
-      {
-        name: "Subscription",
-        netPriceAmount: info.totalAmountExcl.toFixed(2),
-        vat: {
-          category: info.vatCategory,
-          percentage: info.vatPercentage.toFixed(2),
-          exemptionReason: info.vatExemptionReason ? info.vatExemptionReason : null,
-        },
+    lines: info.lines.map(line => ({
+      sellersId: line.planId ?? null,
+      name: line.name,
+      description: line.description,
+      netPriceAmount: line.netPriceAmount,
+      netAmount: line.netAmount,
+      vat: {
+        category: line.vat.category,
+        percentage: line.vat.percentage,
       },
-    ],
+    })),
+    totals: {
+      taxExclusiveAmount: info.totalAmountExcl,
+      taxInclusiveAmount: info.totalAmountIncl,
+      linesAmount: info.totalAmountExcl,
+      payableAmount: info.totalAmountIncl,
+    },
+    vat: {
+      totalVatAmount: info.totalVatAmount,
+      subtotals: [{
+        taxableAmount: info.totalAmountExcl,
+        vatAmount: info.totalVatAmount,
+        category: info.vatCategory,
+        percentage: info.vatPercentage,
+        exemptionReason: info.vatExemptionReason,
+      }],
+    }
   };
 
   const response = await fetch(`https://app.recommand.eu/api/v1/${companyId}/send`, {
@@ -615,5 +849,5 @@ async function sendInvoiceAsBRBX(
   }
 
   const responseJson = await response.json();
-  return responseJson.invoiceId;
+  return responseJson.id;
 }

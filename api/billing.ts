@@ -15,14 +15,21 @@ const _endBillingCycle = server.post(
   "/billing/end-billing-cycle",
   requireAdmin(),
   describeRoute({ hide: true }),
-  zodValidator("query", z.object({ dryRun: z.string().optional().default("false") })),
+  zodValidator("query", z.object({ dryRun: z.string().optional().default("false"), teamId: z.string().optional(), billingDate: z.string().optional() })),
   async (c) => {
     try {
-      // End of previous month (UTC)
-      const endOfPreviousMonth = endOfMonth(subMonths(TZDate.tz("UTC"), 1));
+
+      let billingDate: Date;
+      if (c.req.query("billingDate")) {
+        // Date is in format YYYY-MM-DD, convert it to a Date object (end of day in UTC)
+        billingDate = new Date(c.req.query("billingDate") + "T23:59:59.999Z");
+      } else {
+        // End of previous month (UTC)
+        billingDate = endOfMonth(subMonths(TZDate.tz("UTC"), 1));
+      }
       const isDryRun = c.req.query("dryRun") === "true";
-      console.log("Ending billing cycle for all teams on", endOfPreviousMonth, "with dry run", isDryRun);
-      const results = await endBillingCycle(endOfPreviousMonth, isDryRun);
+      console.log("Ending billing cycle for", c.req.query("teamId") ? c.req.query("teamId") : "all teams", "on", billingDate, "with dry run", isDryRun);
+      const results = await endBillingCycle(billingDate, isDryRun, c.req.query("teamId"));
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Billing Results");
@@ -63,7 +70,8 @@ const _endBillingCycle = server.post(
         { header: "Used Quantity", key: "usedQty", width: 15 },
         { header: "Used Quantity Incoming", key: "usedQtyIncoming", width: 25 },
         { header: "Used Quantity Outgoing", key: "usedQtyOutgoing", width: 25 },
-        { header: "Included Quantity", key: "includedQty", width: 20 },
+        { header: "Overage Quantity Incoming", key: "overageQtyIncoming", width: 25 },
+        { header: "Overage Quantity Outgoing", key: "overageQtyOutgoing", width: 25 },
       ];
 
       worksheet.getRow(1).font = { bold: true };
@@ -73,7 +81,7 @@ const _endBillingCycle = server.post(
       }
 
       const buffer = await workbook.xlsx.writeBuffer();
-      const filename = `billing-cycle-${format(endOfPreviousMonth, "yyyy-MM-dd")}-${isDryRun ? "dry-run" : "live"}.xlsx`;
+      const filename = `billing-cycle-${format(billingDate, "yyyy-MM-dd")}-${isDryRun ? "dry-run" : "live"}.xlsx`;
 
       c.header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       c.header("Content-Disposition", `attachment; filename="${filename}"`);

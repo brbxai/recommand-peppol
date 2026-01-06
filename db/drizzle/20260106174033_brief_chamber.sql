@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_subscription_billing_event_lines" ADD COLUMN "billing_config" jsonb NOT NULL;
