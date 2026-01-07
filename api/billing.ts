@@ -36,6 +36,8 @@ const _endBillingCycle = server.post(
 
       worksheet.columns = [
         { header: "Status", key: "status", width: 15 },
+        { header: "Is Invoice Sent", key: "isInvoiceSent", width: 10 },
+        { header: "Is Payment Requested", key: "isPaymentRequested", width: 10 },
         { header: "Message", key: "message", width: 40 },
         { header: "Billing Profile ID", key: "billingProfileId", width: 30 },
         { header: "Is Manually Billed", key: "isManuallyBilled", width: 20 },
