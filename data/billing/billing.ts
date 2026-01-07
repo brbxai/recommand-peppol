@@ -352,10 +352,12 @@ async function billTeam({
     }
 
     // Update lastBilledAt date
-    await db
-      .update(subscriptions)
-      .set({ lastBilledAt: billingDate })
-      .where(inArray(subscriptions.id, toBeBilledSubscriptions.map(subscription => subscription.id)));
+    if (!dryRun) {
+      await db
+        .update(subscriptions)
+        .set({ lastBilledAt: billingDate })
+        .where(inArray(subscriptions.id, toBeBilledSubscriptions.map(subscription => subscription.id)));
+    }
 
     return billingLines.map((x, i) => ({
       ...subscriptionBillingLineToTeamBillingResult(x),
