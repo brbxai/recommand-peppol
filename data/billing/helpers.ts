@@ -1,8 +1,19 @@
+import type { billingProfiles } from "@peppol/db/schema";
 import type { SubscriptionBillingLine, TeamBillingResultSubscriptionBase } from "./billing-types";
 import type { TeamBillingResult } from "./billing-types";
 
-export function subscriptionBillingLineToTeamBillingResult(x: SubscriptionBillingLine, params: Partial<TeamBillingResult> = {}): TeamBillingResultSubscriptionBase {
+export function generateTeamBillingResult(x: SubscriptionBillingLine, billingProfile?: typeof billingProfiles.$inferSelect, params: Partial<TeamBillingResult> = {}): TeamBillingResultSubscriptionBase {
     return {
+      ...(billingProfile ? {
+        billingProfileId: billingProfile.id,
+        isManuallyBilled: billingProfile.isManuallyBilled,
+        companyName: billingProfile.companyName,
+        companyStreet: billingProfile.address,
+        companyPostalCode: billingProfile.postalCode,
+        companyCity: billingProfile.city,
+        companyCountry: billingProfile.country,
+        companyVatNumber: billingProfile.vatNumber,
+      } : {}),
       subscriptionId: x.subscriptionId,
       subscriptionStartDate: x.subscriptionStartDate.toISOString(),
       subscriptionEndDate: x.subscriptionEndDate?.toISOString() ?? null,

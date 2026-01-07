@@ -23,7 +23,7 @@ import { sendTelegramNotification } from "@peppol/utils/system-notifications/tel
 import { BillingConfigSchema } from "../plans";
 import type { Mandate } from "@mollie/api-client";
 import { type SubscriptionBillingLine, type TeamBillingResult, TeamBillingResultError, ERROR_TEAM_BILLING_RESULT } from "./billing-types";
-import { subscriptionBillingLineToTeamBillingResult } from "./helpers";
+import { generateTeamBillingResult } from "./helpers";
 import { determineVatStrategy } from "./vat";
 import { sendInvoiceAsBRBX } from "./invoicing";
 
@@ -175,7 +175,7 @@ async function billTeam({
       throw new TeamBillingResultError(
         "Billing profile mandate is not validated for billing profile " +
         billingProfile.id,
-        billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+        billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
       );
     }
 
@@ -184,7 +184,7 @@ async function billTeam({
       throw new TeamBillingResultError(
         "Billing profile has no Mollie customer id for billing profile " +
         billingProfile.id,
-        billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+        billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
       );
     }
     let mandate: Mandate | null = null;
@@ -192,7 +192,7 @@ async function billTeam({
       mandate = await getMandate(billingProfile.mollieCustomerId);
     } catch (error) {
       console.error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
-      throw new TeamBillingResultError(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`, billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" })));
+      throw new TeamBillingResultError(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`, billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" })));
     }
     if (!mandate) {
       // Update billing profile mandate status
@@ -205,7 +205,7 @@ async function billTeam({
       throw new TeamBillingResultError(
         "Billing profile mandate is not validated according to Mollie for billing profile " +
         billingProfile.id,
-        billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+        billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
       );
     }
 
@@ -244,7 +244,7 @@ async function billTeam({
           if (!billingEventId) {
             throw new TeamBillingResultError(
               `Failed to create billing event for team ${teamId}`,
-              billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+              billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
             );
           }
 
@@ -312,7 +312,7 @@ async function billTeam({
       } catch (error) {
         throw new TeamBillingResultError(
           `Failed to send invoice for team ${teamId}: ${error}`,
-          billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+          billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
         );
       }
 
@@ -321,7 +321,7 @@ async function billTeam({
         if (!invoiceId) {
           throw new TeamBillingResultError(
             `Failed to finalize billing for team ${teamId} due to missing invoice id`,
-            billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+            billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
           );
         }
         console.log("Updating billing event with invoice id", invoiceId, "for billing event", billingEventId);
@@ -345,7 +345,7 @@ async function billTeam({
         } catch (error) {
           throw new TeamBillingResultError(
             `Failed to request payment for team ${teamId}: ${error}`,
-            billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: invoiceId ? "x" : "", isPaymentRequested: "?" }))
+            billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: invoiceId ? "x" : "", isPaymentRequested: "?" }))
           );
         }
       }
@@ -360,7 +360,7 @@ async function billTeam({
     }
 
     return billingLines.map((x, i) => ({
-      ...subscriptionBillingLineToTeamBillingResult(x),
+      ...generateTeamBillingResult(x, billingProfile),
       status: "success",
       isInvoiceSent: invoiceId ? "x" : "",
       isPaymentRequested: billingProfile.isManuallyBilled ? "" : "x",
