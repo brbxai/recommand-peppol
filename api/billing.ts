@@ -2,7 +2,7 @@ import { zodValidator } from "@recommand/lib/zod-validator";
 import { Server } from "@recommand/lib/api";
 import { z } from "zod";
 import { actionFailure } from "@recommand/lib/utils";
-import { endBillingCycle } from "@peppol/data/billing";
+import { endBillingCycle } from "@peppol/data/billing/billing";
 import { endOfMonth, format, subMonths } from "date-fns";
 import { requireAdmin } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";

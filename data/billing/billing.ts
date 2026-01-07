@@ -17,10 +17,10 @@ import {
   formatISO,
 } from "date-fns";
 import Decimal from "decimal.js";
-import { getBillingProfile } from "./billing-profile";
-import { getMandate, requestPayment } from "./mollie";
+import { getBillingProfile } from "../billing-profile";
+import { getMandate, requestPayment } from "../mollie";
 import { sendTelegramNotification } from "@peppol/utils/system-notifications/telegram";
-import { BillingConfigSchema, type BillingConfig } from "./plans";
+import { BillingConfigSchema, type BillingConfig } from "../plans";
 import { cleanVatNumber } from "@peppol/utils/util";
 import { COUNTRIES } from "@peppol/utils/countries";
 import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
@@ -29,6 +29,61 @@ import { TZDate } from "@date-fns/tz";
 import type { Mandate } from "@mollie/api-client";
 import { render } from "@react-email/render";
 import { InvoiceEmail } from "@peppol/emails/invoice-email";
+
+const ERROR_TEAM_BILLING_RESULT: TeamBillingResult = {
+  status: "error",
+  isInvoiceSent: "?",
+  isPaymentRequested: "?",
+  message: "Unknown error",
+  billingProfileId: "",
+  isManuallyBilled: false,
+  teamId: "",
+  subscriptionId: "",
+  companyName: "",
+  companyStreet: "",
+  companyPostalCode: "",
+  companyCity: "",
+  companyCountry: "",
+  companyVatNumber: "",
+  subscriptionStartDate: "",
+  subscriptionEndDate: null,
+  subscriptionLastBilledAt: null,
+  planId: null,
+  includedMonthlyDocuments: 0,
+  basePrice: 0,
+  incomingDocumentOveragePrice: 0,
+  outgoingDocumentOveragePrice: 0,
+  billingEventId: null,
+  invoiceId: null,
+  invoiceReference: null,
+  lineTotalExcl: 0,
+  totalAmountExcl: 0,
+  vatCategory: "S",
+  vatPercentage: 0,
+  vatExemptionReason: null,
+  vatAmount: 0,
+  totalAmountIncl: 0,
+  billingDate: "",
+  billingPeriodStart: "",
+  billingPeriodEnd: null,
+  usedQty: 0,
+  usedQtyIncoming: 0,
+  usedQtyOutgoing: 0,
+  overageQtyIncoming: 0,
+  overageQtyOutgoing: 0,
+}
+
+class TeamBillingResultError extends Error {
+  public readonly teamBillingResult: TeamBillingResult[];
+  constructor(message: string, teamBillingResult: Partial<TeamBillingResult>[]) {
+    super(message);
+    this.name = "TeamBillingResultError";
+    this.teamBillingResult = teamBillingResult.map(x => ({
+      ...ERROR_TEAM_BILLING_RESULT,
+      ...x,
+    }));
+  }
+}
 
 export type SubscriptionBillingLine = {
   subscriptionId: string;
@@ -54,19 +109,8 @@ export type SubscriptionBillingLine = {
   overageQtyOutgoing: number;
 }
 
-export type TeamBillingResult = {
-  status: "success" | "error";
-  message: string;
-  billingProfileId: string;
-  isManuallyBilled: boolean;
-  teamId: string;
+type TeamBillingResultSubscriptionBase = {
   subscriptionId: string;
-  companyName: string;
-  companyStreet: string;
-  companyPostalCode: string;
-  companyCity: string;
-  companyCountry: string;
-  companyVatNumber: string | null;
   subscriptionStartDate: string;
   subscriptionEndDate: string | null;
   subscriptionLastBilledAt: string | null;
@@ -75,17 +119,7 @@ export type TeamBillingResult = {
   basePrice: number;
   incomingDocumentOveragePrice: number;
   outgoingDocumentOveragePrice: number;
-  billingEventId: string | null;
-  invoiceId: string | null;
-  invoiceReference: number | null;
   lineTotalExcl: number;
-  totalAmountExcl: number | null;
-  vatCategory: VatCategory;
-  vatPercentage: number;
-  vatExemptionReason: string | null;
-  vatAmount: number | null;
-  totalAmountIncl: number | null;
-  billingDate: string;
   billingPeriodStart: string;
   billingPeriodEnd: string | null;
   usedQty: number;
@@ -93,6 +127,55 @@ export type TeamBillingResult = {
   usedQtyOutgoing: number;
   overageQtyIncoming: number;
   overageQtyOutgoing: number;
+}
+
+export type TeamBillingResult = TeamBillingResultSubscriptionBase & {
+  status: "success" | "error";
+  isInvoiceSent: "x" | "?" | "";
+  isPaymentRequested: "x" | "?" | "";
+  message: string;
+  billingProfileId: string;
+  isManuallyBilled: boolean;
+  teamId: string;
+  companyName: string;
+  companyStreet: string;
+  companyPostalCode: string;
+  companyCity: string;
+  companyCountry: string;
+  companyVatNumber: string | null;
+  billingEventId: string | null;
+  invoiceId: string | null;
+  invoiceReference: number | null;
+  totalAmountExcl: number | null;
+  vatCategory: VatCategory;
+  vatPercentage: number;
+  vatExemptionReason: string | null;
+  vatAmount: number | null;
+  totalAmountIncl: number | null;
+  billingDate: string;
+}
+
+function subscriptionBillingLineToTeamBillingResult(x: SubscriptionBillingLine, params: Partial<TeamBillingResult> = {}): TeamBillingResultSubscriptionBase {
+  return {
+    subscriptionId: x.subscriptionId,
+    subscriptionStartDate: x.subscriptionStartDate.toISOString(),
+    subscriptionEndDate: x.subscriptionEndDate?.toISOString() ?? null,
+    subscriptionLastBilledAt: x.subscriptionLastBilledAt,
+    planId: x.planId,
+    includedMonthlyDocuments: x.includedMonthlyDocuments,
+    basePrice: x.basePrice,
+    incomingDocumentOveragePrice: x.incomingDocumentOveragePrice,
+    outgoingDocumentOveragePrice: x.outgoingDocumentOveragePrice,
+    lineTotalExcl: x.lineTotalExcl,
+    billingPeriodStart: x.billingPeriodStart.toISOString(),
+    billingPeriodEnd: x.billingPeriodEnd.toISOString(),
+    usedQty: x.usedQty,
+    usedQtyIncoming: x.usedQtyIncoming,
+    usedQtyOutgoing: x.usedQtyOutgoing,
+    overageQtyIncoming: x.overageQtyIncoming,
+    overageQtyOutgoing: x.overageQtyOutgoing,
+    ...params,
+  }
 }
 
 export async function getCurrentUsage(teamId: string) {
@@ -126,6 +209,7 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
   const toBeBilled = await db
     .select()
     .from(subscriptions)
+    .innerJoin(billingProfiles, eq(subscriptions.teamId, billingProfiles.teamId))
     .where(
       and(
         teamId ? eq(subscriptions.teamId, teamId) : undefined,
@@ -143,7 +227,8 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
     )
     .orderBy(subscriptions.teamId, subscriptions.startDate);
 
-  const groupedByTeam = toBeBilled.reduce((acc, subscription) => {
+  const groupedByTeam = toBeBilled.reduce((acc, row) => {
+    const subscription = row.peppol_subscriptions
     acc[subscription.teamId] = [...(acc[subscription.teamId] || []), subscription];
     return acc;
   }, {} as Record<string, typeof subscriptions.$inferSelect[]>);
@@ -163,46 +248,20 @@ export async function endBillingCycle(billingDate: Date, dryRun: boolean = false
         `Error ending billing cycle for team ${teamId}: ${error}`
       );
       sendTelegramNotification(`Error billing team ${teamId}: ${error}`);
-      results.push({
-        status: "error",
-        message: error?.toString() ?? "Unknown error",
-        billingProfileId: "",
-        isManuallyBilled: false,
-        teamId: teamId,
-        subscriptionId: "",
-        companyName: "",
-        companyStreet: "",
-        companyPostalCode: "",
-        companyCity: "",
-        companyCountry: "",
-        companyVatNumber: "",
-        subscriptionStartDate: "",
-        subscriptionEndDate: null,
-        subscriptionLastBilledAt: null,
-        planId: null,
-        includedMonthlyDocuments: 0,
-        basePrice: 0,
-        incomingDocumentOveragePrice: 0,
-        outgoingDocumentOveragePrice: 0,
-        billingEventId: null,
-        invoiceId: null,
-        invoiceReference: null,
-        lineTotalExcl: 0,
-        totalAmountExcl: 0,
-        vatCategory: "S",
-        vatPercentage: 0,
-        vatExemptionReason: null,
-        vatAmount: 0,
-        totalAmountIncl: 0,
-        billingDate: billingDate.toISOString(),
-        billingPeriodStart: "",
-        billingPeriodEnd: null,
-        usedQty: 0,
-        usedQtyIncoming: 0,
-        usedQtyOutgoing: 0,
-        overageQtyIncoming: 0,
-        overageQtyOutgoing: 0,
-      });
+      if (error instanceof TeamBillingResultError) {
+        results.push(...error.teamBillingResult.map(x => ({
+          ...x,
+          teamId,
+          billingDate: billingDate.toISOString(),
+        })));
+      } else {
+        results.push({
+          ...ERROR_TEAM_BILLING_RESULT,
+          message: error?.toString() ?? "Unknown error",
+          teamId,
+          billingDate: billingDate.toISOString(),
+        });
+      }
     }
   }
   return results;
@@ -220,278 +279,306 @@ async function billTeam({
   dryRun?: boolean;
 }): Promise<TeamBillingResult[]> {
 
-  // Get billing profile for team
-  const billingProfile = await getBillingProfile(teamId);
-
-  // Check if billing profile mandate is validated
-  if (!billingProfile.isMandateValidated) {
-    throw new Error(
-      "Billing profile mandate is not validated for billing profile " +
-      billingProfile.id
-    );
-  }
-
-  // Get the customer mandate
-  if (!billingProfile.mollieCustomerId) {
-    throw new Error(
-      "Billing profile has no Mollie customer id for billing profile " +
-      billingProfile.id
-    );
-  }
-  let mandate: Mandate | null = null;
-  try {
-    mandate = await getMandate(billingProfile.mollieCustomerId);
-  } catch (error) {
-    console.error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
-    throw new Error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
-  }
-  if (!mandate) {
-    // Update billing profile mandate status
-    await db
-      .update(billingProfiles)
-      .set({
-        isMandateValidated: false,
-      })
-      .where(eq(billingProfiles.id, billingProfile.id));
-    throw new Error(
-      "Billing profile mandate is not validated according to Mollie for billing profile " +
-      billingProfile.id
-    );
-  }
-
-  // Bill each subscription
-  const billingLine: SubscriptionBillingLine[] = [];
-  for (const subscription of toBeBilledSubscriptions) {
-    billingLine.push(await calculateSubscription({
-      subscription,
-      billingDate,
-    }));
-  }
-
-  // Determine VAT strategy
-  const vatStrategy = determineVatStrategy(billingProfile);
-
-  // Calculate totals
-  const totalAmountExcl = billingLine.reduce((acc, curr) => acc.plus(curr.lineTotalExcl), new Decimal(0)).toNearest(0.01);
-  const totalVatAmount = totalAmountExcl.times(vatStrategy.percentage).div(100).toNearest(0.01);
-  const totalAmountIncl = totalAmountExcl.plus(totalVatAmount).toNearest(0.01);
-
-  // Determine billing period
-  let billingPeriodStart: Date | null = null;
-  let billingPeriodEnd: Date | null = null;
-  for (const result of billingLine) {
-    if (!billingPeriodStart || result.billingPeriodStart < billingPeriodStart) {
-      billingPeriodStart = result.billingPeriodStart;
-    }
-    if (!billingPeriodEnd || result.billingPeriodEnd && billingPeriodEnd && result.billingPeriodEnd > billingPeriodEnd) {
-      billingPeriodEnd = result.billingPeriodEnd;
-    }
-  }
-
-  if(!billingPeriodStart) {
-    throw new Error(
-      `Billing period start is not set for team ${teamId}`
-    );
-  }
-
-  if (!billingPeriodEnd) {
-    billingPeriodEnd = billingDate;
-  }
-
-  let usedQty = new Decimal(0);
-  let usedQtyIncoming = new Decimal(0);
-  let usedQtyOutgoing = new Decimal(0);
-  let overageQtyIncoming = new Decimal(0);
-  let overageQtyOutgoing = new Decimal(0);
-  for (const result of billingLine) {
-    usedQty = usedQty.plus(result.usedQty);
-    usedQtyIncoming = usedQtyIncoming.plus(result.usedQtyIncoming);
-    usedQtyOutgoing = usedQtyOutgoing.plus(result.usedQtyOutgoing);
-    overageQtyIncoming = overageQtyIncoming.plus(result.overageQtyIncoming);
-    overageQtyOutgoing = overageQtyOutgoing.plus(result.overageQtyOutgoing);
-  }
-
-  // Create billing event for team
   let invoiceReference: number | null = null;
   let billingEventId: string | null = null;
 
-  // Create billing event
-  if (!dryRun) {
-    await db.transaction(async (tx) => {
-      if (!billingProfile.isManuallyBilled) {
-        const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
-          .insert(subscriptionBillingEvents)
-          .values({
-            teamId,
-            billingProfileId: billingProfile.id,
-            billingDate: billingDate,
-            billingPeriodStart,
-            billingPeriodEnd,
-            totalAmountExcl: totalAmountExcl.toFixed(2),
-            vatAmount: totalVatAmount.toFixed(2),
-            vatCategory: vatStrategy.vatCategory,
-            vatPercentage: vatStrategy.percentage.toFixed(2),
-            totalAmountIncl: totalAmountIncl.toFixed(2),
-            usedQty: usedQty.toFixed(2),
-            usedQtyIncoming: usedQtyIncoming.toFixed(2),
-            usedQtyOutgoing: usedQtyOutgoing.toFixed(2),
-            overageQtyIncoming: overageQtyIncoming.toFixed(2),
-            overageQtyOutgoing: overageQtyOutgoing.toFixed(2),
-            amountDue: totalAmountIncl.toFixed(2),
-            paymentStatus: totalAmountIncl.gt(0) ? "none" : "paid",
-            paymentId: null,
-            paidAmount: totalAmountIncl.gt(0) ? null : new Decimal(0).toFixed(2),
-            paymentMethod: totalAmountIncl.gt(0) ? null : "auto-reconcile",
-            paymentDate: totalAmountIncl.gt(0) ? null : new Date(),
-          })
-          .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
-        billingEventId = _billingEventId;
+  try {
 
-        if (!billingEventId) {
-          throw new Error(
-            `Failed to create billing event for team ${teamId}`
-          );
-        }
+    // Get billing profile for team
+    const billingProfile = await getBillingProfile(teamId);
 
-        // Create billing event lines
-        for (const result of billingLine) {
-          await tx
-            .insert(subscriptionBillingEventLines)
-            .values({
-              subscriptionBillingEventId: billingEventId!,
-              subscriptionId: result.subscriptionId,
-              billingConfig: result.billingConfig,
-              subscriptionStartDate: result.subscriptionStartDate,
-              subscriptionEndDate: result.subscriptionEndDate ?? billingPeriodEnd,
-              subscriptionLastBilledAt: result.subscriptionLastBilledAt ? new Date(result.subscriptionLastBilledAt) : billingPeriodStart,
-              planId: result.planId,
-              includedMonthlyDocuments: result.includedMonthlyDocuments.toFixed(2),
-              basePrice: result.basePrice.toFixed(2),
-              incomingDocumentOveragePrice: result.incomingDocumentOveragePrice.toFixed(2),
-              outgoingDocumentOveragePrice: result.outgoingDocumentOveragePrice.toFixed(2),
-              usedQty: result.usedQty.toFixed(2),
-              usedQtyIncoming: result.usedQtyIncoming.toFixed(2),
-              usedQtyOutgoing: result.usedQtyOutgoing.toFixed(2),
-              overageQtyIncoming: result.overageQtyIncoming.toFixed(2),
-              overageQtyOutgoing: result.overageQtyOutgoing.toFixed(2),
-              name: result.lineName,
-              description: result.lineDescription,
-              totalAmountExcl: result.lineTotalExcl.toFixed(2),
-            });
-        }
+    if (!billingProfile) {
+      throw new TeamBillingResultError(
+        `Billing profile not found for team ${teamId}`,
+        [{ isInvoiceSent: "", isPaymentRequested: "" }]
+      );
+    }
+
+    // Bill each subscription
+    const billingLines: SubscriptionBillingLine[] = [];
+    for (const subscription of toBeBilledSubscriptions) {
+      billingLines.push(await calculateSubscription({
+        subscription,
+        billingDate,
+      }));
+    }
+
+    // Determine VAT strategy
+    const vatStrategy = determineVatStrategy(billingProfile);
+
+    // Calculate totals
+    const totalAmountExcl = billingLines.reduce((acc, curr) => acc.plus(curr.lineTotalExcl), new Decimal(0)).toNearest(0.01);
+    const totalVatAmount = totalAmountExcl.times(vatStrategy.percentage).div(100).toNearest(0.01);
+    const totalAmountIncl = totalAmountExcl.plus(totalVatAmount).toNearest(0.01);
+
+    // Determine billing period
+    let billingPeriodStart: Date | null = null;
+    let billingPeriodEnd: Date | null = null;
+    for (const result of billingLines) {
+      if (!billingPeriodStart || result.billingPeriodStart < billingPeriodStart) {
+        billingPeriodStart = result.billingPeriodStart;
       }
+      if (!billingPeriodEnd || result.billingPeriodEnd && billingPeriodEnd && result.billingPeriodEnd > billingPeriodEnd) {
+        billingPeriodEnd = result.billingPeriodEnd;
+      }
+    }
 
-      // Update lastBilledAt date
-      await tx
-        .update(subscriptions)
-        .set({ lastBilledAt: billingDate })
-        .where(inArray(subscriptions.id, toBeBilledSubscriptions.map(subscription => subscription.id)));
-    });
+    if (!billingPeriodStart) {
+      throw new TeamBillingResultError(
+        `Billing period start is not set for team ${teamId}`,
+        [{ isInvoiceSent: "", isPaymentRequested: "" }]
+      );
+    }
 
+    if (!billingPeriodEnd) {
+      billingPeriodEnd = billingDate;
+    }
+
+    // Gather usage totals
+    let usedQty = new Decimal(0);
+    let usedQtyIncoming = new Decimal(0);
+    let usedQtyOutgoing = new Decimal(0);
+    let overageQtyIncoming = new Decimal(0);
+    let overageQtyOutgoing = new Decimal(0);
+    for (const result of billingLines) {
+      usedQty = usedQty.plus(result.usedQty);
+      usedQtyIncoming = usedQtyIncoming.plus(result.usedQtyIncoming);
+      usedQtyOutgoing = usedQtyOutgoing.plus(result.usedQtyOutgoing);
+      overageQtyIncoming = overageQtyIncoming.plus(result.overageQtyIncoming);
+      overageQtyOutgoing = overageQtyOutgoing.plus(result.overageQtyOutgoing);
+    }
+
+    // Check if billing profile mandate is validated
+    if (!billingProfile.isMandateValidated) {
+      throw new TeamBillingResultError(
+        "Billing profile mandate is not validated for billing profile " +
+        billingProfile.id,
+        billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+      );
+    }
+
+    // Get the customer mandate
+    if (!billingProfile.mollieCustomerId) {
+      throw new TeamBillingResultError(
+        "Billing profile has no Mollie customer id for billing profile " +
+        billingProfile.id,
+        billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+      );
+    }
+    let mandate: Mandate | null = null;
+    try {
+      mandate = await getMandate(billingProfile.mollieCustomerId);
+    } catch (error) {
+      console.error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
+      throw new TeamBillingResultError(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`, billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" })));
+    }
+    if (!mandate) {
+      // Update billing profile mandate status
+      await db
+        .update(billingProfiles)
+        .set({
+          isMandateValidated: false,
+        })
+        .where(eq(billingProfiles.id, billingProfile.id));
+      throw new TeamBillingResultError(
+        "Billing profile mandate is not validated according to Mollie for billing profile " +
+        billingProfile.id,
+        billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+      );
+    }
+
+    // Create billing event
+    if (!dryRun) {
+      await db.transaction(async (tx) => {
+        if (!billingProfile.isManuallyBilled) {
+          const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
+            .insert(subscriptionBillingEvents)
+            .values({
+              teamId,
+              billingProfileId: billingProfile.id,
+              billingDate: billingDate,
+              billingPeriodStart,
+              billingPeriodEnd,
+              totalAmountExcl: totalAmountExcl.toFixed(2),
+              vatAmount: totalVatAmount.toFixed(2),
+              vatCategory: vatStrategy.vatCategory,
+              vatPercentage: vatStrategy.percentage.toFixed(2),
+              totalAmountIncl: totalAmountIncl.toFixed(2),
+              usedQty: usedQty.toFixed(2),
+              usedQtyIncoming: usedQtyIncoming.toFixed(2),
+              usedQtyOutgoing: usedQtyOutgoing.toFixed(2),
+              overageQtyIncoming: overageQtyIncoming.toFixed(2),
+              overageQtyOutgoing: overageQtyOutgoing.toFixed(2),
+              amountDue: totalAmountIncl.toFixed(2),
+              paymentStatus: totalAmountIncl.gt(0) ? "none" : "paid",
+              paymentId: null,
+              paidAmount: totalAmountIncl.gt(0) ? null : new Decimal(0).toFixed(2),
+              paymentMethod: totalAmountIncl.gt(0) ? null : "auto-reconcile",
+              paymentDate: totalAmountIncl.gt(0) ? null : new Date(),
+            })
+            .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
+          billingEventId = _billingEventId;
+
+          if (!billingEventId) {
+            throw new TeamBillingResultError(
+              `Failed to create billing event for team ${teamId}`,
+              billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+            );
+          }
+
+          // Create billing event lines
+          for (const result of billingLines) {
+            await tx
+              .insert(subscriptionBillingEventLines)
+              .values({
+                subscriptionBillingEventId: billingEventId!,
+                subscriptionId: result.subscriptionId,
+                billingConfig: result.billingConfig,
+                subscriptionStartDate: result.subscriptionStartDate,
+                subscriptionEndDate: result.subscriptionEndDate ?? billingPeriodEnd,
+                subscriptionLastBilledAt: result.subscriptionLastBilledAt ? new Date(result.subscriptionLastBilledAt) : billingPeriodStart,
+                planId: result.planId,
+                includedMonthlyDocuments: result.includedMonthlyDocuments.toFixed(2),
+                basePrice: result.basePrice.toFixed(2),
+                incomingDocumentOveragePrice: result.incomingDocumentOveragePrice.toFixed(2),
+                outgoingDocumentOveragePrice: result.outgoingDocumentOveragePrice.toFixed(2),
+                usedQty: result.usedQty.toFixed(2),
+                usedQtyIncoming: result.usedQtyIncoming.toFixed(2),
+                usedQtyOutgoing: result.usedQtyOutgoing.toFixed(2),
+                overageQtyIncoming: result.overageQtyIncoming.toFixed(2),
+                overageQtyOutgoing: result.overageQtyOutgoing.toFixed(2),
+                name: result.lineName,
+                description: result.lineDescription,
+                totalAmountExcl: result.lineTotalExcl.toFixed(2),
+              });
+          }
+        }
+      });
+    }
+
+    // Create invoice for team
+    let invoiceId: string | null = null;
     if (!billingProfile.isManuallyBilled) {
-      if (!billingEventId) {
-        throw new Error(
-          `Failed to request payment for team ${teamId} due to missing billing event id`
+      try {
+        invoiceId = await sendInvoiceAsBRBX({
+          teamId: teamId,
+          companyName: billingProfile.companyName,
+          companyStreet: billingProfile.address,
+          companyPostalCode: billingProfile.postalCode,
+          companyCity: billingProfile.city,
+          companyCountry: billingProfile.country,
+          companyVatNumber: billingProfile.vatNumber ?? null,
+          invoiceReference: invoiceReference,
+          totalAmountExcl: totalAmountExcl.toNumber(),
+          totalVatAmount: totalVatAmount.toNumber(),
+          vatCategory: vatStrategy.vatCategory,
+          vatPercentage: vatStrategy.percentage.toNumber(),
+          vatExemptionReason: vatStrategy.vatExemptionReason,
+          totalAmountIncl: totalAmountIncl.toNumber(),
+          lines: billingLines.map(x => ({
+            planId: x.planId ?? null,
+            name: x.lineName,
+            description: x.lineDescription,
+            netPriceAmount: x.lineTotalExcl.toFixed(2),
+            netAmount: x.lineTotalExcl.toFixed(2),
+            vat: {
+              category: vatStrategy.vatCategory,
+              percentage: vatStrategy.percentage.toFixed(2),
+            },
+          })),
+        }, billingProfile, dryRun);
+      } catch (error) {
+        throw new TeamBillingResultError(
+          `Failed to send invoice for team ${teamId}: ${error}`,
+          billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
         );
       }
 
-      // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
-      await requestPayment(
-        billingProfile.mollieCustomerId!,
-        mandate.id,
-        billingProfile.id,
-        billingEventId,
-        totalAmountIncl.toFixed(2)
-      );
-    }
-  }
+      // Update billing event with invoice id and reference
+      if (!dryRun) {
+        if (!invoiceId) {
+          throw new TeamBillingResultError(
+            `Failed to finalize billing for team ${teamId} due to missing invoice id`,
+            billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: "", isPaymentRequested: "" }))
+          );
+        }
+        console.log("Updating billing event with invoice id", invoiceId, "for billing event", billingEventId);
+        await db
+          .update(subscriptionBillingEvents)
+          .set({ invoiceId: invoiceId })
+          .where(eq(subscriptionBillingEvents.id, billingEventId!));
+      }
 
-  // Create invoice for team
-  let invoiceId: string | null = null;
-  if (!billingProfile.isManuallyBilled) {
-    invoiceId = await sendInvoiceAsBRBX({
+      // Payment through Mollie
+      if (!dryRun && !billingProfile.isManuallyBilled) {
+        // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
+        try {
+          await requestPayment(
+            billingProfile.mollieCustomerId!,
+            mandate.id,
+            billingProfile.id,
+            billingEventId!,
+            totalAmountIncl.toFixed(2)
+          );
+        } catch (error) {
+          throw new TeamBillingResultError(
+            `Failed to request payment for team ${teamId}: ${error}`,
+            billingLines.map(x => subscriptionBillingLineToTeamBillingResult(x, { isInvoiceSent: invoiceId ? "x" : "", isPaymentRequested: "?" }))
+          );
+        }
+      }
+    }
+
+    // Update lastBilledAt date
+    await db
+      .update(subscriptions)
+      .set({ lastBilledAt: billingDate })
+      .where(inArray(subscriptions.id, toBeBilledSubscriptions.map(subscription => subscription.id)));
+
+    return billingLines.map((x, i) => ({
+      ...subscriptionBillingLineToTeamBillingResult(x),
+      status: "success",
+      isInvoiceSent: invoiceId ? "x" : "",
+      isPaymentRequested: "x",
+      message: "",
+      billingProfileId: billingProfile.id,
+      isManuallyBilled: billingProfile.isManuallyBilled,
       teamId: teamId,
       companyName: billingProfile.companyName,
       companyStreet: billingProfile.address,
       companyPostalCode: billingProfile.postalCode,
       companyCity: billingProfile.city,
       companyCountry: billingProfile.country,
-      companyVatNumber: billingProfile.vatNumber ?? null,
+      companyVatNumber: billingProfile.vatNumber,
+      billingEventId: billingEventId,
+      invoiceId: invoiceId,
       invoiceReference: invoiceReference,
-      totalAmountExcl: totalAmountExcl.toNumber(),
-      totalVatAmount: totalVatAmount.toNumber(),
+      totalAmountExcl: i === 0 ? totalAmountExcl.toNumber() : null,
       vatCategory: vatStrategy.vatCategory,
       vatPercentage: vatStrategy.percentage.toNumber(),
       vatExemptionReason: vatStrategy.vatExemptionReason,
-      totalAmountIncl: totalAmountIncl.toNumber(),
-      lines: billingLine.map(x => ({
-        planId: x.planId ?? null,
-        name: x.lineName,
-        description: x.lineDescription,
-        netPriceAmount: x.lineTotalExcl.toFixed(2),
-        netAmount: x.lineTotalExcl.toFixed(2),
-        vat: {
-          category: vatStrategy.vatCategory,
-          percentage: vatStrategy.percentage.toFixed(2),
-        },
-      })),
-    }, billingProfile, dryRun);
-
-    // Update billing event with invoice id and reference
-    if (!dryRun) {
-      if(!invoiceId) {
-        throw new Error(
-          `Failed to finalize billing for team ${teamId} due to missing invoice id`
-        );
+      vatAmount: i === 0 ? totalVatAmount.toNumber() : null,
+      totalAmountIncl: i === 0 ? totalAmountIncl.toNumber() : null,
+      billingDate: billingDate.toISOString(),
+    }));
+  } catch (error) {
+    try {
+      // Remove billing event again
+      if (billingEventId) {
+        await db.transaction(async (tx) => {
+          await tx
+            .delete(subscriptionBillingEventLines)
+            .where(eq(subscriptionBillingEventLines.subscriptionBillingEventId, billingEventId!));
+          await tx
+            .delete(subscriptionBillingEvents)
+            .where(eq(subscriptionBillingEvents.id, billingEventId!));
+        });
       }
-      console.log("Updating billing event with invoice id", invoiceId, "for billing event", billingEventId);
-      await db
-        .update(subscriptionBillingEvents)
-        .set({ invoiceId: invoiceId })
-        .where(eq(subscriptionBillingEvents.id, billingEventId!));
+    } catch (error) {
+      throw new Error(`CRITICAL ERROR: Failed to remove billing event ${billingEventId} again: ${error}`);
     }
+    throw error;
   }
-
-  return billingLine.map((x, i) => ({
-    status: "success",
-    message: "",
-    billingProfileId: billingProfile.id,
-    isManuallyBilled: billingProfile.isManuallyBilled,
-    teamId: teamId,
-    subscriptionId: x.subscriptionId,
-    companyName: billingProfile.companyName,
-    companyStreet: billingProfile.address,
-    companyPostalCode: billingProfile.postalCode,
-    companyCity: billingProfile.city,
-    companyCountry: billingProfile.country,
-    companyVatNumber: billingProfile.vatNumber,
-    subscriptionStartDate: x.subscriptionStartDate.toISOString(),
-    subscriptionEndDate: x.subscriptionEndDate?.toISOString() ?? null,
-    subscriptionLastBilledAt: x.subscriptionLastBilledAt,
-    planId: x.planId,
-    includedMonthlyDocuments: x.includedMonthlyDocuments,
-    basePrice: x.basePrice,
-    incomingDocumentOveragePrice: x.incomingDocumentOveragePrice,
-    outgoingDocumentOveragePrice: x.outgoingDocumentOveragePrice,
-    billingEventId: billingEventId,
-    invoiceId: invoiceId,
-    invoiceReference: invoiceReference,
-    lineTotalExcl: x.lineTotalExcl,
-    totalAmountExcl: i === 0 ? totalAmountExcl.toNumber() : null,
-    vatCategory: vatStrategy.vatCategory,
-    vatPercentage: vatStrategy.percentage.toNumber(),
-    vatExemptionReason: vatStrategy.vatExemptionReason,
-    vatAmount: i === 0 ? totalVatAmount.toNumber() : null,
-    totalAmountIncl: i === 0 ? totalAmountIncl.toNumber() : null,
-    billingDate: billingDate.toISOString(),
-    billingPeriodStart: x.billingPeriodStart.toISOString(),
-    billingPeriodEnd: x.billingPeriodEnd.toISOString(),
-    usedQty: x.usedQty,
-    usedQtyIncoming: x.usedQtyIncoming,
-    usedQtyOutgoing: x.usedQtyOutgoing,
-    overageQtyIncoming: x.overageQtyIncoming,
-    overageQtyOutgoing: x.overageQtyOutgoing,
-  }));
 }
 
 async function calculateSubscription({
@@ -513,7 +600,7 @@ async function calculateSubscription({
     ? subscription.endDate!
     : billingDate;
 
-  if(billingPeriodStartInclusive > billingPeriodEndInclusive) {
+  if (billingPeriodStartInclusive > billingPeriodEndInclusive) {
     throw new Error(
       `Billing period start is after billing period end for subscription ${subscription.id}`
     );

@@ -7,7 +7,7 @@ import {
 } from "@peppol/data/billing-profile";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { createFirstPayment, processFirstPayment, processPayment } from "@peppol/data/mollie";
-import { getCurrentUsage } from "@peppol/data/billing";
+import { getCurrentUsage } from "@peppol/data/billing/billing";
 import { requireTeamAccess } from "@core/lib/auth-middleware";
 import { zodValidCountryCodes } from "@peppol/db/schema";
 import { describeRoute } from "hono-openapi";
