@@ -141,10 +141,10 @@ export async function sendInvoiceAsBRBX(
       documentType: "invoice",
       recipient,
       document: invoice,
-      email: {
-        to: dryRun ? ["support@recommand.eu"] : emailRecipients,
-        when: dryRun ? "always" : "on_peppol_failure",
-        subject: `${dryRun ? "[DRY RUN] - " : ""}Recommand invoice ${invoice.invoiceNumber}`,
+      email: dryRun ? undefined : {
+        to: emailRecipients,
+        when: "on_peppol_failure",
+        subject: `Recommand invoice ${invoice.invoiceNumber}`,
         htmlBody: htmlBody,
       },
       pdfGeneration: {
