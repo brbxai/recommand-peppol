@@ -7,7 +7,7 @@ import {
   getFutureSubscription,
   startSubscription,
 } from "@peppol/data/subscriptions";
-import { getBillingEvents } from "@peppol/data/billing/billing";
+import { getBillingEvents } from "@peppol/data/billing/usage";
 import { availablePlans } from "@peppol/data/plans";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { requireTeamAccess } from "@core/lib/auth-middleware";
