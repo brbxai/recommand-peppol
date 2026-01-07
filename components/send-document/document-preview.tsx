@@ -20,7 +20,8 @@ export function DocumentPreview({
       <CardHeader>
         <CardTitle>Document preview</CardTitle>
         <CardDescription>
-          This is how your customer will see the generated billing document.
+          This is how your customer will see the generated billing document if
+          you include it.
         </CardDescription>
       </CardHeader>
       <CardContent>

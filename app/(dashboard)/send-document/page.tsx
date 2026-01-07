@@ -256,7 +256,7 @@ export default function SendDocumentPage() {
   return (
     <PageTemplate
       breadcrumbs={[{ label: "Peppol" }, { label: "Send document" }]}
-      description="Send invoices and credit notes through the Peppol network with a billing preview (and a developer view for API details)."
+      description="Send invoices and credit notes through the Peppol network."
       buttons={[
         <div key="developer-mode" className="flex items-center gap-2">
           <Switch

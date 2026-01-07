@@ -382,57 +382,55 @@ export function DocumentForm({
           />
         </div>
 
-        {type !== "xml" && (
-          <Card className="p-4">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="customer">Customer</Label>
-                <Combobox
-                  value={selectedCustomerId}
-                  onValueChange={setSelectedCustomerId}
-                  options={customers.map((c) => ({
-                    value: c.id,
-                    label: c.vatNumber ? `${c.name} - ${c.vatNumber}` : c.name,
-                  }))}
-                  placeholder="Select a customer..."
-                  searchPlaceholder="Search customers..."
-                  emptyText="No customers found."
-                  disabled={!activeTeam?.id}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="recipient">Recipient Peppol ID *</Label>
-                <RecipientSelector
-                  value={formData.recipient || ""}
-                  onChange={handleRecipientChange}
-                />
-              </div>
-
-              {counterpartyKey && (
-                <Collapsible
-                  open={isCounterpartyOpen}
-                  onOpenChange={setIsCounterpartyOpen}
-                >
-                  <CollapsibleTrigger className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary">
-                    <span>{counterpartyLabel}</span>
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${isCounterpartyOpen ? "rotate-180" : ""}`}
-                    />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                    <PartyForm
-                      party={counterpartyParty || {}}
-                      onChange={handleCounterpartyChange as any}
-                      required
-                      disabled={false}
-                    />
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+        <Card className="p-4">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="customer">Customer</Label>
+              <Combobox
+                value={selectedCustomerId}
+                onValueChange={setSelectedCustomerId}
+                options={customers.map((c) => ({
+                  value: c.id,
+                  label: c.vatNumber ? `${c.name} - ${c.vatNumber}` : c.name,
+                }))}
+                placeholder="Select a customer..."
+                searchPlaceholder="Search customers..."
+                emptyText="No customers found."
+                disabled={!activeTeam?.id}
+              />
             </div>
-          </Card>
-        )}
+
+            <div>
+              <Label htmlFor="recipient">Recipient Peppol ID *</Label>
+              <RecipientSelector
+                value={formData.recipient || ""}
+                onChange={handleRecipientChange}
+              />
+            </div>
+
+            {counterpartyKey && (
+              <Collapsible
+                open={isCounterpartyOpen}
+                onOpenChange={setIsCounterpartyOpen}
+              >
+                <CollapsibleTrigger className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary">
+                  <span>{counterpartyLabel}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${isCounterpartyOpen ? "rotate-180" : ""}`}
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <PartyForm
+                    party={counterpartyParty || {}}
+                    onChange={handleCounterpartyChange as any}
+                    required
+                    disabled={false}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
+        </Card>
 
         <EmailOptions
           value={formData.email}
