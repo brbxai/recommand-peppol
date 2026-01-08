@@ -104,6 +104,7 @@ async function billTeam({
 
   let invoiceReference: number | null = null;
   let billingEventId: string | null = null;
+  let invoiceId: string | null = null;
 
   try {
 
@@ -317,7 +318,6 @@ async function billTeam({
     }
 
     // Create invoice for team
-    let invoiceId: string | null = null;
     if (!billingProfile.isManuallyBilled) {
       try {
         invoiceId = await sendInvoiceAsBRBX({
