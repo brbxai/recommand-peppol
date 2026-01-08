@@ -40,6 +40,12 @@ export const COUNTRIES: CountryInfo[] = [
         defaultEnterpriseNumberScheme: "0184",
     },
     {
+        code: "EE",
+        name: "Estonia",
+        flag: "🇪🇪",
+        defaultVatScheme: "9931",
+    },
+    {
         code: "FI",
         name: "Finland",
         flag: "🇫🇮",
