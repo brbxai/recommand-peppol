@@ -26,6 +26,7 @@ import { type SubscriptionBillingLine, type TeamBillingResult, TeamBillingResult
 import { generateTeamBillingResult } from "./helpers";
 import { determineVatStrategy } from "./vat";
 import { sendInvoiceAsBRBX } from "./invoicing";
+import { TZDate } from '@date-fns/tz'
 
 export async function endBillingCycle(billingDate: Date, dryRun: boolean = false, teamId?: string): Promise<TeamBillingResult[]> {
   const toBeBilled = await db
@@ -119,7 +120,7 @@ async function billTeam({
     // Bill each subscription
     const billingLines: SubscriptionBillingLine[] = [];
     for (const subscription of toBeBilledSubscriptions) {
-      billingLines.push(await calculateSubscription({
+      billingLines.push(...await calculateSubscriptionByMonthlyPeriods({
         subscription,
         billingDate,
       }));
@@ -405,30 +406,64 @@ async function billTeam({
   }
 }
 
-async function calculateSubscription({
+async function calculateSubscriptionByMonthlyPeriods({
   subscription,
   billingDate,
 }: {
   subscription: typeof subscriptions.$inferSelect;
   billingDate: Date;
-}): Promise<SubscriptionBillingLine> {
-
+}): Promise<SubscriptionBillingLine[]> {
   // Get billing period
-  const subscriptionHasEnded =
-    subscription.endDate && subscription.endDate < billingDate;
+  const subscriptionHasEnded = (subscription.endDate && subscription.endDate < billingDate) ?? false;
   const billingPeriodStartInclusive = addMilliseconds(
-    subscription.lastBilledAt || subscription.startDate,
+    TZDate.tz("UTC", subscription.lastBilledAt || subscription.startDate),
     1
   );
-  const billingPeriodEndInclusive = subscriptionHasEnded
-    ? subscription.endDate!
-    : billingDate;
+  const billingPeriodEndInclusive = TZDate.tz("UTC", subscriptionHasEnded ? subscription.endDate! : billingDate);
 
   if (billingPeriodStartInclusive > billingPeriodEndInclusive) {
     throw new Error(
       `Billing period start is after billing period end for subscription ${subscription.id}`
     );
   }
+
+  // Split billing period into months [start of billing period, end of month 1], [beginning of month 2, end of month 2], ... [beginning of month n, end of billing period]
+  const billingPeriodMonths = [];
+  let nextStart = billingPeriodStartInclusive;
+  while (nextStart <= billingPeriodEndInclusive) {
+    let endOfPeriod = endOfMonth(nextStart);
+    if (endOfPeriod > billingPeriodEndInclusive) {
+      endOfPeriod = billingPeriodEndInclusive;
+    }
+    billingPeriodMonths.push([nextStart, endOfPeriod]);
+    nextStart = addMilliseconds(endOfPeriod, 1);
+  }
+
+  const results: SubscriptionBillingLine[] = [];
+
+  for(const [start, end] of billingPeriodMonths){
+    results.push(await calculateSubscription({
+      subscription,
+      startInclusive: start,
+      endInclusive: end,
+      subscriptionHasEnded,
+    }))
+  }
+
+  return results;
+}
+
+async function calculateSubscription({
+  subscription,
+  startInclusive,
+  endInclusive,
+  subscriptionHasEnded,
+}: {
+  subscription: typeof subscriptions.$inferSelect;
+  startInclusive: Date;
+  endInclusive: Date;
+  subscriptionHasEnded: boolean;
+}): Promise<SubscriptionBillingLine> {
 
   // Validate billing config
   if (!subscription.billingConfig) {
@@ -463,20 +498,20 @@ async function calculateSubscription({
   // If the start is the first day of the month, and the end is the last day of the month, it's a full month
   const isEntireMonth =
     isSameDay(
-      billingPeriodStartInclusive,
-      startOfMonth(billingPeriodStartInclusive)
+      startInclusive,
+      startOfMonth(startInclusive)
     ) &&
-    isSameDay(billingPeriodEndInclusive, endOfMonth(billingPeriodEndInclusive));
+    isSameDay(endInclusive, endOfMonth(endInclusive));
 
   // If the billing period has ended, calculate the maximum included usage, otherwise assume full period allowance
   let includedUsage = billingConfig.includedMonthlyDocuments;
   const minutesInPeriod = differenceInMinutes(
-    billingPeriodEndInclusive,
-    billingPeriodStartInclusive
+    endInclusive,
+    startInclusive
   );
   const monthlyMinutes = new Decimal(31).times(24).times(60); // 31 days * 24 hours * 60 minutes
   let billingRatio = new Decimal(minutesInPeriod).div(monthlyMinutes);
-  if (isEntireMonth) {
+  if (isEntireMonth || billingRatio.gt(1)) {
     billingRatio = new Decimal(1);
   }
   if (subscriptionHasEnded) {
@@ -495,8 +530,8 @@ async function calculateSubscription({
     .where(
       and(
         eq(transferEvents.teamId, subscription.teamId),
-        gte(transferEvents.createdAt, billingPeriodStartInclusive),
-        lte(transferEvents.createdAt, billingPeriodEndInclusive),
+        gte(transferEvents.createdAt, startInclusive),
+        lte(transferEvents.createdAt, endInclusive),
         eq(transferEvents.direction, "incoming")
       )
     )
@@ -508,8 +543,8 @@ async function calculateSubscription({
     .where(
       and(
         eq(transferEvents.teamId, subscription.teamId),
-        gte(transferEvents.createdAt, billingPeriodStartInclusive),
-        lte(transferEvents.createdAt, billingPeriodEndInclusive),
+        gte(transferEvents.createdAt, startInclusive),
+        lte(transferEvents.createdAt, endInclusive),
         eq(transferEvents.direction, "outgoing")
       )
     )
@@ -566,7 +601,7 @@ async function calculateSubscription({
   const totalAmountExcl = baseAmount.plus(overageAmountExcl).toNearest(0.01);
 
   // Generate description for invoice line
-  let lineDescription = `${formatISO(billingPeriodStartInclusive, { representation: "date" })} - ${formatISO(billingPeriodEndInclusive, { representation: "date" })}\n\n`;
+  let lineDescription = `${formatISO(startInclusive, { representation: "date" })} - ${formatISO(endInclusive, { representation: "date" })}\n\n`;
   lineDescription += `Incoming: ${incomingUsageDecimal.toString()} documents\n`;
   lineDescription += `Outgoing: ${outgoingUsageDecimal.toString()} documents\n`;
   lineDescription += `Included in subscription: ${includedUsage} documents\n`;
@@ -586,8 +621,8 @@ async function calculateSubscription({
     billingConfig: subscription.billingConfig,
     subscriptionStartDate: subscription.startDate,
     subscriptionEndDate: subscription.endDate,
-    billingPeriodStart: billingPeriodStartInclusive,
-    billingPeriodEnd: billingPeriodEndInclusive,
+    billingPeriodStart: startInclusive,
+    billingPeriodEnd: endInclusive,
     subscriptionLastBilledAt: subscription.lastBilledAt?.toISOString() ?? null,
     planId: subscription.planId,
     includedMonthlyDocuments: billingConfig.includedMonthlyDocuments,
