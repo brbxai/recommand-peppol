@@ -171,6 +171,43 @@ async function billTeam({
       overageQtyOutgoing = overageQtyOutgoing.plus(result.overageQtyOutgoing);
     }
 
+    // If total amount incl == 0, mark as billed
+    if(totalAmountIncl.eq(0)){
+      if (!dryRun) {
+        await db
+          .update(subscriptions)
+          .set({ lastBilledAt: billingDate })
+          .where(inArray(subscriptions.id, toBeBilledSubscriptions.map(subscription => subscription.id)));
+      }
+  
+      return billingLines.map((x, i) => ({
+        ...generateTeamBillingResult(x, billingProfile),
+        status: "success",
+        isInvoiceSent: "",
+        isPaymentRequested: "",
+        message: "",
+        billingProfileId: billingProfile.id,
+        isManuallyBilled: billingProfile.isManuallyBilled,
+        teamId: teamId,
+        companyName: billingProfile.companyName,
+        companyStreet: billingProfile.address,
+        companyPostalCode: billingProfile.postalCode,
+        companyCity: billingProfile.city,
+        companyCountry: billingProfile.country,
+        companyVatNumber: billingProfile.vatNumber,
+        billingEventId: billingEventId,
+        invoiceId: invoiceId,
+        invoiceReference: invoiceReference,
+        totalAmountExcl: i === 0 ? totalAmountExcl.toNumber() : null,
+        vatCategory: vatStrategy.vatCategory,
+        vatPercentage: vatStrategy.percentage.toNumber(),
+        vatExemptionReason: vatStrategy.vatExemptionReason,
+        vatAmount: i === 0 ? totalVatAmount.toNumber() : null,
+        totalAmountIncl: i === 0 ? totalAmountIncl.toNumber() : null,
+        billingDate: billingDate.toISOString(),
+      }));
+    }
+
     // Check if billing profile mandate is validated
     if (!billingProfile.isMandateValidated) {
       throw new TeamBillingResultError(
