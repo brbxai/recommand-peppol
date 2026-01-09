@@ -8,6 +8,7 @@ import {
   getSortedRowModel,
   useReactTable,
   type ColumnFiltersState,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
 import { Button } from "@core/components/ui/button";
@@ -50,19 +51,60 @@ const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
 const labelsClient = rc<Labels>("v1");
 
+const STORAGE_KEY = "transmitted-documents-preferences";
+
+interface StoredPreferences {
+  columnFilters: ColumnFiltersState;
+  limit: number;
+  columnVisibility: VisibilityState;
+}
+
+function loadPreferences(): Partial<StoredPreferences> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Failed to load preferences from localStorage:", error);
+  }
+  return {};
+}
+
+function savePreferences(preferences: StoredPreferences) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+  } catch (error) {
+    console.error("Failed to save preferences to localStorage:", error);
+  }
+}
+
 export default function Page() {
+  const loadedPreferences = loadPreferences();
   const [documents, setDocuments] = useState<TransmittedDocumentWithoutBody[]>(
     []
   );
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
+    loadedPreferences.columnFilters ?? []
+  );
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
+  const [limit, setLimit] = useState(loadedPreferences.limit ?? 10);
   const [total, setTotal] = useState(0);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
+  const defaultColumnVisibility: VisibilityState = {
+    documentNumber: false,
+    totalExclVat: false,
+    totalInclVat: false,
+  };
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    loadedPreferences.columnVisibility
+      ? { ...defaultColumnVisibility, ...loadedPreferences.columnVisibility }
+      : defaultColumnVisibility
+  );
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
   const [isDeletingAll, setIsDeletingAll] = useState(false);
@@ -193,6 +235,14 @@ export default function Page() {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  useEffect(() => {
+    savePreferences({
+      columnFilters,
+      limit,
+      columnVisibility,
+    });
+  }, [columnFilters, limit, columnVisibility]);
 
   const handleDeleteDocument = async (id: string) => {
     if (!activeTeam?.id) return;
@@ -477,6 +527,26 @@ export default function Page() {
       enableGlobalFilter: true,
     },
     {
+      id: "documentNumber",
+      accessorFn: (row) => {
+        const parsed = row.parsed;
+        if (!parsed) return null;
+        return (parsed as any)?.invoiceNumber ?? (parsed as any)?.creditNoteNumber ?? null;
+      },
+      header: ({ column }) => <ColumnHeader column={column} title="Document Number" />,
+      meta: { label: "Document Number" },
+      cell: ({ row }) => {
+        const parsed = row.original.parsed;
+        if (!parsed) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        const documentNumber = (parsed as any)?.invoiceNumber ?? (parsed as any)?.creditNoteNumber ?? null;
+        return documentNumber ? <span>{documentNumber}</span> : <span className="text-muted-foreground">-</span>;
+      },
+      enableHiding: true,
+      enableGlobalFilter: true,
+    },
+    {
       accessorKey: "senderId",
       header: ({ column }) => <ColumnHeader column={column} title="Sender" />,
       cell: ({ row }) => {
@@ -558,6 +628,58 @@ export default function Page() {
         );
       },
       enableGlobalFilter: true,
+    },
+    {
+      id: "totalExclVat",
+      accessorFn: (row) => {
+        const parsed = row.parsed;
+        if (!parsed) return null;
+        const totals = (parsed as any)?.totals;
+        return totals?.taxExclusiveAmount ? parseFloat(totals.taxExclusiveAmount) : null;
+      },
+      header: ({ column }) => <ColumnHeader column={column} title="Total Excl. VAT" />,
+      meta: { label: "Total Excl. VAT" },
+      cell: ({ row }) => {
+        const parsed = row.original.parsed;
+        if (!parsed) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        const totals = (parsed as any)?.totals;
+        if (totals?.taxExclusiveAmount) {
+          const amount = String(totals.taxExclusiveAmount);
+          const currency = (parsed as any)?.currency || "EUR";
+          return <span className="font-mono">{amount} {currency}</span>;
+        }
+        return <span className="text-muted-foreground">-</span>;
+      },
+      enableHiding: true,
+      enableGlobalFilter: false,
+    },
+    {
+      id: "totalInclVat",
+      accessorFn: (row) => {
+        const parsed = row.parsed;
+        if (!parsed) return null;
+        const totals = (parsed as any)?.totals;
+        return totals?.taxInclusiveAmount ? parseFloat(totals.taxInclusiveAmount) : null;
+      },
+      header: ({ column }) => <ColumnHeader column={column} title="Total Incl. VAT" />,
+      meta: { label: "Total Incl. VAT" },
+      cell: ({ row }) => {
+        const parsed = row.original.parsed;
+        if (!parsed) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        const totals = (parsed as any)?.totals;
+        if (totals?.taxInclusiveAmount) {
+          const amount = String(totals.taxInclusiveAmount);
+          const currency = (parsed as any)?.currency || "EUR";
+          return <span className="font-mono">{amount} {currency}</span>;
+        }
+        return <span className="text-muted-foreground">-</span>;
+      },
+      enableHiding: true,
+      enableGlobalFilter: false,
     },
     {
       accessorKey: "direction",
@@ -742,10 +864,12 @@ export default function Page() {
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       globalFilter,
       columnFilters,
+      columnVisibility,
       pagination: {
         pageIndex: page - 1,
         pageSize: limit,
