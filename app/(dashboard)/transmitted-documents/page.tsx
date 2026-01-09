@@ -478,6 +478,7 @@ export default function Page() {
     {
       accessorKey: "id",
       header: ({ column }) => <ColumnHeader column={column} title="ID" />,
+      meta: { label: "ID" },
       cell: ({ row }) => {
         const id = row.getValue("id") as string;
         return (
@@ -506,6 +507,7 @@ export default function Page() {
     {
       accessorKey: "companyId",
       header: ({ column }) => <ColumnHeader column={column} title="Company" />,
+      meta: { label: "Company" },
       cell: ({ row }) => {
         const companyId = row.original.companyId;
         const company = companies.find((c) => c.id === companyId);
@@ -517,6 +519,7 @@ export default function Page() {
     {
       accessorKey: "type",
       header: ({ column }) => <ColumnHeader column={column} title="Type" />,
+      meta: { label: "Type" },
       cell: ({ row }) => {
         const document = row.original;
         const type = row.getValue("type") as string;
@@ -549,6 +552,7 @@ export default function Page() {
     {
       accessorKey: "senderId",
       header: ({ column }) => <ColumnHeader column={column} title="Sender" />,
+      meta: { label: "Sender" },
       cell: ({ row }) => {
         const document = row.original;
         const senderId = row.getValue("senderId") as string;
@@ -581,6 +585,7 @@ export default function Page() {
     {
       accessorKey: "receiverId",
       header: ({ column }) => <ColumnHeader column={column} title="Receiver" />,
+      meta: { label: "Receiver" },
       cell: ({ row }) => {
         const document = row.original;
         const receiverId = row.getValue("receiverId") as string;
@@ -686,6 +691,7 @@ export default function Page() {
       header: ({ column }) => (
         <ColumnHeader column={column} title="Direction" />
       ),
+      meta: { label: "Direction" },
       cell: ({ row }) => {
         const direction = row.getValue("direction") as string;
         return (
@@ -707,6 +713,7 @@ export default function Page() {
       header: ({ column }) => (
         <ColumnHeader column={column} title="Created At" />
       ),
+      meta: { label: "Created At" },
       cell: ({ row }) => {
         const date = row.getValue("createdAt") as string;
         return format(new Date(date), "PPpp");
@@ -716,6 +723,7 @@ export default function Page() {
     {
       accessorKey: "readAt",
       header: ({ column }) => <ColumnHeader column={column} title="Read At" />,
+      meta: { label: "Read At" },
       cell: ({ row }) => {
         const date = row.getValue("readAt") as string;
         return date ? (
@@ -741,6 +749,7 @@ export default function Page() {
     {
       accessorKey: "labels",
       header: ({ column }) => <ColumnHeader column={column} title="Labels" />,
+      meta: { label: "Labels" },
       cell: ({ row }) => {
         const documentLabels = row.original.labels || [];
         const documentId = row.original.id;
