@@ -18,6 +18,7 @@ import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import { EmailToPeppolError } from "@peppol/emails/email-to-peppol-error";
 
 export interface SendDocumentFromEmailOptions {
   toEmail: string;
@@ -44,11 +45,12 @@ export async function sendDocumentFromEmail(
   if (!company) {
     await sendEmail({
       to: fromEmail,
-      subject: "Error: Unknown recipient address",
-      email: `
-        <p>The email address <strong>${toEmail}</strong> is not configured for document processing.</p>
-        <p>Please check the email address and try again, or contact support if you believe this is an error.</p>
-      `,
+      subject: "Error processing your Peppol document",
+      email: EmailToPeppolError({
+        error: "Unknown recipient address",
+        details: `The email address ${toEmail} is not configured for document processing. Please check the email address and try again.`,
+        hasXmlAttachment: true,
+      }),
     });
     return { success: false, error: "Unknown company" };
   }
@@ -61,11 +63,13 @@ export async function sendDocumentFromEmail(
   if (!doctypeId) {
     await sendEmail({
       to: fromEmail,
-      subject: "Error: Invalid XML document",
-      email: `
-        <p>The XML document you sent to <strong>${toEmail}</strong> could not be processed.</p>
-        <p>Document type could not be detected automatically. Please ensure you're sending a valid Peppol XML document.</p>
-      `,
+      subject: "Error processing your Peppol document",
+      email: EmailToPeppolError({
+        error: "Invalid document type",
+        details: "Document type could not be detected automatically. Please ensure you're sending a valid Peppol XML document.",
+        companyName: company.name,
+        hasXmlAttachment: true,
+      }),
     });
     return {
       success: false,
@@ -78,16 +82,17 @@ export async function sendDocumentFromEmail(
   if (validation.result === "invalid") {
     const errorMessages = validation.errors
       .map((e) => `${e.fieldName}: ${e.errorMessage}`)
-      .join("<br>");
+      .join("\n");
 
     await sendEmail({
       to: fromEmail,
-      subject: "Error: Document validation failed",
-      email: `
-        <p>The XML document you sent to <strong>${toEmail}</strong> failed validation:</p>
-        <pre>${errorMessages}</pre>
-        <p>Please fix the errors and try again.</p>
-      `,
+      subject: "Error processing your Peppol document",
+      email: EmailToPeppolError({
+        error: "Document validation failed",
+        details: errorMessages,
+        companyName: company.name,
+        hasXmlAttachment: true,
+      }),
     });
     return {
       success: false,
@@ -127,17 +132,19 @@ export async function sendDocumentFromEmail(
   }
 
   if (!recipientAddress) {
+    const partySection = type === "selfBillingInvoice" || type === "selfBillingCreditNote"
+      ? "AccountingSupplierParty"
+      : "AccountingCustomerParty";
+
     await sendEmail({
       to: fromEmail,
-      subject: "Error: Recipient Peppol address not found",
-      email: `
-        <p>The XML document you sent to <strong>${toEmail}</strong> does not contain a valid recipient Peppol address.</p>
-        <p>Please ensure the document includes the recipient's Peppol ID (EndpointID) in the ${
-          type === "selfBillingInvoice" || type === "selfBillingCreditNote"
-            ? "AccountingSupplierParty"
-            : "AccountingCustomerParty"
-        } section.</p>
-      `,
+      subject: "Error processing your Peppol document",
+      email: EmailToPeppolError({
+        error: "Recipient Peppol address not found",
+        details: `Please ensure the document includes the recipient's Peppol ID (EndpointID) in the ${partySection} section.`,
+        companyName: company.name,
+        hasXmlAttachment: true,
+      }),
     });
     return {
       success: false,
@@ -152,12 +159,13 @@ export async function sendDocumentFromEmail(
   } catch (error) {
     await sendEmail({
       to: fromEmail,
-      subject: "Error: Could not determine process ID",
-      email: `
-        <p>Failed to determine the process ID for your document sent to <strong>${toEmail}</strong>.</p>
-        <p>Document type detected: ${type}</p>
-        <p>Please contact support if this issue persists.</p>
-      `,
+      subject: "Error processing your Peppol document",
+      email: EmailToPeppolError({
+        error: "Process ID detection failed",
+        details: `Document type detected: ${type}. Please contact support if this issue persists.`,
+        companyName: company.name,
+        hasXmlAttachment: true,
+      }),
     });
     return {
       success: false,
@@ -214,12 +222,13 @@ export async function sendDocumentFromEmail(
   if (!sentPeppol) {
     await sendEmail({
       to: fromEmail,
-      subject: "Error: Failed to send document over Peppol",
-      email: `
-        <p>Your document sent to <strong>${toEmail}</strong> could not be sent over the Peppol network.</p>
-        <p>Error: ${additionalContext}</p>
-        <p>Please contact support if this issue persists.</p>
-      `,
+      subject: "Error processing your Peppol document",
+      email: EmailToPeppolError({
+        error: "Failed to send document over Peppol",
+        details: additionalContext,
+        companyName: company.name,
+        hasXmlAttachment: true,
+      }),
     });
     return {
       success: false,
@@ -279,24 +288,6 @@ export async function sendDocumentFromEmail(
   } catch (error) {
     console.error("Failed to send outgoing document notifications:", error);
   }
-
-  await sendEmail({
-    to: fromEmail,
-    subject: `Document sent successfully via ${company.name}`,
-    email: `
-      <p>Your document has been successfully sent over the Peppol network.</p>
-      <p><strong>Details:</strong></p>
-      <ul>
-        <li>Document ID: ${transmittedDocument.id}</li>
-        <li>Company: ${company.name}</li>
-        <li>Document Type: ${type}</li>
-        <li>Recipient: ${recipientAddress}</li>
-        ${peppolMessageId ? `<li>Peppol Message ID: ${peppolMessageId}</li>` : ""}
-        ${envelopeId ? `<li>Envelope ID: ${envelopeId}</li>` : ""}
-      </ul>
-      <p>Thank you for using Recommand.</p>
-    `,
-  });
 
   return {
     success: true,

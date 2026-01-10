@@ -305,9 +305,13 @@ export function CompanySendEmailManager({
               <div className="text-xs text-muted-foreground space-y-1">
                 <p className="font-medium">How to use:</p>
                 <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>Forward emails with XML attachments to this address</li>
-                  <li>We automatically validate and send them over Peppol</li>
-                  <li>You receive confirmation emails for each document</li>
+                  <li>
+                    Forward an email with a XML attachment to this address
+                  </li>
+                  <li>We automatically validate and send it over Peppol</li>
+                  <li>
+                    You receive a confirmation email when sent successfully
+                  </li>
                 </ol>
               </div>
             </div>

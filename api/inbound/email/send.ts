@@ -5,6 +5,7 @@ import { sendEmail } from "@core/lib/email";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { sendDocumentFromEmail } from "@peppol/data/email/send-document-from-email";
 import { requirePostmarkWebhookAuth } from "@peppol/utils/auth-middleware";
+import { EmailToPeppolError } from "@peppol/emails/email-to-peppol-error";
 
 const server = new Server();
 
@@ -44,10 +45,10 @@ server.post("/inbound/email/send", requirePostmarkWebhookAuth(), describeRoute({
       await sendEmail({
         to: fromEmail,
         subject: "Error: No XML attachment found",
-        email: `
-            <p>Your email to <strong>${toEmail}</strong> was received, but no XML attachment was found.</p>
-            <p>Please attach an XML document (invoice, credit note, or self-billing) and try again.</p>
-          `,
+        email: EmailToPeppolError({
+          error: "No XML attachment found",
+          hasXmlAttachment: false,
+        }),
       });
       return c.json(actionSuccess({ error: "No XML attachment" }));
     }
