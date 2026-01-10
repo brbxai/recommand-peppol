@@ -678,8 +678,8 @@ export default function Page() {
                             {event.billingDate.toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
-                            {event.billingPeriodStart.toLocaleDateString()} -{" "}
-                            {event.billingPeriodEnd.toLocaleDateString()}
+                            {event.billingPeriodStart.toLocaleDateString("en-US", { timeZone: "UTC" })} -{" "}
+                            {event.billingPeriodEnd.toLocaleDateString("en-US", { timeZone: "UTC" })}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">

@@ -180,8 +180,11 @@ const _downloadBillingInvoice = server.get(
 
       const zipBuffer = await zip.generateAsync({ type: "nodebuffer" });
 
+      const invoiceReference = billingEvent[0].invoiceReference;
+      const filename = invoiceReference ? `invoice-${invoiceReference}.zip` : `invoice-${invoiceId}.zip`;
+
       c.header("Content-Type", "application/zip");
-      c.header("Content-Disposition", `attachment; filename="invoice-${invoiceId}.zip"`);
+      c.header("Content-Disposition", `attachment; filename="${filename}"`);
 
       return c.body(zipBuffer);
     } catch (error) {
