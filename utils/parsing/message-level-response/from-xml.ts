@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { messageLevelResponseSchema, type MessageLevelResponse } from "./schemas";
-import { getTextContent } from "../xml-helpers";
+import { getTextContent, getEndpointId } from "../xml-helpers";
 
 export function parseMessageLevelResponseFromXML(xml: string): MessageLevelResponse {
     const parser = new XMLParser({
@@ -20,5 +20,7 @@ export function parseMessageLevelResponseFromXML(xml: string): MessageLevelRespo
         issueDate: getTextContent(messageLevelResponse.IssueDate),
         responseCode: getTextContent(messageLevelResponse.DocumentResponse.Response.ResponseCode),
         envelopeId: getTextContent(messageLevelResponse.DocumentResponse.DocumentReference.ID),
+        senderEndpointId: getEndpointId(messageLevelResponse.SenderParty?.EndpointID),
+        receiverEndpointId: getEndpointId(messageLevelResponse.ReceiverParty?.EndpointID),
     });
 }

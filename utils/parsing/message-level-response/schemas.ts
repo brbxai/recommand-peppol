@@ -1,4 +1,5 @@
 import z from "zod";
+import { endpointIdSchema } from "../invoice/schemas";
 
 export const responseCodeSchema = z.enum(["AB", "AP", "RE"]);
 
@@ -7,6 +8,8 @@ export const messageLevelResponseSchema = z.object({
     issueDate: z.string().date().openapi({ example: "2024-03-20" }),
     responseCode: responseCodeSchema.openapi({ description: "The response code of the message level response (AB: Message acknowledgement, AP: Accepted, RE: Rejected)", example: "AB" }),
     envelopeId: z.string().openapi({ description: "Identifies the document on which the message level response is based."}),
+    senderEndpointId: endpointIdSchema.nullish().openapi({ description: "The Peppol endpoint identifier of the sender. Only present when parsing from XML." }),
+    receiverEndpointId: endpointIdSchema.nullish().openapi({ description: "The Peppol endpoint identifier of the receiver. Only present when parsing from XML." }),
 }).openapi({ ref: "MessageLevelResponse", title: "Message Level Response", description: "Message Level Response received from a recipient" });
 
 export const sendMessageLevelResponseSchema = messageLevelResponseSchema.extend({

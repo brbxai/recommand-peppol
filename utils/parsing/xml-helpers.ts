@@ -37,3 +37,11 @@ export function getPercentage(value: any): string {
   const cleaned = percentage.replace(/[^0-9.]/g, '');
   return cleaned || "0";
 }
+
+export function getEndpointId(value: any): { schemeId: string; identifier: string } | null {
+  if (!value) return null;
+  const schemeId = value["@_schemeID"];
+  const identifier = value["#text"] ?? value;
+  if (!schemeId || !identifier || typeof identifier !== "string") return null;
+  return { schemeId, identifier };
+}
