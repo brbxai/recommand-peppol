@@ -113,7 +113,7 @@ async function billTeam({
 
     if (!billingProfile) {
       throw new TeamBillingResultError(
-        `Billing profile not found for team ${teamId}`,
+        `Billing profile not found`,
         [{ isInvoiceSent: "", isPaymentRequested: "" }]
       );
     }
@@ -149,7 +149,7 @@ async function billTeam({
 
     if (!billingPeriodStart) {
       throw new TeamBillingResultError(
-        `Billing period start is not set for team ${teamId}`,
+        `Billing period start is not set`,
         [{ isInvoiceSent: "", isPaymentRequested: "" }]
       );
     }
@@ -212,8 +212,7 @@ async function billTeam({
     // Check if billing profile mandate is validated
     if (!billingProfile.isMandateValidated) {
       throw new TeamBillingResultError(
-        "Billing profile mandate is not validated for billing profile " +
-        billingProfile.id,
+        "Billing profile mandate is not validated",
         billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
       );
     }
@@ -221,8 +220,7 @@ async function billTeam({
     // Get the customer mandate
     if (!billingProfile.mollieCustomerId) {
       throw new TeamBillingResultError(
-        "Billing profile has no Mollie customer id for billing profile " +
-        billingProfile.id,
+        "Billing profile has no Mollie customer id",
         billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
       );
     }
@@ -242,8 +240,7 @@ async function billTeam({
         })
         .where(eq(billingProfiles.id, billingProfile.id));
       throw new TeamBillingResultError(
-        "Billing profile mandate is not validated according to Mollie for billing profile " +
-        billingProfile.id,
+        "Billing profile mandate is not validated according to Mollie",
         billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
       );
     }
@@ -296,7 +293,7 @@ async function billTeam({
 
           if (!billingEventId) {
             throw new TeamBillingResultError(
-              `Failed to create billing event for team ${teamId}`,
+              `Failed to create billing event`,
               billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
             );
           }
@@ -363,7 +360,7 @@ async function billTeam({
         }, billingProfile, dryRun);
       } catch (error) {
         throw new TeamBillingResultError(
-          `Failed to send invoice for team ${teamId}: ${error}`,
+          `Failed to send invoice: ${error}`,
           billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
         );
       }
@@ -372,7 +369,7 @@ async function billTeam({
       if (!dryRun) {
         if (!invoiceId) {
           throw new TeamBillingResultError(
-            `Failed to finalize billing for team ${teamId} due to missing invoice id`,
+            `Failed to finalize billing due to missing invoice id`,
             billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
           );
         }
@@ -396,7 +393,7 @@ async function billTeam({
           );
         } catch (error) {
           throw new TeamBillingResultError(
-            `Failed to request payment for team ${teamId}: ${error}`,
+            `Failed to request payment: ${error}`,
             billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: invoiceId ? "x" : "", isPaymentRequested: "?" }))
           );
         }
