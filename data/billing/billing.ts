@@ -7,7 +7,7 @@ import {
   transferEvents,
 } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { and, eq, isNull, lt, or, gt, count, gte, lte, inArray } from "drizzle-orm";
+import { and, eq, isNull, lt, or, gt, count, gte, lte, inArray, max, desc } from "drizzle-orm";
 import {
   differenceInMinutes,
   isSameDay,
@@ -252,6 +252,20 @@ async function billTeam({
     if (!dryRun) {
       await db.transaction(async (tx) => {
         if (!billingProfile.isManuallyBilled) {
+
+          // Find the next invoice reference
+          const highestInvoiceReference = await tx
+            .select({ invoiceReference: max(subscriptionBillingEvents.invoiceReference) })
+            .from(subscriptionBillingEvents)
+            .where(eq(subscriptionBillingEvents.teamId, teamId))
+            .orderBy(desc(subscriptionBillingEvents.invoiceReference))
+            .limit(1);
+          let nextInvoiceReference = 5000;
+          if(highestInvoiceReference.length > 0) {
+            nextInvoiceReference = (highestInvoiceReference[0].invoiceReference ?? nextInvoiceReference) + 1;
+          }
+
+          // Create billing event
           const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
             .insert(subscriptionBillingEvents)
             .values({
