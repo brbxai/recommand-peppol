@@ -259,9 +259,10 @@ async function billTeam({
           if (highestInvoiceReference.length > 0) {
             nextInvoiceReference = (highestInvoiceReference[0].invoiceReference ?? nextInvoiceReference) + 1;
           }
+          invoiceReference = nextInvoiceReference;
 
           // Create billing event
-          const [{ id: _billingEventId, invoiceReference: _invoiceReference }] = await tx
+          const [{ id: _billingEventId }] = await tx
             .insert(subscriptionBillingEvents)
             .values({
               teamId,
@@ -285,9 +286,9 @@ async function billTeam({
               paidAmount: totalAmountIncl.gt(0) ? null : new Decimal(0).toFixed(2),
               paymentMethod: totalAmountIncl.gt(0) ? null : "auto-reconcile",
               paymentDate: totalAmountIncl.gt(0) ? null : new Date(),
-              invoiceReference: nextInvoiceReference,
+              invoiceReference,
             })
-            .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
+            .returning({ id: subscriptionBillingEvents.id });
           billingEventId = _billingEventId;
 
           if (!billingEventId) {
