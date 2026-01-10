@@ -540,11 +540,16 @@ export default function Page() {
       meta: { label: "Document Number" },
       cell: ({ row }) => {
         const parsed = row.original.parsed;
-        if (!parsed) {
-          return <span className="text-muted-foreground">-</span>;
-        }
-        const documentNumber = (parsed as any)?.invoiceNumber ?? (parsed as any)?.creditNoteNumber ?? null;
-        return documentNumber ? <span>{documentNumber}</span> : <span className="text-muted-foreground">-</span>;
+        const documentNumber = parsed ? ((parsed as any)?.invoiceNumber ?? (parsed as any)?.creditNoteNumber ?? null) : null;
+        const id = row.original.id;
+        return (
+          <Link
+            to={`/transmitted-documents/${id}`}
+            className={documentNumber ? "hover:underline" : "text-muted-foreground hover:underline"}
+          >
+            {documentNumber ?? "-"}
+          </Link>
+        );
       },
       enableHiding: true,
       enableGlobalFilter: true,
