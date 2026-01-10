@@ -331,6 +331,7 @@ async function billTeam({
       // Create invoice for team
       try {
         invoiceId = await sendInvoiceAsBRBX({
+          issueDate: billingDate,
           teamId: teamId,
           companyName: billingProfile.companyName,
           companyStreet: billingProfile.address,

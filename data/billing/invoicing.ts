@@ -6,9 +6,11 @@ import type { VatCategory } from "@peppol/utils/parsing/invoice/schemas";
 import { getMinimalTeamMembers } from "@core/data/team-members";
 import { render } from "@react-email/render";
 import { InvoiceEmail } from "@peppol/emails/invoice-email";
+import { formatISO } from "date-fns";
 
 export async function sendInvoiceAsBRBX(
   info: {
+    issueDate: Date;
     teamId: string;
     companyName: string;
     companyStreet: string;
@@ -79,6 +81,8 @@ export async function sendInvoiceAsBRBX(
   }
 
   const invoice = {
+    issueDate: formatISO(info.issueDate, { representation: "date" }),
+    dueDate: formatISO(info.issueDate, { representation: "date" }),
     invoiceNumber: info.invoiceReference ? info.invoiceReference.toString() : "no-number",
     buyer: {
       name: info.companyName,
