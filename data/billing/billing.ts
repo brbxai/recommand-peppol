@@ -635,7 +635,14 @@ async function calculateSubscription({
   }
 
   const overageAmountExcl = toBeBilledIncoming.times(incomingDocumentOveragePrice).plus(toBeBilledOutgoing.times(outgoingDocumentOveragePrice));
-  const totalAmountExcl = baseAmount.plus(overageAmountExcl).toNearest(0.01);
+  
+  // Add the base amount and the overage amount
+  let totalAmountExcl = baseAmount.plus(overageAmountExcl).toNearest(0.01);
+
+  // If a minimum price is set, and the total amount is less than the minimum price, set the total amount to the minimum price
+  if("minimumPrice" in billingConfig && billingConfig.minimumPrice && billingConfig.minimumPrice > 0) {
+    totalAmountExcl = Decimal.max(totalAmountExcl, new Decimal(billingConfig.minimumPrice)).toNearest(0.01);
+  }
 
   // Generate description for invoice line
   let lineDescription = `${formatISO(startInclusive, { representation: "date" })} - ${formatISO(endInclusive, { representation: "date" })}\n\n`;
