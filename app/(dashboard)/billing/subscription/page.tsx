@@ -28,6 +28,7 @@ import {
   TrendingUp,
   AlertTriangle,
   Receipt,
+  Download,
 } from "lucide-react";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import {
@@ -662,10 +663,11 @@ export default function Page() {
                             {event.invoiceId && event.invoiceReference && activeTeam?.id ? (
                               <a
                                 href={`/api/v1/${activeTeam.id}/subscription/billing-events/${event.id}/download?generatePdf=when_no_pdf_attachment`}
-                                className="text-primary hover:underline"
+                                className="text-primary hover:underline flex items-center gap-1.5 font-medium"
                                 title="Download invoice (UBL/PDF)"
                                 download
                               >
+                                <Download className="h-3.5 w-3.5" />
                                 {`${event.invoiceReference.toString()}`}
                               </a>
                             ) : event.invoiceReference ? (

@@ -141,11 +141,8 @@ const _downloadBillingInvoice = server.get(
 
       const zip = new JSZip();
 
-      const { xml, ...documentMetadata } = document[0];
-      zip.file("document.json", JSON.stringify(documentMetadata, null, 2));
-
-      if (xml) {
-        zip.file("document.xml", xml);
+      if (document[0].xml) {
+        zip.file("document.xml", document[0].xml);
       }
 
       let hasPdfAttachment = false;
