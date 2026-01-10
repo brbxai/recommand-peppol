@@ -7,10 +7,9 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnFiltersState,
-  type VisibilityState,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
@@ -51,60 +50,35 @@ const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
 const labelsClient = rc<Labels>("v1");
 
-const STORAGE_KEY = "transmitted-documents-preferences";
-
-interface StoredPreferences {
-  columnFilters: ColumnFiltersState;
-  limit: number;
-  columnVisibility: VisibilityState;
-}
-
-function loadPreferences(): Partial<StoredPreferences> {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.error("Failed to load preferences from localStorage:", error);
-  }
-  return {};
-}
-
-function savePreferences(preferences: StoredPreferences) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
-  } catch (error) {
-    console.error("Failed to save preferences to localStorage:", error);
-  }
-}
-
 export default function Page() {
-  const loadedPreferences = loadPreferences();
+  const {
+    page,
+    limit,
+    columnFilters,
+    setColumnFilters,
+    columnVisibility,
+    setColumnVisibility,
+    paginationState,
+    onPaginationChange,
+  } = useDataTableState({
+    tableId: "transmitted-documents",
+    defaultLimit: 10,
+    defaultColumnVisibility: {
+      documentNumber: false,
+      totalExclVat: false,
+      totalInclVat: false,
+    },
+  });
+
   const [documents, setDocuments] = useState<TransmittedDocumentWithoutBody[]>(
     []
   );
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
-    loadedPreferences.columnFilters ?? []
-  );
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(loadedPreferences.limit ?? 10);
   const [total, setTotal] = useState(0);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
-  const defaultColumnVisibility: VisibilityState = {
-    documentNumber: false,
-    totalExclVat: false,
-    totalInclVat: false,
-  };
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
-    loadedPreferences.columnVisibility
-      ? { ...defaultColumnVisibility, ...loadedPreferences.columnVisibility }
-      : defaultColumnVisibility
-  );
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
   const [isDeletingAll, setIsDeletingAll] = useState(false);
@@ -235,14 +209,6 @@ export default function Page() {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
-
-  useEffect(() => {
-    savePreferences({
-      columnFilters,
-      limit,
-      columnVisibility,
-    });
-  }, [columnFilters, limit, columnVisibility]);
 
   const handleDeleteDocument = async (id: string) => {
     if (!activeTeam?.id) return;
@@ -745,7 +711,7 @@ export default function Page() {
       header: () => null,
       cell: () => null,
       enableHiding: false,
-      filterFn: (row, id, value) => {
+      filterFn: (row, _id, value) => {
         if (!value || value.length === 0) return true;
         const isUnread = row.original.readAt === null;
         return value.includes(isUnread ? "true" : "false");
@@ -884,22 +850,10 @@ export default function Page() {
       globalFilter,
       columnFilters,
       columnVisibility,
-      pagination: {
-        pageIndex: page - 1,
-        pageSize: limit,
-      },
+      pagination: paginationState,
     },
     onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        const newState = updater({
-          pageIndex: page - 1,
-          pageSize: limit,
-        });
-        setPage(newState.pageIndex + 1);
-        setLimit(newState.pageSize);
-      }
-    },
+    onPaginationChange,
     pageCount: Math.ceil(total / limit),
     manualPagination: true,
     manualFiltering: true,

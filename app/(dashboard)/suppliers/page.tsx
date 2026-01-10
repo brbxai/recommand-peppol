@@ -7,9 +7,9 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnFiltersState,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
@@ -74,13 +74,24 @@ const defaultSupplierFormData: SupplierFormData = {
 };
 
 export default function Page() {
+  const {
+    page,
+    limit,
+    columnFilters,
+    setColumnFilters,
+    columnVisibility,
+    setColumnVisibility,
+    paginationState,
+    onPaginationChange,
+  } = useDataTableState({
+    tableId: "suppliers",
+    defaultLimit: 10,
+  });
+
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [labels, setLabels] = useState<LabelType[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -499,26 +510,16 @@ export default function Page() {
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       globalFilter,
       columnFilters,
-      pagination: {
-        pageIndex: page - 1,
-        pageSize: limit,
-      },
+      columnVisibility,
+      pagination: paginationState,
     },
     onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        const newState = updater({
-          pageIndex: page - 1,
-          pageSize: limit,
-        });
-        setPage(newState.pageIndex + 1);
-        setLimit(newState.pageSize);
-      }
-    },
+    onPaginationChange,
     pageCount: Math.ceil(total / limit),
     manualPagination: true,
     manualFiltering: true,
