@@ -173,14 +173,14 @@ async function billTeam({
     }
 
     // If total amount incl == 0, mark as billed
-    if(totalAmountIncl.eq(0)){
+    if (totalAmountIncl.eq(0)) {
       if (!dryRun) {
         await db
           .update(subscriptions)
           .set({ lastBilledAt: billingDate })
           .where(inArray(subscriptions.id, toBeBilledSubscriptions.map(subscription => subscription.id)));
       }
-  
+
       return billingLines.map((x, i) => ({
         ...generateTeamBillingResult(x, billingProfile),
         status: "success",
@@ -209,46 +209,46 @@ async function billTeam({
       }));
     }
 
-    // Check if billing profile mandate is validated
-    if (!billingProfile.isMandateValidated) {
-      throw new TeamBillingResultError(
-        "Billing profile mandate is not validated",
-        billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
-      );
-    }
+    if (!billingProfile.isManuallyBilled) {
+      // Check if billing profile mandate is validated
+      if (!billingProfile.isMandateValidated) {
+        throw new TeamBillingResultError(
+          "Billing profile mandate is not validated",
+          billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
+        );
+      }
 
-    // Get the customer mandate
-    if (!billingProfile.mollieCustomerId) {
-      throw new TeamBillingResultError(
-        "Billing profile has no Mollie customer id",
-        billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
-      );
-    }
-    let mandate: Mandate | null = null;
-    try {
-      mandate = await getMandate(billingProfile.mollieCustomerId);
-    } catch (error) {
-      console.error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
-      throw new TeamBillingResultError(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`, billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" })));
-    }
-    if (!mandate) {
-      // Update billing profile mandate status
-      await db
-        .update(billingProfiles)
-        .set({
-          isMandateValidated: false,
-        })
-        .where(eq(billingProfiles.id, billingProfile.id));
-      throw new TeamBillingResultError(
-        "Billing profile mandate is not validated according to Mollie",
-        billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
-      );
-    }
+      // Get the customer mandate
+      if (!billingProfile.mollieCustomerId) {
+        throw new TeamBillingResultError(
+          "Billing profile has no Mollie customer id",
+          billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
+        );
+      }
+      let mandate: Mandate | null = null;
+      try {
+        mandate = await getMandate(billingProfile.mollieCustomerId);
+      } catch (error) {
+        console.error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
+        throw new TeamBillingResultError(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`, billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" })));
+      }
+      if (!mandate) {
+        // Update billing profile mandate status
+        await db
+          .update(billingProfiles)
+          .set({
+            isMandateValidated: false,
+          })
+          .where(eq(billingProfiles.id, billingProfile.id));
+        throw new TeamBillingResultError(
+          "Billing profile mandate is not validated according to Mollie",
+          billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
+        );
+      }
 
-    // Create billing event
-    if (!dryRun) {
-      await db.transaction(async (tx) => {
-        if (!billingProfile.isManuallyBilled) {
+      // Create billing event
+      if (!dryRun) {
+        await db.transaction(async (tx) => {
 
           // Find the next invoice reference
           const highestInvoiceReference = await tx
@@ -258,7 +258,7 @@ async function billTeam({
             .orderBy(desc(subscriptionBillingEvents.invoiceReference))
             .limit(1);
           let nextInvoiceReference = 5000;
-          if(highestInvoiceReference.length > 0) {
+          if (highestInvoiceReference.length > 0) {
             nextInvoiceReference = (highestInvoiceReference[0].invoiceReference ?? nextInvoiceReference) + 1;
           }
 
@@ -324,12 +324,10 @@ async function billTeam({
                 totalAmountExcl: result.lineTotalExcl.toFixed(2),
               });
           }
-        }
-      });
-    }
+        });
+      }
 
-    // Create invoice for team
-    if (!billingProfile.isManuallyBilled) {
+      // Create invoice for team
       try {
         invoiceId = await sendInvoiceAsBRBX({
           teamId: teamId,
@@ -489,7 +487,7 @@ async function calculateSubscriptionByMonthlyPeriods({
 
   const results: SubscriptionBillingLine[] = [];
 
-  for(const [start, end] of billingPeriodMonths){
+  for (const [start, end] of billingPeriodMonths) {
     results.push(await calculateSubscription({
       subscription,
       startInclusive: start,
@@ -646,12 +644,12 @@ async function calculateSubscription({
   }
 
   const overageAmountExcl = toBeBilledIncoming.times(incomingDocumentOveragePrice).plus(toBeBilledOutgoing.times(outgoingDocumentOveragePrice));
-  
+
   // Add the base amount and the overage amount
   let totalAmountExcl = baseAmount.plus(overageAmountExcl).toNearest(0.01);
 
   // If a minimum price is set, and the total amount is less than the minimum price, set the total amount to the minimum price
-  if("minimumPrice" in billingConfig && billingConfig.minimumPrice && billingConfig.minimumPrice > 0) {
+  if ("minimumPrice" in billingConfig && billingConfig.minimumPrice && billingConfig.minimumPrice > 0) {
     totalAmountExcl = Decimal.max(totalAmountExcl, new Decimal(billingConfig.minimumPrice)).toNearest(0.01);
   }
 
