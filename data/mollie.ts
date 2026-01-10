@@ -1,7 +1,7 @@
 import createMollieClient, { SequenceType } from "@mollie/api-client";
 import { db } from "@recommand/db";
 import { billingProfiles, subscriptionBillingEvents } from "@peppol/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { sendTelegramNotification } from "@peppol/utils/system-notifications/telegram";
 
@@ -78,7 +78,10 @@ export async function processFirstPayment(paymentId: string) {
         isMandateValidated: false,
       })
       .where(
-        eq(billingProfiles.id, (payment.metadata as any).billingProfileId)
+        and(
+          eq(billingProfiles.id, (payment.metadata as any).billingProfileId),
+          eq(billingProfiles.isMandateValidated, false) // Only update if the mandate is not validated, so we don't reset a validated mandate
+        )
       );
   }
 }
