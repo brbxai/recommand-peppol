@@ -15,8 +15,11 @@ const _endBillingCycle = server.post(
   "/billing/end-billing-cycle",
   requireAdmin(),
   describeRoute({ hide: true }),
-  zodValidator("query", z.object({ dryRun: z.string().optional().default("false"), teamId: z.string().optional(), billingDate: z.string().optional() })),
+  zodValidator("query", z.object({ dryRun: z.string().optional().default("false"), teamId: z.array(z.string()).optional(), billingDate: z.string().optional() })),
   async (c) => {
+
+    const { dryRun, teamId } = c.req.valid("query");
+
     try {
 
       let billingDate: Date;
@@ -27,9 +30,9 @@ const _endBillingCycle = server.post(
         // End of previous month (UTC)
         billingDate = endOfMonth(subMonths(TZDate.tz("UTC"), 1));
       }
-      const isDryRun = c.req.query("dryRun") === "true";
-      console.log("Ending billing cycle for", c.req.query("teamId") ? c.req.query("teamId") : "all teams", "on", billingDate, "with dry run", isDryRun);
-      const results = await endBillingCycle(billingDate, isDryRun, c.req.query("teamId"));
+      const isDryRun = dryRun === "true";
+      console.log("Ending billing cycle for", teamId ? teamId : "all teams", "on", billingDate, "with dry run", isDryRun);
+      const results = await endBillingCycle(billingDate, isDryRun, teamId);
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Billing Results");

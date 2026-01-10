@@ -28,14 +28,14 @@ import { determineVatStrategy } from "./vat";
 import { sendInvoiceAsBRBX } from "./invoicing";
 import { TZDate } from '@date-fns/tz'
 
-export async function endBillingCycle(billingDate: Date, dryRun: boolean = false, teamId?: string): Promise<TeamBillingResult[]> {
+export async function endBillingCycle(billingDate: Date, dryRun: boolean = false, teamIds?: string[]): Promise<TeamBillingResult[]> {
   const toBeBilled = await db
     .select()
     .from(subscriptions)
     .innerJoin(billingProfiles, eq(subscriptions.teamId, billingProfiles.teamId))
     .where(
       and(
-        teamId ? eq(subscriptions.teamId, teamId) : undefined,
+        (teamIds && teamIds.length > 0) ? inArray(subscriptions.teamId, teamIds) : undefined,
         lt(subscriptions.startDate, billingDate),
         or(
           isNull(subscriptions.lastBilledAt), // Subscription has not been billed yet
