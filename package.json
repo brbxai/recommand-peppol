@@ -7,9 +7,11 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "test": "bun test --preload ./test/setup.ts"
+    "test": "bun test --preload ./test/setup.ts",
+    "email:dev": "cp .env ../../node_modules/react-email/dist/preview && email dev --port 3002"
   },
   "devDependencies": {
+    "@react-email/preview-server": "5.2.1",
     "@types/bun": "latest",
     "@types/pg": "^8.11.11",
     "@types/react": "^19.0.0",
