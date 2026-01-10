@@ -11,9 +11,14 @@ export type Company = {
   enterpriseNumber: string | null;
   vatNumber: string | null;
   isSmpRecipient: boolean;
+  sendEmailSlug: string | null;
+  sendEmailEnabled: boolean;
+  teamId: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
-export type CompanyFormData = Omit<Company, 'id'>;
+export type CompanyFormData = Omit<Company, 'id' | 'teamId' | 'createdAt' | 'updatedAt' | 'sendEmailSlug' | 'sendEmailEnabled'>;
 
 export const defaultCompanyFormData: CompanyFormData = {
   name: "",

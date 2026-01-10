@@ -6,7 +6,10 @@ import {
   type AuthenticatedUserContext,
   type TeamAccessOptions,
 } from "@core/lib/auth-middleware";
-import { verifySession, type SessionVerificationExtension } from "@core/lib/session";
+import {
+  verifySession,
+  type SessionVerificationExtension,
+} from "@core/lib/session";
 import { getBillingProfile } from "@peppol/data/billing-profile";
 import { getCompanyById, type Company } from "@peppol/data/companies";
 import { verifyIntegrationJwt } from "@peppol/data/integrations/auth";
@@ -26,10 +29,37 @@ type InternalTokenContext = {
 export function requireInternalToken() {
   return createMiddleware<InternalTokenContext>(async (c, next) => {
     const token = c.req.header("X-Internal-Token");
-    if (!token || (token !== process.env.INTERNAL_TOKEN && token !== process.env.INTERNAL_TEST_TOKEN)) {
+    if (
+      !token ||
+      (token !== process.env.INTERNAL_TOKEN &&
+        token !== process.env.INTERNAL_TEST_TOKEN)
+    ) {
       return c.json(actionFailure("Unauthorized"), 401);
     }
     c.set("token", token);
+    await next();
+  });
+}
+
+export function requirePostmarkWebhookAuth() {
+  return createMiddleware(async (c, next) => {
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader?.startsWith("Basic ")) {
+      return c.json(actionFailure("Unauthorized"), 401);
+    }
+
+    const credentials = Buffer.from(authHeader.slice(6), "base64").toString(
+      "utf-8"
+    );
+    const [username, password] = credentials.split(":");
+
+    if (
+      username !== process.env.POSTMARK_INBOUND_WEBHOOK_USERNAME ||
+      password !== process.env.POSTMARK_INBOUND_WEBHOOK_PASSWORD
+    ) {
+      return c.json(actionFailure("Unauthorized"), 401);
+    }
+
     await next();
   });
 }
@@ -54,7 +84,6 @@ export function requireCompanyAccess(options: CompanyAccessOptions = {}) {
     if (!session) {
       return c.json(actionFailure("Unauthorized"), 401);
     }
-
 
     const companyId = c.req.param("companyId");
     if (!companyId) {
@@ -103,12 +132,13 @@ export function requireCompanyAccess(options: CompanyAccessOptions = {}) {
 }
 
 export function requireValidSubscription() {
-  return createMiddleware<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext>(
-    async (c, next) => {
-      const team = c.var.team;
-      if (!team) {
-        return c.json(actionFailure("Team not found"), 404);
-      }
+  return createMiddleware<
+    AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext
+  >(async (c, next) => {
+    const team = c.var.team;
+    if (!team) {
+      return c.json(actionFailure("Team not found"), 404);
+    }
 
       // Ensure the team has a valid billing profile if it's not a playground team
       if (!team.isPlayground) {
@@ -131,9 +161,8 @@ export function requireValidSubscription() {
         }
       }
 
-      await next();
-    }
-  );
+    await next();
+  });
 }
 
 const integrationSupportedAuthExtensions: SessionVerificationExtension[] = [
@@ -153,21 +182,28 @@ const integrationSupportedAuthExtensions: SessionVerificationExtension[] = [
       if (!payload) {
         return null;
       }
-      return { userId: null, isAdmin: false, apiKey: null, teamId: payload.teamId as string };
+      return {
+        userId: null,
+        isAdmin: false,
+        apiKey: null,
+        teamId: payload.teamId as string,
+      };
     } catch (error) {
       console.error(error);
       return null;
     }
-  }
-]
+  },
+];
 
 export function requireIntegrationSupportedAuth() {
   return requireAuth({
     extensions: integrationSupportedAuthExtensions,
-  })
+  });
 }
 
-export function requireIntegrationSupportedTeamAccess(options: TeamAccessOptions = {}) {
+export function requireIntegrationSupportedTeamAccess(
+  options: TeamAccessOptions = {}
+) {
   return requireTeamAccess({
     ...options,
     extensions: integrationSupportedAuthExtensions,
