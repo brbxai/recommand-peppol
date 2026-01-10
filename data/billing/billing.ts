@@ -7,7 +7,7 @@ import {
   transferEvents,
 } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { and, eq, isNull, lt, or, gt, count, gte, lte, inArray, max, desc } from "drizzle-orm";
+import { and, eq, isNull, lt, or, gt, count, gte, lte, inArray, max } from "drizzle-orm";
 import {
   differenceInMinutes,
   isSameDay,
@@ -254,9 +254,7 @@ async function billTeam({
           const highestInvoiceReference = await tx
             .select({ invoiceReference: max(subscriptionBillingEvents.invoiceReference) })
             .from(subscriptionBillingEvents)
-            .where(eq(subscriptionBillingEvents.teamId, teamId))
-            .orderBy(desc(subscriptionBillingEvents.invoiceReference))
-            .limit(1);
+            .where(eq(subscriptionBillingEvents.teamId, teamId));
           let nextInvoiceReference = 5000;
           if (highestInvoiceReference.length > 0) {
             nextInvoiceReference = (highestInvoiceReference[0].invoiceReference ?? nextInvoiceReference) + 1;
