@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { creditNoteSchema, type CreditNote } from "./schemas";
-import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent } from "../xml-helpers";
+import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent, getEndpointId } from "../xml-helpers";
 import type { SelfBillingCreditNote } from "../self-billing-creditnote/schemas";
 import { getPaymentKeyByCode } from "@peppol/utils/payment-means";
 
@@ -60,6 +60,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   }
 
   const seller = {
+    endpointId: getEndpointId(sellerParty.EndpointID),
     name: getNullableTextContent(sellerParty.PartyName?.Name) ?? getTextContent(sellerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(sellerParty.PostalAddress?.StreetName),
     street2: getTextContent(sellerParty.PostalAddress?.AdditionalStreetName),
@@ -78,6 +79,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
   }
 
   const buyer = {
+    endpointId: getEndpointId(buyerParty.EndpointID),
     name: getNullableTextContent(buyerParty.PartyName?.Name) ?? getTextContent(buyerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(buyerParty.PostalAddress?.StreetName),
     street2: getTextContent(buyerParty.PostalAddress?.AdditionalStreetName),
