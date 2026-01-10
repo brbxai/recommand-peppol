@@ -113,7 +113,7 @@ export function requireValidSubscription() {
       // Ensure the team has a valid billing profile if it's not a playground team
       if (!team.isPlayground) {
         const billingProfile = await getBillingProfile(team.id);
-        if (!billingProfile || !billingProfile.isMandateValidated) {
+        if (!billingProfile || (!billingProfile.isMandateValidated && !billingProfile.isManuallyBilled)) {
           return c.json(
             actionFailure(
               `Team ${team.name} does not have a valid billing profile`
