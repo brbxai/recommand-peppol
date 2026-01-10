@@ -287,6 +287,7 @@ async function billTeam({
               paidAmount: totalAmountIncl.gt(0) ? null : new Decimal(0).toFixed(2),
               paymentMethod: totalAmountIncl.gt(0) ? null : "auto-reconcile",
               paymentDate: totalAmountIncl.gt(0) ? null : new Date(),
+              invoiceReference: nextInvoiceReference,
             })
             .returning({ id: subscriptionBillingEvents.id, invoiceReference: subscriptionBillingEvents.invoiceReference });
           billingEventId = _billingEventId;
