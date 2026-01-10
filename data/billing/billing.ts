@@ -253,8 +253,7 @@ async function billTeam({
           // Find the next invoice reference
           const highestInvoiceReference = await tx
             .select({ invoiceReference: max(subscriptionBillingEvents.invoiceReference) })
-            .from(subscriptionBillingEvents)
-            .where(eq(subscriptionBillingEvents.teamId, teamId));
+            .from(subscriptionBillingEvents);
           let nextInvoiceReference = 5000;
           if (highestInvoiceReference.length > 0) {
             nextInvoiceReference = (highestInvoiceReference[0].invoiceReference ?? nextInvoiceReference) + 1;
