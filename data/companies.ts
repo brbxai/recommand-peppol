@@ -65,6 +65,24 @@ export async function getCompanyById(
     .then((rows) => rows[0]);
 }
 
+export async function getCompanyBySendEmail(
+  email: string
+): Promise<Company | undefined> {
+  const emailLower = email.toLowerCase();
+  const slug = emailLower.split("@")[0];
+
+  return await db
+    .select()
+    .from(companies)
+    .where(
+      and(
+        eq(companies.sendEmailSlug, slug),
+        eq(companies.sendEmailEnabled, true)
+      )
+    )
+    .then((rows) => rows[0]);
+}
+
 /**
  * Get a company by its Peppol ID. When no playgroundTeamId is provided, the function will return a production company, otherwise it will return the company from the requested playground team.
  * @param peppolId The Peppol ID of the company
