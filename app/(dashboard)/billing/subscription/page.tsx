@@ -659,9 +659,20 @@ export default function Page() {
                       {billingEvents.map((event) => (
                         <TableRow key={event.id}>
                           <TableCell className="font-mono">
-                            {event.invoiceReference
-                              ? `INV-${event.invoiceReference.toString().padStart(6, "0")}`
-                              : "-"}
+                            {event.invoiceId && event.invoiceReference && activeTeam?.id ? (
+                              <a
+                                href={`/api/v1/${activeTeam.id}/subscription/billing-events/${event.id}/download?generatePdf=when_no_pdf_attachment`}
+                                className="text-primary hover:underline"
+                                title="Download invoice (UBL/PDF)"
+                                download
+                              >
+                                {`${event.invoiceReference.toString()}`}
+                              </a>
+                            ) : event.invoiceReference ? (
+                              `${event.invoiceReference.toString()}`
+                            ) : (
+                              "-"
+                            )}
                           </TableCell>
                           <TableCell>
                             {event.billingDate.toLocaleDateString()}
