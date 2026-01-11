@@ -168,7 +168,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                       {emails.length > 1 && (
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="ghost-destructive"
                           size="icon"
                           onClick={() => removeEmail(index)}
                         >

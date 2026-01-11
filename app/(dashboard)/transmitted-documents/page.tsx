@@ -13,7 +13,7 @@ import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X, CheckCheck, Mail, MailOpen, Download } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, CheckCheck, Mail, MailOpen, Download } from "lucide-react";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
@@ -30,7 +30,7 @@ import {
 import { PartyInfoTooltip } from "@peppol/components/party-info-tooltip";
 import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
 import { DocumentTypeCell } from "@peppol/components/document-type-cell";
-import { Badge } from "@core/components/ui/badge";
+import { LabelBadge } from "@peppol/components/label-badge";
 import {
   Popover,
   PopoverContent,
@@ -726,29 +726,14 @@ export default function Page() {
         const documentId = row.original.id;
 
         return (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {documentLabels.map((label) => (
-              <Badge
+              <LabelBadge
                 key={label.id}
-                variant="outline"
-                className="flex items-center justify-center gap-1 border-none"
-                style={{ color: label.colorHex }}
-              >
-                <div
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: label.colorHex }}
-                />
-                <span className="leading-none pt-0.5">{label.name}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleUnassignLabel(documentId, label.id);
-                  }}
-                  className="ml-1 hover:bg-muted rounded p-0.5 flex items-center justify-center shrink-0"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+                name={label.name}
+                colorHex={label.colorHex}
+                onRemove={() => handleUnassignLabel(documentId, label.id)}
+              />
             ))}
             <Popover>
               <PopoverTrigger asChild>
@@ -824,12 +809,12 @@ export default function Page() {
               <FolderArchive className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
+              variant="ghost-destructive"
               size="icon"
               onClick={() => handleDeleteDocument(id)}
               title="Delete document"
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         );

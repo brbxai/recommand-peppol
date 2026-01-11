@@ -273,11 +273,11 @@ export default function Page() {
               variant="destructive"
               trigger={
                 <Button
-                  variant="ghost"
+                  variant="ghost-destructive"
                   size="icon"
                   title="Delete"
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               }
             />

@@ -382,12 +382,12 @@ export default function Page() {
               <Pencil className="h-4 w-4" />
             </Button>
             <AsyncButton
-              variant="ghost"
+              variant="ghost-destructive"
               size="icon"
               onClick={async () => await handleDeleteCustomer(customer)}
               title="Delete"
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4" />
             </AsyncButton>
           </div>
         );
