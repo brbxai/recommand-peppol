@@ -229,9 +229,7 @@ export function CompanySendEmailManager({
                   type="text"
                   placeholder="your-company"
                   value={sendEmailSlug}
-                  onChange={(e) =>
-                    setSendEmailSlug(e.target.value.toLowerCase())
-                  }
+                  readOnly
                   className="font-mono"
                 />
                 <Button
