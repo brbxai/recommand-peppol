@@ -123,7 +123,19 @@ async function billTeam({
       // TODO: later on, we should just silently skip the billing cycle for this team (return empty array), as these teams have never properly setup their billing profile
       throw new TeamBillingResultError(
         `Billing profile is pending`,
-        [{ isInvoiceSent: "", isPaymentRequested: "" }]
+        [{
+          billingProfileId: billingProfile.id,
+          billingProfileStanding: billingProfile.profileStanding,
+          isManuallyBilled: billingProfile.isManuallyBilled,
+          companyName: billingProfile.companyName,
+          companyStreet: billingProfile.address,
+          companyPostalCode: billingProfile.postalCode,
+          companyCity: billingProfile.city,
+          companyCountry: billingProfile.country,
+          companyVatNumber: billingProfile.vatNumber,
+          isInvoiceSent: "", 
+          isPaymentRequested: "",
+        }]
       );
     }
 
