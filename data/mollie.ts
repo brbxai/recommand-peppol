@@ -99,7 +99,7 @@ export async function processFirstPayment(paymentId: string) {
         firstPaymentId: paymentId,
         firstPaymentStatus: payment.status,
         isMandateValidated: false,
-        ...(isGracePeriodTrigger ? {
+        ...((isGracePeriodTrigger && profileStanding !== "suspended") ? {
           profileStanding: "grace",
           graceStartedAt: (graceStartedAt ?? new Date()),
           graceReason: graceReason ? graceReason : "payment_" + payment.status,
@@ -109,7 +109,6 @@ export async function processFirstPayment(paymentId: string) {
         and(
           eq(billingProfiles.id, (payment.metadata as any).billingProfileId),
           eq(billingProfiles.isMandateValidated, false), // Only update if the mandate is not validated, so we don't reset a validated mandate
-          not(eq(billingProfiles.profileStanding, "suspended")) // Only update if the profile is not suspended
         )
       );
   }
