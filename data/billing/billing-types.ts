@@ -7,6 +7,7 @@ export const ERROR_TEAM_BILLING_RESULT: TeamBillingResult = {
   isPaymentRequested: "?",
   message: "Unknown error",
   billingProfileId: "",
+  billingProfileStanding: "",
   isManuallyBilled: false,
   teamId: "",
   subscriptionId: "",
@@ -107,6 +108,7 @@ export type TeamBillingResult = TeamBillingResultSubscriptionBase & {
   isPaymentRequested: "x" | "?" | "";
   message: string;
   billingProfileId: string;
+  billingProfileStanding: string;
   isManuallyBilled: boolean;
   teamId: string;
   companyName: string;

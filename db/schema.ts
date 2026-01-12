@@ -42,6 +42,13 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "failed",
 ]);
 
+export const profileStandingEnum = pgEnum("peppol_profile_standing", [
+  "pending",
+  "active",
+  "grace",
+  "suspended",
+]);
+
 export const zodValidCountryCodes = z.enum(
   COUNTRIES.map((c) => c.code) as [string, ...string[]]
 );
@@ -95,6 +102,12 @@ export const billingProfiles = pgTable("peppol_billing_profiles", {
     .notNull()
     .default("none"),
   isMandateValidated: boolean("is_mandate_validated").notNull().default(false),
+  profileStanding: profileStandingEnum("profile_standing")
+    .notNull()
+    .default("pending"),
+  graceStartedAt: timestamp("grace_started_at", { withTimezone: true }),
+  graceReason: text("grace_reason"),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
 
   companyName: text("company_name").notNull(),
   address: text("address").notNull(),

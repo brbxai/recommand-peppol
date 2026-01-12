@@ -44,6 +44,7 @@ const _endBillingCycle = server.post(
         { header: "Is Payment Requested", key: "isPaymentRequested", width: 10 },
         { header: "Message", key: "message", width: 40 },
         { header: "Billing Profile ID", key: "billingProfileId", width: 30 },
+        { header: "Billing Profile Standing", key: "billingProfileStanding", width: 20 },
         { header: "Is Manually Billed", key: "isManuallyBilled", width: 20 },
         { header: "Team ID", key: "teamId", width: 30 },
         { header: "Subscription ID", key: "subscriptionId", width: 30 },

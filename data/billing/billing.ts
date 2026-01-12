@@ -118,6 +118,15 @@ async function billTeam({
       );
     }
 
+    // Skip pending billing profiles
+    if (billingProfile.profileStanding === "pending") {
+      // TODO: later on, we should just silently skip the billing cycle for this team (return empty array), as these teams have never properly setup their billing profile
+      throw new TeamBillingResultError(
+        `Billing profile is pending`,
+        [{ isInvoiceSent: "", isPaymentRequested: "" }]
+      );
+    }
+
     // Bill each subscription
     const billingLines: SubscriptionBillingLine[] = [];
     for (const subscription of toBeBilledSubscriptions) {
@@ -188,6 +197,7 @@ async function billTeam({
         isPaymentRequested: "",
         message: "",
         billingProfileId: billingProfile.id,
+        billingProfileStanding: billingProfile.profileStanding,
         isManuallyBilled: billingProfile.isManuallyBilled,
         teamId: teamId,
         companyName: billingProfile.companyName,
@@ -413,6 +423,7 @@ async function billTeam({
       isPaymentRequested: billingProfile.isManuallyBilled ? "" : "x",
       message: "",
       billingProfileId: billingProfile.id,
+      billingProfileStanding: billingProfile.profileStanding,
       isManuallyBilled: billingProfile.isManuallyBilled,
       teamId: teamId,
       companyName: billingProfile.companyName,

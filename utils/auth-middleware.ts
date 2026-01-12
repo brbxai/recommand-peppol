@@ -113,10 +113,18 @@ export function requireValidSubscription() {
       // Ensure the team has a valid billing profile if it's not a playground team
       if (!team.isPlayground) {
         const billingProfile = await getBillingProfile(team.id);
-        if (!billingProfile || (!billingProfile.isMandateValidated && !billingProfile.isManuallyBilled)) {
+        if (!billingProfile) {
           return c.json(
             actionFailure(
               `Team ${team.name} does not have a valid billing profile`
+            ),
+            401
+          );
+        }
+        if(billingProfile.profileStanding === "pending" || billingProfile.profileStanding === "suspended") {
+          return c.json(
+            actionFailure(
+              `Team ${team.name} does not have a valid billing profile. Your subscription is currently in a ${billingProfile.profileStanding} state. Ensure you have a valid payment mandate and your subscription is active. If you need help, please contact support@recommand.eu.`
             ),
             401
           );

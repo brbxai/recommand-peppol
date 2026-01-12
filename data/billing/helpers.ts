@@ -6,6 +6,7 @@ export function generateTeamBillingResult(x: SubscriptionBillingLine, billingPro
     return {
       ...(billingProfile ? {
         billingProfileId: billingProfile.id,
+        billingProfileStanding: billingProfile.profileStanding,
         isManuallyBilled: billingProfile.isManuallyBilled,
         companyName: billingProfile.companyName,
         companyStreet: billingProfile.address,
