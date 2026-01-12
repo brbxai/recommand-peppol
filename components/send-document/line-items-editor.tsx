@@ -99,79 +99,89 @@ export function LineItemsEditor({
         return (
           <Card key={index} className="p-4">
             <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Item Name *</Label>
-                    <Input
-                      value={line.name}
-                      onChange={(e) =>
-                        updateLine(index, "name", e.target.value)
-                      }
-                      placeholder={
-                        isCreditNote ? "Credit item" : "Product or service"
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div>
-                      <Label>Quantity *</Label>
-                      <Input
-                        type="number"
-                        step="any"
-                        value={line.quantity}
-                        onChange={(e) =>
-                          updateLine(index, "quantity", e.target.value)
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Unit</Label>
-                      <Select
-                        value={line.unitCode}
-                        onValueChange={(value) =>
-                          updateLine(index, "unitCode", value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="C62">One</SelectItem>
-                          <SelectItem value="HUR">Hour</SelectItem>
-                          <SelectItem value="DAY">Day</SelectItem>
-                          <SelectItem value="MON">Month</SelectItem>
-                          <SelectItem value="KGM">Kilogram</SelectItem>
-                          <SelectItem value="MTR">Meter</SelectItem>
-                          <SelectItem value="LTR">Liter</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Price *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={line.netPriceAmount}
-                        onChange={(e) =>
-                          updateLine(index, "netPriceAmount", e.target.value)
-                        }
-                        required
-                      />
-                    </div>
-                  </div>
+              <div className="flex items-start gap-2">
+                <div className="flex-1">
+                  <Label>Item Name *</Label>
+                  <Input
+                    value={line.name}
+                    onChange={(e) =>
+                      updateLine(index, "name", e.target.value)
+                    }
+                    placeholder={
+                      isCreditNote ? "Credit item" : "Product or service"
+                    }
+                    required
+                  />
                 </div>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="ghost-destructive"
                   size="icon"
                   onClick={() => removeLine(index)}
-                  className="ml-2"
+                  className="mt-6"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+
+              <div>
+                <Label>Description</Label>
+                <Input
+                  value={line.description || ""}
+                  onChange={(e) =>
+                    updateLine(index, "description", e.target.value)
+                  }
+                  placeholder="Optional description"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <Label>Quantity *</Label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={line.quantity}
+                    onChange={(e) =>
+                      updateLine(index, "quantity", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Unit</Label>
+                  <Select
+                    value={line.unitCode}
+                    onValueChange={(value) =>
+                      updateLine(index, "unitCode", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="C62">One</SelectItem>
+                      <SelectItem value="HUR">Hour</SelectItem>
+                      <SelectItem value="DAY">Day</SelectItem>
+                      <SelectItem value="MON">Month</SelectItem>
+                      <SelectItem value="KGM">Kilogram</SelectItem>
+                      <SelectItem value="MTR">Meter</SelectItem>
+                      <SelectItem value="LTR">Liter</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Price *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={line.netPriceAmount}
+                    onChange={(e) =>
+                      updateLine(index, "netPriceAmount", e.target.value)
+                    }
+                    required
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
@@ -207,16 +217,6 @@ export function LineItemsEditor({
                         percentage: e.target.value,
                       })
                     }
-                  />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Input
-                    value={line.description || ""}
-                    onChange={(e) =>
-                      updateLine(index, "description", e.target.value)
-                    }
-                    placeholder="Optional description"
                   />
                 </div>
               </div>

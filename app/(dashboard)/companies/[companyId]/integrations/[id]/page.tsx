@@ -19,9 +19,9 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnFiltersState,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { DataTablePagination } from "@core/components/data-table/pagination";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
@@ -45,16 +45,28 @@ type Company = {
 export default function IntegrationDetailPage() {
   const { companyId, id } = useParams<{ companyId: string; id: string }>();
   const navigate = useNavigate();
+
+  const {
+    page,
+    limit,
+    columnFilters,
+    setColumnFilters,
+    columnVisibility,
+    setColumnVisibility,
+    paginationState,
+    onPaginationChange,
+  } = useDataTableState({
+    tableId: `integration-${id}-task-logs`,
+    defaultLimit: 10,
+  });
+
   const [integration, setIntegration] = useState<Integration | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [taskLogs, setTaskLogs] = useState<IntegrationTaskLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const activeTeam = useActiveTeam();
@@ -347,24 +359,14 @@ export default function IntegrationDetailPage() {
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       columnFilters,
-      pagination: {
-        pageIndex: page - 1,
-        pageSize: limit,
-      },
+      columnVisibility,
+      pagination: paginationState,
     },
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        const newState = updater({
-          pageIndex: page - 1,
-          pageSize: limit,
-        });
-        setPage(newState.pageIndex + 1);
-        setLimit(newState.pageSize);
-      }
-    },
+    onPaginationChange,
     pageCount: Math.ceil(total / limit),
     manualPagination: true,
     manualFiltering: true,

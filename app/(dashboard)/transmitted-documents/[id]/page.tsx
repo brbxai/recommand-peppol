@@ -31,6 +31,7 @@ import type {
 } from "@peppol/data/transmitted-documents";
 import type { Label } from "@peppol/types/label";
 import { Badge } from "@core/components/ui/badge";
+import { LabelBadge } from "@peppol/components/label-badge";
 import { format } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@core/components/ui/alert";
 import {
@@ -382,18 +383,11 @@ export default function TransmittedDocumentDetailPage() {
               />
               {doc.labels &&
                 doc.labels.map((label) => (
-                  <Badge
+                  <LabelBadge
                     key={label.id}
-                    variant="outline"
-                    className="flex items-center gap-1 border-none"
-                    style={{ color: label.colorHex }}
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: label.colorHex }}
-                    />
-                    <span className="leading-none pt-0.5">{label.name}</span>
-                  </Badge>
+                    name={label.name}
+                    colorHex={label.colorHex}
+                  />
                 ))}
             </div>
           </CardContent>

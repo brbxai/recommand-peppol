@@ -7,9 +7,9 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnFiltersState,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
@@ -93,13 +93,25 @@ const defaultCustomerFormData: CustomerFormData = {
 };
 
 export default function Page() {
+  const {
+    page,
+    setPage,
+    limit,
+    columnFilters,
+    setColumnFilters,
+    columnVisibility,
+    setColumnVisibility,
+    paginationState,
+    onPaginationChange,
+  } = useDataTableState({
+    tableId: "customers",
+    defaultLimit: 10,
+  });
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -370,12 +382,12 @@ export default function Page() {
               <Pencil className="h-4 w-4" />
             </Button>
             <AsyncButton
-              variant="ghost"
+              variant="ghost-destructive"
               size="icon"
               onClick={async () => await handleDeleteCustomer(customer)}
               title="Delete"
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4" />
             </AsyncButton>
           </div>
         );
@@ -390,26 +402,16 @@ export default function Page() {
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       columnFilters,
+      columnVisibility,
       globalFilter,
-      pagination: {
-        pageIndex: page - 1,
-        pageSize: limit,
-      },
+      pagination: paginationState,
     },
     onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        const newState = updater({
-          pageIndex: page - 1,
-          pageSize: limit,
-        });
-        setPage(newState.pageIndex + 1);
-        setLimit(newState.pageSize);
-      }
-    },
+    onPaginationChange,
     manualPagination: true,
     manualFiltering: true,
     pageCount: Math.ceil(total / limit),
