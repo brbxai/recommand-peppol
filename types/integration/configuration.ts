@@ -21,6 +21,11 @@ export const configurationAuthSchema = z.object({
       type: z.literal("boolean"),
       value: z.boolean(),
     }).strict(),
+    z.object({
+      id: z.string().min(1).regex(/^[a-zA-Z0-9_]+$/),
+      type: z.literal("number"),
+      value: z.number(),
+    }).strict(),
   ]);
   
   export const configurationCapabilitySchema = z.object({

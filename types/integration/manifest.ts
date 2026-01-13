@@ -28,7 +28,7 @@ export const manifestFieldSchema = z.object({
   id: z.string().min(1).regex(/^[a-zA-Z0-9_]+$/),
   title: z.string().min(1),
   description: z.string().min(1),
-  type: z.enum(["string", "boolean"]),
+  type: z.enum(["string", "boolean", "number"]),
   required: z.boolean(),
 }).strict();
 
