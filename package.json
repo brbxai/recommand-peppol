@@ -7,13 +7,16 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "test": "bun test --preload ./test/setup.ts"
+    "test": "bun test --preload ./test/setup.ts",
+    "email:dev": "email dev --port 3002"
   },
   "devDependencies": {
+    "@react-email/preview-server": "5.2.1",
     "@types/bun": "latest",
     "@types/pg": "^8.11.11",
     "@types/react": "^19.0.0",
     "drizzle-kit": "^0.30.4",
+    "react-email": "5.2.1",
     "tsx": "^4.19.3"
   },
   "peerDependencies": {
@@ -21,6 +24,8 @@
   },
   "dependencies": {
     "@mollie/api-client": "^4.2.0",
+    "@react-email/components": "^1.0.4",
+    "@react-email/render": "^2.0.2",
     "@scalar/openapi-to-markdown": "^0.3.5",
     "@types/jszip": "^3.4.1",
     "croner": "^9.1.0",
