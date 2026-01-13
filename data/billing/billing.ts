@@ -500,22 +500,23 @@ async function calculateSubscriptionByMonthlyPeriods({
   const billingPeriodMonths = [];
   let nextStart = billingPeriodStartInclusive;
   while (nextStart <= billingPeriodEndInclusive) {
+    let startOfPeriod = startOfMonth(nextStart);
     let endOfPeriod = endOfMonth(nextStart);
     if (endOfPeriod > billingPeriodEndInclusive) {
       endOfPeriod = billingPeriodEndInclusive;
     }
-    billingPeriodMonths.push([nextStart, endOfPeriod]);
+    billingPeriodMonths.push([startOfPeriod, nextStart, endOfPeriod]);
     nextStart = addMilliseconds(endOfPeriod, 1);
   }
 
   const results: SubscriptionBillingLine[] = [];
 
-  for (const [start, end] of billingPeriodMonths) {
+  for (const [startOfPeriodInclusive, startInclusive, endInclusive] of billingPeriodMonths) {
     results.push(await calculateSubscription({
       subscription,
-      startInclusive: start,
-      endInclusive: end,
-      subscriptionHasEnded,
+      startOfPeriodInclusive,
+      startInclusive,
+      endInclusive,
     }))
   }
 
@@ -524,14 +525,14 @@ async function calculateSubscriptionByMonthlyPeriods({
 
 async function calculateSubscription({
   subscription,
+  startOfPeriodInclusive,
   startInclusive,
   endInclusive,
-  subscriptionHasEnded,
 }: {
   subscription: typeof subscriptions.$inferSelect;
+  startOfPeriodInclusive: Date;
   startInclusive: Date;
   endInclusive: Date;
-  subscriptionHasEnded: boolean;
 }): Promise<SubscriptionBillingLine> {
 
   // Validate billing config
@@ -572,8 +573,23 @@ async function calculateSubscription({
     ) &&
     isSameDay(endInclusive, endOfMonth(endInclusive));
 
+  // Get usage before the subscription start date
+  let usageBeforeSubscriptionStart = 0;
+  if(startInclusive > startOfPeriodInclusive) {
+    usageBeforeSubscriptionStart = (await db
+      .select({ usage: count() })
+      .from(transferEvents)
+      .where(
+        and(
+          eq(transferEvents.teamId, subscription.teamId),
+          gte(transferEvents.createdAt, startOfPeriodInclusive),
+          lt(transferEvents.createdAt, startInclusive)
+        )
+      ))[0].usage ?? 0;
+  }
+
   // If the billing period has ended, calculate the maximum included usage, otherwise assume full period allowance
-  let includedUsage = billingConfig.includedMonthlyDocuments;
+  let includedUsage = Math.max(billingConfig.includedMonthlyDocuments - usageBeforeSubscriptionStart, 0);
   const minutesInPeriod = differenceInMinutes(
     endInclusive,
     startInclusive
@@ -582,13 +598,6 @@ async function calculateSubscription({
   let billingRatio = new Decimal(minutesInPeriod).div(monthlyMinutes);
   if (isEntireMonth || billingRatio.gt(1)) {
     billingRatio = new Decimal(1);
-  }
-  if (subscriptionHasEnded) {
-    includedUsage = Math.ceil(
-      new Decimal(billingConfig.includedMonthlyDocuments)
-        .times(billingRatio)
-        .toNumber()
-    );
   }
 
   // Get usage for the billing period
