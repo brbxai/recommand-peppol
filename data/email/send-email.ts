@@ -49,7 +49,7 @@ export function extractDocumentAttachments(
 export async function sendDocumentEmail(options: {
   type: DocumentType;
   parsedDocument: ParsedDocument | null;
-  xmlDocument: string;
+  xmlDocument: string | null;
   to: string;
   subject?: string;
   htmlBody?: string;
@@ -94,12 +94,16 @@ export async function sendDocumentEmail(options: {
   }
 
   const attachments = extractDocumentAttachments(options.parsedDocument);
-  const xmlAttachment: Attachment = {
-    Content: Buffer.from(options.xmlDocument, "utf-8").toString("base64"),
-    ContentID: null,
-    ContentType: "application/xml",
-    Name: filename + ".xml",
-  };
+
+  if (options.xmlDocument) {
+    const xmlAttachment: Attachment = {
+      Content: Buffer.from(options.xmlDocument, "utf-8").toString("base64"),
+      ContentID: null,
+      ContentType: "application/xml",
+      Name: filename + ".xml",
+    };
+    attachments.push(xmlAttachment);
+  }
 
   await sendEmail({
     from: senderName
@@ -108,6 +112,6 @@ export async function sendDocumentEmail(options: {
     to: options.to,
     subject: subject,
     email: htmlBody,
-    attachments: [...attachments, xmlAttachment],
+    attachments: attachments,
   });
 }

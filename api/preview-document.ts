@@ -94,7 +94,7 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
     const draftId = "draft_" + ulid();
     const senderIdentifier = await getSendingCompanyIdentifier(company.id);
     const senderAddress = `${senderIdentifier.scheme}:${senderIdentifier.identifier}`;
-    let recipientAddress = input.recipient;
+    let recipientAddress = input.recipient ?? "0000:0000";
     if (!recipientAddress.includes(":")) {
       const numberOnlyRecipient = recipientAddress.replace(/[^0-9]/g, "");
       recipientAddress = "0208:" + numberOnlyRecipient;

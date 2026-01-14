@@ -32,9 +32,9 @@ export const documentTypeSchema = z
 export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType];
 
 export const sendDocumentSchema = z.object({
-  recipient: z.string().openapi({
+  recipient: z.string().nullable().openapi({
     description:
-      "The Peppol address of the recipient of the document. If no identifier is provided, 0208 (Belgian Enterprise Number) is assumed.",
+      "The Peppol address of the recipient of the document. If no identifier is provided, 0208 (Belgian Enterprise Number) is assumed. If null, the document can only be sent via email fallback (XML generation and Peppol sending will be skipped). Only billing document types are supported when recipient is null.",
     example: "0208:987654321",
   }),
   email: z

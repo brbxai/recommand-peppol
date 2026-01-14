@@ -6,7 +6,6 @@ import { invoiceToUBL } from "@peppol/utils/parsing/invoice/to-xml";
 import { sendDocumentSchema, DocumentType } from "utils/parsing/send-document";
 import {
   sendInvoiceSchema,
-  type Attachment,
   type Invoice,
 } from "@peppol/utils/parsing/invoice/schemas";
 import { sendAs4, type SendAs4Response } from "@peppol/data/phase4-ap/client";
@@ -54,6 +53,7 @@ import type {
 import { validateXmlDocument } from "@peppol/data/validation/client";
 import type { ValidationResponse } from "@peppol/types/validation";
 import {
+  BILLING_DOCUMENT_TYPE_INFO,
   CREDIT_NOTE_DOCUMENT_TYPE_INFO,
   getDocumentTypeInfo,
   INVOICE_DOCUMENT_TYPE_INFO,
@@ -68,10 +68,8 @@ import {
 } from "@peppol/utils/parsing/message-level-response/schemas";
 import { messageLevelResponseToXML } from "@peppol/utils/parsing/message-level-response/to-xml";
 import { ulid } from "ulid";
-import { renderDocumentPdf } from "@peppol/utils/document-renderer";
+import { generateAndAttachPdf } from "@peppol/utils/pdf-attachment-helper";
 import {
-  ensureFileExtension,
-  getDocumentFilename,
   type ParsedDocument as FilenameParsedDocument,
 } from "@peppol/utils/document-filename";
 
@@ -133,6 +131,8 @@ const _sendDocumentMinimal = server.post(
   _sendDocumentImplementation
 );
 
+const RECIPIENT_NULL_FALLBACK_ADDRESS = "0000:0000"; // Used for null recipient to be able to generate a PDF
+
 async function _sendDocumentImplementation(c: SendDocumentContext) {
   try {
     const input = c.req.valid("json");
@@ -140,17 +140,21 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     const isPlayground = c.get("team").isPlayground;
     const useTestNetwork = c.get("team").useTestNetwork ?? false;
     const transmittedDocumentId = "doc_" + ulid();
-    const rawPdfFilename = input.pdfGeneration?.filename?.trim();
-    const resolvePdfFilename = (
-      type: SupportedDocumentType,
-      parsedForName: FilenameParsedDocument | null
-    ) => {
-      const base =
-        rawPdfFilename && rawPdfFilename.length > 0
-          ? rawPdfFilename
-          : getDocumentFilename(type, parsedForName);
-      return ensureFileExtension(base, "pdf");
-    };
+    const customPdfFilename = input.pdfGeneration?.filename?.trim() || undefined;
+
+    // Check if recipient is null - only billing document types are supported
+    const isRecipientNull = input.recipient === null;
+    if (isRecipientNull) {
+      const billingTypes = BILLING_DOCUMENT_TYPE_INFO.map(dt => dt.type) as DocumentType[];
+      if (!billingTypes.includes(input.documentType)) {
+        return c.json(
+          actionFailure(
+            `Only billing document types (${billingTypes.join(", ")}) are supported when recipient is null.`
+          ),
+          400
+        );
+      }
+    }
 
     let xmlDocument: string | null = null;
     let type: SupportedDocumentType = "unknown";
@@ -165,8 +169,8 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     const countryC1 = company.country;
 
     // Parse recipient
-    let recipientAddress = input.recipient;
-    if (!recipientAddress.includes(":")) {
+    let recipientAddress: string | null = input.recipient;
+    if (recipientAddress !== null && !recipientAddress.includes(":")) {
       const numberOnlyRecipient = recipientAddress.replace(/[^0-9]/g, "");
       recipientAddress = "0208:" + numberOnlyRecipient;
     }
@@ -207,46 +211,27 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       let ublInvoice = invoiceToUBL({
         invoice,
         senderAddress,
-        recipientAddress,
+        recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
         isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
 
       if (input.pdfGeneration?.enabled) {
         const parsedForPdf = (parsed.parsedDocument as Invoice) ?? invoice;
-        const pdfFilename = resolvePdfFilename("invoice", parsedForPdf);
-        const pdfBuffer = await renderDocumentPdf({
-          id: transmittedDocumentId,
-          type: "invoice",
-          parsed: parsedForPdf,
-        } as any);
-        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-        const existingAttachments = Array.isArray(invoice.attachments)
-          ? (invoice.attachments as Attachment[])
-          : [];
-        const nextAttachments = existingAttachments.filter(
-          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-        );
-        nextAttachments.push({
-          id: pdfFilename,
-          filename: pdfFilename,
-          mimeCode: "application/pdf",
-          description: null,
-          embeddedDocument: pdfBase64,
-          url: null,
-        });
-        invoice.attachments = nextAttachments;
+        invoice.attachments = await generateAndAttachPdf(transmittedDocumentId, "invoice", parsedForPdf, invoice.attachments, customPdfFilename);
 
         ublInvoice = invoiceToUBL({
           invoice,
           senderAddress,
-          recipientAddress,
+          recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
           isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
       }
 
-      xmlDocument = ublInvoice;
+      if (!isRecipientNull) {
+        xmlDocument = ublInvoice;
+      }
       type = "invoice";
 
       if (parsed.parsedDocument) {
@@ -289,7 +274,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       let ublCreditNote = creditNoteToUBL({
         creditNote,
         senderAddress,
-        recipientAddress,
+        recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
         isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(
@@ -302,33 +287,12 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       if (input.pdfGeneration?.enabled) {
         const parsedForPdf =
           (parsed.parsedDocument as CreditNote) ?? creditNote;
-        const pdfFilename = resolvePdfFilename("creditNote", parsedForPdf);
-        const pdfBuffer = await renderDocumentPdf({
-          id: transmittedDocumentId,
-          type: "creditNote",
-          parsed: parsedForPdf,
-        } as any);
-        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-        const existingAttachments = Array.isArray(creditNote.attachments)
-          ? (creditNote.attachments as Attachment[])
-          : [];
-        const nextAttachments = existingAttachments.filter(
-          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-        );
-        nextAttachments.push({
-          id: pdfFilename,
-          filename: pdfFilename,
-          mimeCode: "application/pdf",
-          description: null,
-          embeddedDocument: pdfBase64,
-          url: null,
-        });
-        creditNote.attachments = nextAttachments;
+        creditNote.attachments = await generateAndAttachPdf(transmittedDocumentId, "creditNote", parsedForPdf, creditNote.attachments, customPdfFilename);
 
         ublCreditNote = creditNoteToUBL({
           creditNote,
           senderAddress,
-          recipientAddress,
+          recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
           isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(
@@ -339,7 +303,9 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         );
       }
 
-      xmlDocument = ublCreditNote;
+      if (!isRecipientNull) {
+        xmlDocument = ublCreditNote;
+      }
       type = "creditNote";
 
       if (parsed.parsedDocument) {
@@ -385,7 +351,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       let ublInvoice = selfBillingInvoiceToUBL({
         selfBillingInvoice: invoice,
         senderAddress,
-        recipientAddress,
+        recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
         isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
@@ -393,42 +359,20 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       if (input.pdfGeneration?.enabled) {
         const parsedForPdf =
           (parsed.parsedDocument as SelfBillingInvoice) ?? invoice;
-        const pdfFilename = resolvePdfFilename(
-          "selfBillingInvoice",
-          parsedForPdf
-        );
-        const pdfBuffer = await renderDocumentPdf({
-          id: transmittedDocumentId,
-          type: "selfBillingInvoice",
-          parsed: parsedForPdf,
-        } as any);
-        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-        const existingAttachments = Array.isArray(invoice.attachments)
-          ? (invoice.attachments as Attachment[])
-          : [];
-        const nextAttachments = existingAttachments.filter(
-          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-        );
-        nextAttachments.push({
-          id: pdfFilename,
-          filename: pdfFilename,
-          mimeCode: "application/pdf",
-          description: null,
-          embeddedDocument: pdfBase64,
-          url: null,
-        });
-        invoice.attachments = nextAttachments;
+        invoice.attachments = await generateAndAttachPdf(transmittedDocumentId, "selfBillingInvoice", parsedForPdf, invoice.attachments, customPdfFilename);
 
         ublInvoice = selfBillingInvoiceToUBL({
           selfBillingInvoice: invoice,
           senderAddress,
-          recipientAddress,
+          recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
           isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(doctypeId, ublInvoice, company, senderAddress);
       }
 
-      xmlDocument = ublInvoice;
+      if (!isRecipientNull) {
+        xmlDocument = ublInvoice;
+      }
       type = "selfBillingInvoice";
 
       if (parsed.parsedDocument) {
@@ -473,7 +417,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       let ublSelfBillingCreditNote = selfBillingCreditNoteToUBL({
         selfBillingCreditNote,
         senderAddress,
-        recipientAddress,
+        recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
         isDocumentValidationEnforced: true,
       });
       let parsed = parseDocument(
@@ -487,38 +431,12 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         const parsedForPdf =
           (parsed.parsedDocument as SelfBillingCreditNote) ??
           selfBillingCreditNote;
-        const pdfFilename = resolvePdfFilename(
-          "selfBillingCreditNote",
-          parsedForPdf
-        );
-        const pdfBuffer = await renderDocumentPdf({
-          id: transmittedDocumentId,
-          type: "selfBillingCreditNote",
-          parsed: parsedForPdf,
-        } as any);
-        const pdfBase64 = Buffer.from(pdfBuffer).toString("base64");
-        const existingAttachments = Array.isArray(
-          selfBillingCreditNote.attachments
-        )
-          ? (selfBillingCreditNote.attachments as Attachment[])
-          : [];
-        const nextAttachments = existingAttachments.filter(
-          (a: Attachment) => a.filename !== pdfFilename && a.id !== pdfFilename
-        );
-        nextAttachments.push({
-          id: pdfFilename,
-          filename: pdfFilename,
-          mimeCode: "application/pdf",
-          description: null,
-          embeddedDocument: pdfBase64,
-          url: null,
-        });
-        selfBillingCreditNote.attachments = nextAttachments;
+        selfBillingCreditNote.attachments = await generateAndAttachPdf(transmittedDocumentId, "selfBillingCreditNote", parsedForPdf, selfBillingCreditNote.attachments, customPdfFilename);
 
         ublSelfBillingCreditNote = selfBillingCreditNoteToUBL({
           selfBillingCreditNote,
           senderAddress,
-          recipientAddress,
+          recipientAddress: recipientAddress ?? RECIPIENT_NULL_FALLBACK_ADDRESS,
           isDocumentValidationEnforced: true,
         });
         parsed = parseDocument(
@@ -529,7 +447,9 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         );
       }
 
-      xmlDocument = ublSelfBillingCreditNote;
+      if (!isRecipientNull) {
+        xmlDocument = ublSelfBillingCreditNote;
+      }
       type = "selfBillingCreditNote";
 
       if (parsed.parsedDocument) {
@@ -573,7 +493,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       xmlDocument = messageLevelResponseToXML({
         messageLevelResponse,
         senderAddress,
-        recipientAddress,
+        recipientAddress: recipientAddress!,
       });
       type = "messageLevelResponse";
       doctypeId = MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO.docTypeId;
@@ -629,35 +549,38 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       return c.json(actionFailure("Invalid document type provided."), 400);
     }
 
-    if (!xmlDocument) {
-      return c.json(actionFailure("Document could not be parsed."), 400);
-    }
+    let validation: ValidationResponse | undefined;
 
-    const validation: ValidationResponse =
-      await validateXmlDocument(xmlDocument);
-    if (validation.result === "invalid") {
-      // Only stop sending if explicitly invalid
-      // Transform into key (ruleCode) value (errorMessage) object
-      const errors: Record<string, string[]> = validation.errors.reduce(
-        (acc: Record<string, string[]>, error) => {
-          const ruleErrors = acc[error.fieldName] || [];
-          const message = `${error.ruleCode}: ${error.errorMessage}`;
-          if (!ruleErrors.includes(message)) {
-            acc[error.fieldName] = [...ruleErrors, message];
-          }
-          return acc;
-        },
-        {}
-      );
-      return c.json(
-        actionFailure({
-          root: [
-            "Document validation failed. Please ensure your document complies with EN16931 and PEPPOL BIS 3.0 requirements.",
-          ],
-          ...errors,
-        }),
-        400
-      );
+    if (!isRecipientNull) {
+      if (!xmlDocument) {
+        return c.json(actionFailure("Document could not be parsed."), 400);
+      }
+
+      validation = await validateXmlDocument(xmlDocument);
+      if (validation.result === "invalid") {
+        // Only stop sending if explicitly invalid
+        // Transform into key (ruleCode) value (errorMessage) object
+        const errors: Record<string, string[]> = validation.errors.reduce(
+          (acc: Record<string, string[]>, error) => {
+            const ruleErrors = acc[error.fieldName] || [];
+            const message = `${error.ruleCode}: ${error.errorMessage}`;
+            if (!ruleErrors.includes(message)) {
+              acc[error.fieldName] = [...ruleErrors, message];
+            }
+            return acc;
+          },
+          {}
+        );
+        return c.json(
+          actionFailure({
+            root: [
+              "Document validation failed. Please ensure your document complies with EN16931 and PEPPOL BIS 3.0 requirements.",
+            ],
+            ...errors,
+          }),
+          400
+        );
+      }
     }
 
     let sentPeppol = false;
@@ -692,68 +615,70 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     }
 
     let as4Response: SendAs4Response | null = null;
-    if (isPlayground && !useTestNetwork) {
-      try {
-        await simulateSendAs4({
+    if (!isRecipientNull) {
+      if (isPlayground && !useTestNetwork) {
+        try {
+          await simulateSendAs4({
+            senderId: senderAddress,
+            receiverId: recipientAddress!,
+            docTypeId: doctypeId,
+            processId,
+            countryC1: countryC1,
+            body: xmlDocument!,
+            playgroundTeamId: c.var.team.id, // Must be the same as the sender team: we don't support cross-team sending
+          });
+          sentPeppol = true;
+        } catch (error) {
+          console.error("Failed to simulate send as4:", error);
+          additionalPeppolFailureContext =
+            error instanceof Error
+              ? error.message
+              : "No additional context available, please contact support@recommand.eu if you could use our help.";
+
+          // If send over email is disabled, return an error
+          if (!input.email) {
+            return c.json(
+              actionFailure(
+                `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
+              ),
+              422
+            );
+          }
+        }
+      } else {
+        as4Response = await sendAs4({
           senderId: senderAddress,
-          receiverId: recipientAddress,
+          receiverId: recipientAddress!,
           docTypeId: doctypeId,
           processId,
           countryC1: countryC1,
-          body: xmlDocument,
-          playgroundTeamId: c.var.team.id, // Must be the same as the sender team: we don't support cross-team sending
+          body: xmlDocument!,
+          useTestNetwork,
         });
-        sentPeppol = true;
-      } catch (error) {
-        console.error("Failed to simulate send as4:", error);
-        additionalPeppolFailureContext =
-          error instanceof Error
-            ? error.message
-            : "No additional context available, please contact support@recommand.eu if you could use our help.";
-
-        // If send over email is disabled, return an error
-        if (!input.email) {
-          return c.json(
-            actionFailure(
-              `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
-            ),
-            422
+        if (!as4Response.ok) {
+          sendSystemAlert(
+            "Document Sending Failed",
+            `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(as4Response, null, 2)}\n\`\`\``,
+            "error"
           );
-        }
-      }
-    } else {
-      as4Response = await sendAs4({
-        senderId: senderAddress,
-        receiverId: recipientAddress,
-        docTypeId: doctypeId,
-        processId,
-        countryC1: countryC1,
-        body: xmlDocument,
-        useTestNetwork,
-      });
-      if (!as4Response.ok) {
-        sendSystemAlert(
-          "Document Sending Failed",
-          `Failed to send document over Peppol network. Response: \`\`\`\n${JSON.stringify(as4Response, null, 2)}\n\`\`\``,
-          "error"
-        );
-        // Extract sendingException.message from jsonResponse
-        const sendingException = as4Response.sendingException;
-        additionalPeppolFailureContext =
-          sendingException?.message ??
-          "No additional context available, please contact support@recommand.eu if you could use our help.";
+          // Extract sendingException.message from jsonResponse
+          const sendingException = as4Response.sendingException;
+          additionalPeppolFailureContext =
+            sendingException?.message ??
+            "No additional context available, please contact support@recommand.eu if you could use our help.";
 
-        // If send over email is disabled, return an error
-        if (!input.email) {
-          return c.json(
-            actionFailure(
-              `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
-            ),
-            422
-          );
+          // If send over email is disabled, return an error
+          if (!input.email) {
+            return c.json(
+              actionFailure(
+                `Failed to send document over Peppol network. ${additionalPeppolFailureContext}`
+              ),
+              422
+            );
+          }
+        } else {
+          sentPeppol = true;
         }
-      } else {
-        sentPeppol = true;
       }
     }
 
