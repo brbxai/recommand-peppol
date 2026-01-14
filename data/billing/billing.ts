@@ -682,7 +682,7 @@ async function calculateSubscription({
 
   // If a minimum price is set, and the total amount is less than the minimum price, set the total amount to the minimum price
   if ("minimumPrice" in billingConfig && billingConfig.minimumPrice && billingConfig.minimumPrice > 0) {
-    totalAmountExcl = Decimal.max(totalAmountExcl, new Decimal(billingConfig.minimumPrice)).toNearest(0.01);
+    totalAmountExcl = Decimal.max(totalAmountExcl, new Decimal(billingConfig.minimumPrice).times(billingRatio)).toNearest(0.01);
   }
 
   // Generate description for invoice line
