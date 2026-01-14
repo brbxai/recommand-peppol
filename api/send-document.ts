@@ -156,6 +156,14 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
       }
     }
 
+    // Early validation: ensure either recipient or email.to is provided
+    if (isRecipientNull && !input.email?.to?.length) {
+      return c.json(
+        actionFailure("Either recipient (for Peppol) or email.to (for email delivery) must be provided."),
+        400
+      );
+    }
+
     let xmlDocument: string | null = null;
     let type: SupportedDocumentType = "unknown";
     let probableType: SupportedDocumentType = "unknown";
