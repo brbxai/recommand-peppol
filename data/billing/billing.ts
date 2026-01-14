@@ -716,7 +716,7 @@ async function calculateSubscription({
     outgoingDocumentOveragePrice,
 
     // Invoice line
-    lineName: billingConfig.name,
+    lineName: "Recommand " + billingConfig.name,
     lineDescription: lineDescription,
     lineTotalExcl: totalAmountExcl.toNumber(),
     usedQty: usageDecimal.toNumber(),
