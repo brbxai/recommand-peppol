@@ -10,7 +10,7 @@ import sendDocumentServer from "./api/send-document";
 import documentDefaultsServer from "./api/document-defaults";
 import previewDocumentServer from "./api/preview-document";
 import receiveDocumentServer from "./api/internal/receive-document";
-import inboundServer from "./api/inbound";
+import internalWebhooksServer from "./api/internal/webhooks";
 import transmittedDocumentsServer from "./api/documents";
 import {
   generateSpecs,
@@ -177,6 +177,7 @@ for (const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, transmittedDocumentsServer);
   server.route(prefix, recipientServer);
   server.route(prefix + "internal/", receiveDocumentServer);
+  server.route(prefix + "internal/", internalWebhooksServer);
 
   server.route(prefix, webhooksServer);
   server.route(prefix, integrationsServer);
@@ -189,8 +190,6 @@ for (const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, billingProfileServer);
   server.route(prefix, billingServer);
   server.route(prefix, subscriptionServer);
-
-  server.route(prefix, inboundServer);
 }
 
 export default server;

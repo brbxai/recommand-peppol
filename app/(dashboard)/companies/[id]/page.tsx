@@ -13,7 +13,7 @@ import { CompanyForm } from "../../../../components/company-form";
 import { CompanyIdentifiersManager } from "../../../../components/company-identifiers-manager";
 import { CompanyDocumentTypesManager } from "../../../../components/company-document-types-manager";
 import { CompanyNotificationsManager } from "../../../../components/company-notifications-manager";
-import { CompanySendEmailManager } from "../../../../components/company-send-email-manager";
+import { CompanyOutboundEmailManager } from "../../../../components/company-outbound-email-manager";
 import { CompanyIntegrationsManager } from "../../../../components/company-integrations-manager";
 import type { Company, CompanyFormData } from "../../../../types/company";
 import { defaultCompanyFormData } from "../../../../types/company";
@@ -58,17 +58,13 @@ export default function CompanyDetailPage() {
       });
       const json = await response.json();
 
-      if (!json.success || !json.company) {
-        toast.error(stringifyActionFailure(!json.success ? json.errors : {}));
+      if (!json.success) {
+        toast.error(stringifyActionFailure(json.errors));
         navigate("/companies");
         return;
       }
 
-      const companyData: Company = {
-        ...json.company,
-        createdAt: new Date(json.company.createdAt),
-        updatedAt: new Date(json.company.updatedAt),
-      } as Company;
+      const companyData = json.company as Company;
       setCompany(companyData);
       setFormData(companyData);
     } catch (error) {
@@ -126,16 +122,11 @@ export default function CompanyDetailPage() {
       });
 
       const json = await response.json();
-      console.log("json", json);
-      if (!json.success || !json.company) {
-        throw new Error(stringifyActionFailure(!json.success ? json.errors : {}));
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
       }
 
-      const companyData: Company = {
-        ...json.company,
-        createdAt: new Date(json.company.createdAt),
-        updatedAt: new Date(json.company.updatedAt),
-      } as Company;
+      const companyData = json.company as Company;
       setCompany(companyData);
       setFormData(companyData);
       toast.success("Company updated successfully");
@@ -276,7 +267,7 @@ export default function CompanyDetailPage() {
               teamId={activeTeam.id}
               companyId={company.id}
             />
-            <CompanySendEmailManager
+            <CompanyOutboundEmailManager
               teamId={activeTeam.id}
               company={company}
               onUpdate={fetchCompany}

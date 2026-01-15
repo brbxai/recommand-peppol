@@ -1,24 +1,8 @@
-import { z } from "zod";
-import { zodValidCountryCodes } from "../db/schema";
+import type { CompanyResponse } from "../api/companies/shared";
 
-export type Company = {
-  id: string;
-  name: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  country: z.infer<typeof zodValidCountryCodes>;
-  enterpriseNumber: string | null;
-  vatNumber: string | null;
-  isSmpRecipient: boolean;
-  sendEmailSlug: string | null;
-  sendEmailEnabled: boolean;
-  teamId: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
+export type Company = CompanyResponse;
 
-export type CompanyFormData = Omit<Company, 'id' | 'teamId' | 'createdAt' | 'updatedAt' | 'sendEmailSlug' | 'sendEmailEnabled'>;
+export type CompanyFormData = Omit<Company, 'id' | 'teamId' | 'createdAt' | 'updatedAt' | 'outboundEmailSlug' | 'outboundEmailEnabled'>;
 
 export const defaultCompanyFormData: CompanyFormData = {
   name: "",

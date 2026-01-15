@@ -65,7 +65,7 @@ export async function getCompanyById(
     .then((rows) => rows[0]);
 }
 
-export async function getCompanyBySendEmail(
+export async function getCompanyByOutboundEmail(
   email: string
 ): Promise<Company | undefined> {
   const emailLower = email.toLowerCase();
@@ -76,8 +76,8 @@ export async function getCompanyBySendEmail(
     .from(companies)
     .where(
       and(
-        eq(companies.sendEmailSlug, slug),
-        eq(companies.sendEmailEnabled, true)
+        eq(companies.outboundEmailSlug, slug),
+        eq(companies.outboundEmailEnabled, true)
       )
     )
     .then((rows) => rows[0]);

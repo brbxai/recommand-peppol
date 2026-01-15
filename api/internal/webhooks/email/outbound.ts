@@ -28,7 +28,7 @@ interface PostmarkInboundEmail {
   Date: string;
 }
 
-server.post("/inbound/email/send", requirePostmarkWebhookAuth(), describeRoute({ hide: true }), async (c) => {
+server.post("/webhooks/email/outbound", requirePostmarkWebhookAuth(), describeRoute({ hide: true }), async (c) => {
   try {
     const inbound: PostmarkInboundEmail = await c.req.json();
     const toEmail = inbound.To.toLowerCase();

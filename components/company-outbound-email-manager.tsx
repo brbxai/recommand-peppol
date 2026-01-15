@@ -13,11 +13,11 @@ import { AsyncButton } from "@core/components/async-button";
 import { toast } from "@core/components/ui/sonner";
 import { Mail, Copy, Check, RefreshCw } from "lucide-react";
 import { rc } from "@recommand/lib/client";
-import type { CompanySendEmail } from "@peppol/api/companies/send-email";
+import type { CompanyEmailOutbound } from "@peppol/api/companies/email/outbound";
 import { stringifyActionFailure } from "@recommand/lib/utils";
-import type { Company } from "@peppol/data/companies";
+import type { Company } from "@peppol/types/company";
 
-const client = rc<CompanySendEmail>("peppol");
+const client = rc<CompanyEmailOutbound>("peppol");
 
 function slugify(text: string): string {
   return text
@@ -44,36 +44,32 @@ function generateEmailSlug(companyName: string): string {
   return `${companySlug}-${token}`;
 }
 
-type CompanySendEmailManagerProps = {
+type CompanyOutboundEmailManagerProps = {
   teamId: string;
   company: Company;
   onUpdate?: () => void;
 };
 
-export function CompanySendEmailManager({
+export function CompanyOutboundEmailManager({
   teamId,
   company,
   onUpdate,
-}: CompanySendEmailManagerProps) {
+}: CompanyOutboundEmailManagerProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sendEmailSlug, setSendEmailSlug] = useState(
-    company.sendEmailSlug || ""
-  );
-  const [sendEmailEnabled, setSendEmailEnabled] = useState(
-    company.sendEmailEnabled
-  );
+  const [slug, setSlug] = useState(company.outboundEmailSlug || "");
+  const [enabled, setEnabled] = useState(company.outboundEmailEnabled);
   const [copied, setCopied] = useState(false);
 
-  const sendEmailAddress = sendEmailSlug
-    ? `${sendEmailSlug}@send.recommand.eu`
+  const outboundEmailAddress = slug
+    ? `${slug}@out.recommand.eu`
     : null;
 
   const handleCopy = async () => {
-    if (!sendEmailAddress) return;
+    if (!outboundEmailAddress) return;
 
     try {
-      await navigator.clipboard.writeText(sendEmailAddress);
+      await navigator.clipboard.writeText(outboundEmailAddress);
       setCopied(true);
       toast.success("Email address copied to clipboard");
       setTimeout(() => setCopied(false), 2000);
@@ -83,12 +79,12 @@ export function CompanySendEmailManager({
   };
 
   const handleSave = async () => {
-    if (!sendEmailSlug.trim()) {
+    if (!slug.trim()) {
       toast.error("Email slug is required");
       return;
     }
 
-    if (!/^[a-z0-9-]+$/.test(sendEmailSlug)) {
+    if (!/^[a-z0-9-]+$/.test(slug)) {
       toast.error(
         "Slug must contain only lowercase letters, numbers, and hyphens"
       );
@@ -98,12 +94,12 @@ export function CompanySendEmailManager({
     try {
       setIsSubmitting(true);
       const response = await client[":teamId"]["companies"][":companyId"][
-        "send-email"
+        "email"]["outbound"
       ].$put({
         param: { teamId, companyId: company.id },
         json: {
-          sendEmailSlug,
-          sendEmailEnabled,
+          slug,
+          enabled,
         },
       });
 
@@ -112,43 +108,43 @@ export function CompanySendEmailManager({
         throw new Error(stringifyActionFailure(json.errors));
       }
 
-      toast.success("Send email settings updated successfully");
+      toast.success("Outbound email settings updated successfully");
       setIsEditing(false);
       if (onUpdate) onUpdate();
     } catch (error) {
-      toast.error("Failed to update send email settings: " + error);
+      toast.error("Failed to update outbound email settings: " + error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleCancel = () => {
-    setSendEmailSlug(company.sendEmailSlug || "");
-    setSendEmailEnabled(company.sendEmailEnabled);
+    setSlug(company.outboundEmailSlug || "");
+    setEnabled(company.outboundEmailEnabled);
     setIsEditing(false);
   };
 
   const handleRegenerateSlug = () => {
-    setSendEmailSlug(generateEmailSlug(company.name));
+    setSlug(generateEmailSlug(company.name));
   };
 
   const handleEnable = async () => {
-    if (!company.sendEmailSlug) {
-      setSendEmailSlug(generateEmailSlug(company.name));
+    if (!company.outboundEmailSlug) {
+      setSlug(generateEmailSlug(company.name));
       setIsEditing(true);
-      setSendEmailEnabled(true);
+      setEnabled(true);
       return;
     }
 
     try {
       setIsSubmitting(true);
       const response = await client[":teamId"]["companies"][":companyId"][
-        "send-email"
+        "email"]["outbound"
       ].$put({
         param: { teamId, companyId: company.id },
         json: {
-          sendEmailSlug: company.sendEmailSlug,
-          sendEmailEnabled: true,
+          slug: company.outboundEmailSlug,
+          enabled: true,
         },
       });
 
@@ -170,12 +166,12 @@ export function CompanySendEmailManager({
     try {
       setIsSubmitting(true);
       const response = await client[":teamId"]["companies"][":companyId"][
-        "send-email"
+        "email"]["outbound"
       ].$put({
         param: { teamId, companyId: company.id },
         json: {
-          sendEmailSlug: company.sendEmailSlug || "",
-          sendEmailEnabled: false,
+          slug: company.outboundEmailSlug || "",
+          enabled: false,
         },
       });
 
@@ -207,7 +203,7 @@ export function CompanySendEmailManager({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {!company.sendEmailEnabled && !isEditing ? (
+        {!company.outboundEmailEnabled && !isEditing ? (
           <div className="text-center py-8 space-y-4">
             <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <div>
@@ -222,13 +218,13 @@ export function CompanySendEmailManager({
         ) : isEditing ? (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="send-email-slug">Email Address Slug</Label>
+              <Label htmlFor="outbound-email-slug">Email Address Slug</Label>
               <div className="flex gap-2">
                 <Input
-                  id="send-email-slug"
+                  id="outbound-email-slug"
                   type="text"
                   placeholder="your-company"
-                  value={sendEmailSlug}
+                  value={slug}
                   readOnly
                   className="font-mono"
                 />
@@ -242,7 +238,7 @@ export function CompanySendEmailManager({
                   <RefreshCw className="h-4 w-4" />
                 </Button>
                 <div className="flex items-center px-3 border rounded-md bg-muted text-muted-foreground text-sm whitespace-nowrap">
-                  @send.recommand.eu
+                  @out.recommand.eu
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -250,13 +246,13 @@ export function CompanySendEmailManager({
               </p>
             </div>
 
-            {sendEmailSlug && (
+            {slug && (
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-1">
-                  Your send email address will be:
+                  Your outbound email address will be:
                 </p>
                 <code className="text-sm">
-                  {sendEmailSlug}@send.recommand.eu
+                  {slug}@out.recommand.eu
                 </code>
               </div>
             )}
@@ -279,11 +275,11 @@ export function CompanySendEmailManager({
             <div className="p-4 bg-muted rounded-lg space-y-3">
               <div>
                 <Label className="text-xs text-muted-foreground">
-                  Your Send Email Address
+                  Your Outbound Email Address
                 </Label>
                 <div className="flex items-center gap-2 mt-1">
                   <code className="text-sm font-mono flex-1">
-                    {sendEmailAddress}
+                    {outboundEmailAddress}
                   </code>
                   <Button
                     onClick={handleCopy}

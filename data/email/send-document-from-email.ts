@@ -12,7 +12,7 @@ import { sendOutgoingDocumentNotifications } from "@peppol/data/send-document-no
 import { getDocumentTypeInfo } from "@peppol/utils/document-types";
 import { validateXmlDocument } from "@peppol/data/validation/client";
 import { getTeamExtension } from "@peppol/data/teams";
-import { getCompanyBySendEmail } from "@peppol/data/companies";
+import { getCompanyByOutboundEmail } from "@peppol/data/companies";
 import { ulid } from "ulid";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
@@ -41,7 +41,7 @@ export async function sendDocumentFromEmail(
 ): Promise<SendDocumentFromEmailResult> {
   const { toEmail, fromEmail, xmlContent } = options;
 
-  const company = await getCompanyBySendEmail(toEmail);
+  const company = await getCompanyByOutboundEmail(toEmail);
   if (!company) {
     await sendEmail({
       to: fromEmail,

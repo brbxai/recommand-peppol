@@ -1,7 +1,7 @@
 import { Server } from "@recommand/lib/api";
-import sendServer from "./send";
+import outboundServer from "./outbound";
 
 const server = new Server();
-server.route("/", sendServer);
+server.route("/", outboundServer);
 
 export default server;
