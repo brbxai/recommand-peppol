@@ -202,7 +202,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     id="subject"
                     value={subject}
                     onChange={(e) => handleSubjectChange(e.target.value)}
-                    placeholder="Leave blank for auto-generated subject"
+                    placeholder="Default: Invoice {number} or Credit Note {number}"
                   />
                 </div>
 
@@ -212,7 +212,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     id="htmlBody"
                     value={htmlBody}
                     onChange={(e) => handleBodyChange(e.target.value)}
-                    placeholder="Leave blank for auto-generated email body"
+                    placeholder="Default: Dear {buyer name}, you can find your invoice attached."
                     rows={4}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
