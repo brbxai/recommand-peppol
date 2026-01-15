@@ -54,7 +54,7 @@ export async function sendInvoiceAsBRBX(
     throw new Error(`BRBX_BILLING_${dryRun ? "DRY_RUN" : "LIVE"}_JWT environment variable is not set`);
   }
 
-  let recipient: string | null;
+  let recipient: string | null = null;
   if (billingProfile.billingPeppolAddress) {
     recipient = billingProfile.billingPeppolAddress.trim();
   } else if (info.companyVatNumber) {
@@ -65,11 +65,7 @@ export async function sendInvoiceAsBRBX(
     if (cleanedVat.startsWith("BE")) {
       const vatWithoutCountryCode = cleanedVat.substring(2);
       recipient = `0208:${vatWithoutCountryCode}`;
-    } else {
-      recipient = null;
     }
-  } else {
-    throw new Error("Cannot send invoice: company VAT number is missing and billing Peppol address is not set");
   }
 
   let emailRecipients: string[] = [];
