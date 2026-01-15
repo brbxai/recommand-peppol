@@ -8,9 +8,13 @@ export const companyResponse = z.object({
     postalCode: z.string(),
     city: z.string(),
     country: z.string(),
-    enterpriseNumber: z.string(),
-    vatNumber: z.string(),
+    enterpriseNumber: z.string().nullable(),
+    vatNumber: z.string().nullable(),
     isSmpRecipient: z.boolean(),
+    outboundEmailSlug: z.string().nullable(),
+    outboundEmailEnabled: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
 });
+
+export type CompanyResponse = z.infer<typeof companyResponse>;

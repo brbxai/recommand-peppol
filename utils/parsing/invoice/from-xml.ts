@@ -1,6 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { invoiceSchema, type Invoice } from "./schemas";
-import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent } from "../xml-helpers";
+import { getTextContent, getNumberContent, getPercentage, getNullableTextContent, getNullableNumberContent, getEndpointId } from "../xml-helpers";
 import type { SelfBillingInvoice } from "../self-billing-invoice/schemas";
 import { getPaymentKeyByCode } from "@peppol/utils/payment-means";
 
@@ -56,6 +56,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   }
 
   const seller = {
+    endpointId: getEndpointId(sellerParty.EndpointID),
     name: getNullableTextContent(sellerParty.PartyName?.Name) ?? getTextContent(sellerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(sellerParty.PostalAddress?.StreetName),
     street2: getTextContent(sellerParty.PostalAddress?.AdditionalStreetName),
@@ -74,6 +75,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
   }
 
   const buyer = {
+    endpointId: getEndpointId(buyerParty.EndpointID),
     name: getNullableTextContent(buyerParty.PartyName?.Name) ?? getTextContent(buyerParty.PartyLegalEntity?.RegistrationName),
     street: getTextContent(buyerParty.PostalAddress?.StreetName),
     street2: getTextContent(buyerParty.PostalAddress?.AdditionalStreetName),

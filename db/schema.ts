@@ -243,6 +243,8 @@ export const companies = pgTable("peppol_companies", {
   enterpriseNumber: text("enterprise_number"),
   vatNumber: text("vat_number"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
+  outboundEmailSlug: text("outbound_email_slug").unique(),
+  outboundEmailEnabled: boolean("outbound_email_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

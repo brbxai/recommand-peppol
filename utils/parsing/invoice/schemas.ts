@@ -64,8 +64,18 @@ export const unlimitedDecimalSchema = z
     description: "Decimal number as a string with flexible precision",
   });
 
+export const endpointIdSchema = z
+  .object({
+    schemeId: z.string().openapi({ example: "0208", description: "The scheme identifier (e.g., 0208 for Belgian Enterprise Number)" }),
+    identifier: z.string().openapi({ example: "0123456789", description: "The endpoint identifier value" }),
+  })
+  .openapi({ ref: "EndpointId", description: "Peppol endpoint identifier" });
+
 export const partySchema = z
   .object({
+    endpointId: endpointIdSchema.nullish().openapi({
+      description: "The Peppol endpoint identifier of the party. Only present when parsing from XML.",
+    }),
     vatNumber: z.string().nullish().openapi({ example: "BE1234567894" }),
     enterpriseNumber: z.string().nullish().openapi({ example: "1234567894" }),
     name: z.string().openapi({ example: "Example Company" }),
@@ -516,6 +526,7 @@ export const sendInvoiceSchema = _sendInvoiceSchema.openapi({
 export type Invoice = z.infer<typeof invoiceSchema>;
 export type DocumentLine = z.infer<typeof lineSchema>;
 export type Party = z.infer<typeof partySchema>;
+export type EndpointId = z.infer<typeof endpointIdSchema>;
 export type PaymentMeans = z.infer<typeof paymentMeansSchema>;
 export type PaymentTerms = z.infer<typeof invoiceSchema.shape.paymentTerms>;
 export type Item = z.infer<typeof lineSchema>;

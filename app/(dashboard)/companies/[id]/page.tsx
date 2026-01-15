@@ -13,6 +13,7 @@ import { CompanyForm } from "../../../../components/company-form";
 import { CompanyIdentifiersManager } from "../../../../components/company-identifiers-manager";
 import { CompanyDocumentTypesManager } from "../../../../components/company-document-types-manager";
 import { CompanyNotificationsManager } from "../../../../components/company-notifications-manager";
+import { CompanyOutboundEmailManager } from "../../../../components/company-outbound-email-manager";
 import { CompanyIntegrationsManager } from "../../../../components/company-integrations-manager";
 import type { Company, CompanyFormData } from "../../../../types/company";
 import { defaultCompanyFormData } from "../../../../types/company";
@@ -121,7 +122,6 @@ export default function CompanyDetailPage() {
       });
 
       const json = await response.json();
-      console.log("json", json);
       if (!json.success) {
         throw new Error(stringifyActionFailure(json.errors));
       }
@@ -266,6 +266,11 @@ export default function CompanyDetailPage() {
             <CompanyNotificationsManager
               teamId={activeTeam.id}
               companyId={company.id}
+            />
+            <CompanyOutboundEmailManager
+              teamId={activeTeam.id}
+              company={company}
+              onUpdate={fetchCompany}
             />
             {canUseIntegrations(isPlayground, subscription) ? (
               <CompanyIntegrationsManager
