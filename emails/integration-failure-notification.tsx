@@ -1,5 +1,6 @@
 import { Section, Text } from "@react-email/components";
-import { EmailLayout, EmailHeading, InfoSection } from "@core/emails/components/shared";
+import { EmailLayout, EmailHeading } from "@core/emails/components/shared";
+import { ERROR, SHEET_LIGHT } from "@core/lib/config/colors";
 import { getIntegrationEventDescription } from "@peppol/utils/integrations";
 
 interface FailedTask {
@@ -34,7 +35,9 @@ export const IntegrationFailureNotification = ({
         <strong>{companyName}</strong> has failed during{" "}
         <strong>{eventName}</strong>.
       </Text>
-      <InfoSection>
+      <Section
+        className={`my-4 p-4 rounded-lg border border-solid bg-[${SHEET_LIGHT}] border-[${ERROR}]`}
+      >
         <Text className="my-1 font-semibold">Failed Tasks:</Text>
         {failedTasks.map((failedTask, index) => (
           <Section key={index} className="my-2">
@@ -47,7 +50,7 @@ export const IntegrationFailureNotification = ({
             )}
           </Section>
         ))}
-      </InfoSection>
+      </Section>
       <Text className="mb-4">
         Please review the integration configuration and ensure all required
         settings are correct.
