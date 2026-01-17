@@ -78,7 +78,8 @@ export function requireCompanyAccess(options: CompanyAccessOptions = {}) {
         return c.json(actionFailure("Unauthorized"), 401);
       }
       // If the user is not authenticated via an API key, ensure they are a member of the team
-      if (!(await isMember(user.id, company.teamId))) {
+      // Admins bypass this check and can access any company
+      if (!user.isAdmin && !(await isMember(user.id, company.teamId))) {
         return c.json(actionFailure("Unauthorized"), 401);
       }
     }
