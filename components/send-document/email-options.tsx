@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
@@ -28,15 +28,39 @@ interface EmailOptionsProps {
     htmlBody?: string;
   };
   onChange: (value: any) => void;
+  suggestedEmail?: string | null;
 }
 
-export function EmailOptions({ value, onChange }: EmailOptionsProps) {
+export function EmailOptions({
+  value,
+  onChange,
+  suggestedEmail,
+}: EmailOptionsProps) {
   const [enabled, setEnabled] = useState(!!value);
   const [emails, setEmails] = useState(value?.to || [""]);
   const [when, setWhen] = useState(value?.when || "on_peppol_failure");
   const [subject, setSubject] = useState(value?.subject || "");
   const [htmlBody, setHtmlBody] = useState(value?.htmlBody || "");
   const [isOpen, setIsOpen] = useState(false);
+  const lastAutoEmailRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!suggestedEmail) {
+      lastAutoEmailRef.current = null;
+      return;
+    }
+
+    const currentFirstEmail = emails[0]?.trim() || "";
+    const shouldAutoUpdate =
+      (!currentFirstEmail && lastAutoEmailRef.current === null) ||
+      currentFirstEmail === lastAutoEmailRef.current;
+
+    if (shouldAutoUpdate && currentFirstEmail !== suggestedEmail) {
+      lastAutoEmailRef.current = suggestedEmail;
+      const newEmails = [suggestedEmail, ...emails.slice(1)];
+      setEmails(newEmails);
+    }
+  }, [suggestedEmail]);
 
   const handleToggle = (checked: boolean) => {
     setEnabled(checked);
@@ -151,6 +175,10 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  If no Peppol recipient is provided, email will be the primary
+                  delivery method regardless of this setting.
+                </p>
               </div>
 
               <div>

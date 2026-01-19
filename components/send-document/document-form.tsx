@@ -258,7 +258,8 @@ export function DocumentForm({
       typeof formData.recipient === "string" ? formData.recipient.trim() : "";
 
     const shouldAutoUpdate =
-      !currentRecipient || currentRecipient === lastAutoRecipientRef.current;
+      (!currentRecipient && lastAutoRecipientRef.current === null) ||
+      currentRecipient === lastAutoRecipientRef.current;
 
     if (shouldAutoUpdate && currentRecipient !== autoRecipient) {
       lastAutoRecipientRef.current = autoRecipient;
@@ -328,17 +329,44 @@ export function DocumentForm({
       return;
     }
 
-    if (!formData.recipient) {
-      toast.error("Please enter a recipient Peppol ID");
+    const hasRecipient = !!formData.recipient?.trim();
+    const hasEmailRecipients =
+      (formData.email?.to?.filter((e) => e).length ?? 0) > 0;
+    const billingTypes: DocumentType[] = [
+      DocumentType.INVOICE,
+      DocumentType.CREDIT_NOTE,
+      DocumentType.SELF_BILLING_INVOICE,
+      DocumentType.SELF_BILLING_CREDIT_NOTE,
+    ];
+    const isBillingType = billingTypes.includes(
+      formData.documentType as DocumentType
+    );
+
+    if (!hasRecipient && !hasEmailRecipients) {
+      toast.error(
+        "Please enter a recipient Peppol ID or configure email delivery"
+      );
+      return;
+    }
+
+    if (!hasRecipient && !isBillingType) {
+      toast.error(
+        "Email-only delivery is only supported for (self-billing) invoices and credit notes"
+      );
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      const payload = {
+        ...formData,
+        recipient: formData.recipient?.trim() || null,
+      } as SendDocument;
+
       const response = await client[":companyId"]["sendDocument"].$post({
         param: { companyId: selectedCompanyId },
-        json: formData as SendDocument,
+        json: payload,
       });
 
       const json = await response.json();
@@ -401,10 +429,11 @@ export function DocumentForm({
             </div>
 
             <div>
-              <Label htmlFor="recipient">Recipient Peppol ID *</Label>
+              <Label htmlFor="recipient">Recipient Peppol ID</Label>
               <RecipientSelector
                 value={formData.recipient || ""}
                 onChange={handleRecipientChange}
+                optional
               />
             </div>
 
@@ -435,6 +464,7 @@ export function DocumentForm({
         <EmailOptions
           value={formData.email}
           onChange={handleEmailOptionsChange}
+          suggestedEmail={selectedCustomer?.email}
         />
 
         {type !== "xml" && (
