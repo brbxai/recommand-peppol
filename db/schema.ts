@@ -12,6 +12,7 @@ import {
   index,
   primaryKey,
   serial,
+  integer,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { isNotNull, SQL, sql } from "drizzle-orm";
@@ -339,6 +340,40 @@ export const companyNotificationEmailAddresses = pgTable(
     ),
   ]
 );
+
+export const companyCustomDomains = pgTable("peppol_company_custom_domains", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "ccd_" + ulid()),
+  companyId: text("company_id")
+    .references(() => companies.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(), // One custom domain per company
+
+  // Postmark domain info
+  postmarkDomainId: integer("postmark_domain_id").notNull(),
+  domainName: text("domain_name").notNull(),
+
+  // DKIM verification
+  dkimVerified: boolean("dkim_verified").notNull().default(false),
+  dkimPendingHost: text("dkim_pending_host"),
+  dkimPendingValue: text("dkim_pending_value"),
+  dkimHost: text("dkim_host"),
+  dkimValue: text("dkim_value"),
+
+  // Return path verification
+  returnPathDomain: text("return_path_domain"),
+  returnPathVerified: boolean("return_path_verified").notNull().default(false),
+  returnPathCnameValue: text("return_path_cname_value"),
+
+  // Custom sender email (e.g., invoices@theirdomain.com)
+  senderEmail: text("sender_email").notNull(),
+
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: autoUpdateTimestamp(),
+});
 
 export const webhooks = pgTable("peppol_webhooks", {
   id: text("id")

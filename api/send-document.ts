@@ -702,6 +702,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
             type,
             parsedDocument: parsedDocument,
             isPlayground,
+            companyId: company.id,
           });
           sentEmailRecipients.push(recipient);
         } catch (error) {

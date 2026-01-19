@@ -5,6 +5,11 @@ import {
   getDocumentFilename,
   type ParsedDocument,
 } from "@peppol/utils/document-filename";
+import { getCompanyCustomDomain } from "@peppol/data/company-custom-domains";
+import { getCompanyById } from "@peppol/data/companies";
+import { getActiveSubscription } from "@peppol/data/subscriptions";
+import { isPlayground } from "@peppol/data/teams";
+import { canUseCustomDomains } from "@peppol/utils/plan-validation";
 
 export function getDocumentTypeLabel(type: DocumentType): string {
   switch (type) {
@@ -54,6 +59,7 @@ export async function sendDocumentEmail(options: {
   subject?: string;
   htmlBody?: string;
   isPlayground?: boolean;
+  companyId?: string;
 }) {
   let senderName = "";
   const filename = getDocumentFilename(options.type, options.parsedDocument);
@@ -105,10 +111,41 @@ export async function sendDocumentEmail(options: {
     attachments.push(xmlAttachment);
   }
 
+  // Determine the from address - use custom domain if available, verified, and on a paid plan
+  let fromAddress: string;
+  const defaultAddress = senderName
+    ? `${senderName} <noreply-documents@recommand.eu>`
+    : "noreply-documents@recommand.eu";
+
+  if (options.companyId) {
+    const customDomain = await getCompanyCustomDomain(options.companyId);
+    if (customDomain?.dkimVerified) {
+      // Check if the company is on a paid plan
+      const company = await getCompanyById(options.companyId);
+      if (company) {
+        const teamIsPlayground = await isPlayground(company.teamId);
+        const subscription = await getActiveSubscription(company.teamId);
+        if (canUseCustomDomains(teamIsPlayground, subscription)) {
+          // Use custom sender email
+          fromAddress = senderName
+            ? `${senderName} <${customDomain.senderEmail}>`
+            : customDomain.senderEmail;
+        } else {
+          // Not on a paid plan, fall back to default
+          fromAddress = defaultAddress;
+        }
+      } else {
+        fromAddress = defaultAddress;
+      }
+    } else {
+      fromAddress = defaultAddress;
+    }
+  } else {
+    fromAddress = defaultAddress;
+  }
+
   await sendEmail({
-    from: senderName
-      ? `${senderName} <noreply-documents@recommand.eu>`
-      : "noreply-documents@recommand.eu",
+    from: fromAddress,
     to: options.to,
     subject: subject,
     email: htmlBody,

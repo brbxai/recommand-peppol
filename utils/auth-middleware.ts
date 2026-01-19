@@ -13,7 +13,7 @@ import { verifyIntegrationJwt } from "@peppol/data/integrations/auth";
 import { getExtendedTeam, type ExtendedTeam } from "@peppol/data/teams";
 import { getActiveSubscription } from "@peppol/data/subscriptions";
 import { isPlayground } from "@peppol/data/teams";
-import { canUseIntegrations } from "@peppol/utils/plan-validation";
+import { canUseIntegrations, canUseCustomDomains } from "@peppol/utils/plan-validation";
 import { actionFailure } from "@recommand/lib/utils";
 import { createMiddleware } from "hono/factory";
 
@@ -196,6 +196,31 @@ export function requireIntegrationAccess() {
         return c.json(
           actionFailure(
             "Integrations are only available on Starter, Professional, or Enterprise plans. Please upgrade your subscription to use integrations."
+          ),
+          403
+        );
+      }
+
+      await next();
+    }
+  );
+}
+
+export function requireCustomDomainAccess() {
+  return createMiddleware<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext>(
+    async (c, next) => {
+      const team = c.var.team;
+      if (!team) {
+        return c.json(actionFailure("Team not found"), 404);
+      }
+
+      const teamIsPlayground = await isPlayground(team.id);
+      const subscription = await getActiveSubscription(team.id);
+
+      if (!canUseCustomDomains(teamIsPlayground, subscription)) {
+        return c.json(
+          actionFailure(
+            "Custom domains are only available on Starter, Professional, or Enterprise plans. Please upgrade your subscription to use custom domains."
           ),
           403
         );

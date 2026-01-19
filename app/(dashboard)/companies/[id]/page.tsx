@@ -13,12 +13,13 @@ import { CompanyForm } from "../../../../components/company-form";
 import { CompanyIdentifiersManager } from "../../../../components/company-identifiers-manager";
 import { CompanyDocumentTypesManager } from "../../../../components/company-document-types-manager";
 import { CompanyNotificationsManager } from "../../../../components/company-notifications-manager";
+import { CompanyCustomDomainManager } from "../../../../components/company-custom-domain-manager";
 import { CompanyIntegrationsManager } from "../../../../components/company-integrations-manager";
 import type { Company, CompanyFormData } from "../../../../types/company";
 import { defaultCompanyFormData } from "../../../../types/company";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
-import { canUseIntegrations } from "@peppol/utils/plan-validation";
+import { canUseIntegrations, canUseCustomDomains } from "@peppol/utils/plan-validation";
 import { BUILT_IN_INTEGRATIONS } from "@peppol/utils/integrations";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
@@ -267,6 +268,11 @@ export default function CompanyDetailPage() {
               teamId={activeTeam.id}
               companyId={company.id}
             />
+            <CompanyCustomDomainManager
+              teamId={activeTeam.id}
+              companyId={company.id}
+              canUseFeature={canUseCustomDomains(isPlayground, subscription)}
+            />
             {canUseIntegrations(isPlayground, subscription) ? (
               <CompanyIntegrationsManager
                 teamId={activeTeam.id}
@@ -302,19 +308,11 @@ export default function CompanyDetailPage() {
                         </ul>
                       </div>
                     )}
-                    <div className="text-sm text-muted-foreground">
-                      <p className="mb-2">With integrations, you can:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Automatically sync documents with your accounting software</li>
-                        <li>Receive real-time notifications for incoming documents</li>
-                        <li>Streamline your document processing workflow</li>
-                      </ul>
-                    </div>
                     <Button
                       onClick={() => navigate("/billing/subscription")}
                       className="w-full"
                     >
-                      View Available Plans
+                      Upgrade Plan
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
