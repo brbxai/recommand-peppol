@@ -50,6 +50,8 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             <p class="text-slate-600">{{postalZone}} {{city}}</p>
             <p class="text-slate-600">{{country}}</p>
             {{#vatNumber}}<p class="mt-1 text-xs text-slate-500">VAT {{vatNumber}}</p>{{/vatNumber}}
+            {{#email}}<p class="mt-1 text-xs text-slate-500">{{email}}</p>{{/email}}
+            {{#phone}}<p class="mt-1 text-xs text-slate-500">{{phone}}</p>{{/phone}}
           {{/seller}}
           {{^seller}}
             <p class="text-slate-500">-</p>
@@ -64,6 +66,8 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             <p class="text-slate-600">{{postalZone}} {{city}}</p>
             <p class="text-slate-600">{{country}}</p>
             {{#vatNumber}}<p class="mt-1 text-xs text-slate-500">VAT {{vatNumber}}</p>{{/vatNumber}}
+            {{#email}}<p class="mt-1 text-xs text-slate-500">{{email}}</p>{{/email}}
+            {{#phone}}<p class="mt-1 text-xs text-slate-500">{{phone}}</p>{{/phone}}
           {{/buyer}}
           {{^buyer}}
             <p class="text-slate-500">-</p>

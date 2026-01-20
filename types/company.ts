@@ -10,6 +10,8 @@ export type Company = {
   country: z.infer<typeof zodValidCountryCodes>;
   enterpriseNumber: string | null;
   vatNumber: string | null;
+  email: string | null;
+  phone: string | null;
   isSmpRecipient: boolean;
 };
 
@@ -23,5 +25,7 @@ export const defaultCompanyFormData: CompanyFormData = {
   country: "BE",
   enterpriseNumber: null,
   vatNumber: null,
+  email: null,
+  phone: null,
   isSmpRecipient: true,
 }; 

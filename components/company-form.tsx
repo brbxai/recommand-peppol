@@ -86,6 +86,26 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                 />
                 {company.country === "BE" && <p className="text-xs text-pretty text-muted-foreground">For Belgian businesses, the VAT number will be used to infer the enterprise number.</p>}
             </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email (Optional)</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        value={company.email || ""}
+                        onChange={(e) => onChange({ ...company, email: e.target.value || null })}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="phone">Phone (Optional)</Label>
+                    <Input
+                        id="phone"
+                        type="tel"
+                        value={company.phone || ""}
+                        onChange={(e) => onChange({ ...company, phone: e.target.value || null })}
+                    />
+                </div>
+            </div>
             {(company.country !== "BE" || showEnterpriseNumberForBelgianCompanies) && <div className="space-y-1">
                 <div className="space-y-2">
                     <Label htmlFor="enterpriseNumber">Enterprise Number (Optional)</Label>

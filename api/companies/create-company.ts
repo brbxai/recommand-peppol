@@ -36,6 +36,8 @@ const createCompanyJsonBodySchema = z.object({
     country: zodValidCountryCodes,
     enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber).openapi({ description: "The enterprise number of the company. Can only contain alphanumeric characters. For Belgian businesses it will be inferred from the VAT number if not provided." }),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
+    email: z.string().email().or(z.literal("")).nullish().transform((val) => val?.trim() === "" ? null : val),
+    phone: z.string().nullish().transform((val) => val?.trim() === "" ? null : val),
     isSmpRecipient: z.boolean().default(true),
     skipDefaultCompanySetup: z.boolean().default(false).openapi({ description: "If true, the automatic creation of company identifiers and document types will be skipped. You will need to create them afterwards using the company identifier creation endpoint and company document type creation endpoint." }),
 });

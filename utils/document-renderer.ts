@@ -40,6 +40,8 @@ type TemplateParty = {
   city?: string | null;
   country?: string | null;
   vatNumber?: string | null;
+  email?: string | null;
+  phone?: string | null;
 };
 
 type TemplateTotals = {
@@ -151,6 +153,8 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
       city: p.city ?? null,
       country: p.country ?? null,
       vatNumber: p.vatNumber ?? null,
+      email: p.email ?? null,
+      phone: p.phone ?? null,
     };
   };
 

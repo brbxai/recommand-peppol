@@ -47,6 +47,8 @@ const updateCompanyJsonBodySchema = z.object({
     country: zodValidCountryCodes.optional(),
     enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
+    email: z.string().email().or(z.literal("")).nullish().transform((val) => val?.trim() === "" ? null : val),
+    phone: z.string().nullish().transform((val) => val?.trim() === "" ? null : val),
     isSmpRecipient: z.boolean().optional(),
 });
 

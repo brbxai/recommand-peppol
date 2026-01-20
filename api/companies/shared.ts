@@ -10,6 +10,8 @@ export const companyResponse = z.object({
     country: z.string(),
     enterpriseNumber: z.string(),
     vatNumber: z.string(),
+    email: z.string().nullable(),
+    phone: z.string().nullable(),
     isSmpRecipient: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),

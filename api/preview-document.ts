@@ -111,6 +111,8 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
           city: company.city,
           postalZone: company.postalCode,
           country: company.country,
+          email: company.email || null,
+          phone: company.phone || null,
         };
       }
       if (!invoice.issueDate) {
@@ -156,6 +158,8 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
           city: company.city,
           postalZone: company.postalCode,
           country: company.country,
+          email: company.email || null,
+          phone: company.phone || null,
         };
       }
       if (!creditNote.issueDate) {
@@ -197,6 +201,8 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
           city: company.city,
           postalZone: company.postalCode,
           country: company.country,
+          email: company.email || null,
+          phone: company.phone || null,
         };
       }
       if (!invoice.issueDate) {
@@ -243,6 +249,8 @@ async function _previewDocumentImplementation(c: PreviewDocumentContext) {
           city: company.city,
           postalZone: company.postalCode,
           country: company.country,
+          email: company.email || null,
+          phone: company.phone || null,
         };
       }
       if (!creditNote.issueDate) {

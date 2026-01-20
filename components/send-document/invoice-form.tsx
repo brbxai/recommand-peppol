@@ -119,6 +119,8 @@ export function InvoiceForm({
             city: company.city,
             postalZone: company.postalCode,
             country: company.country,
+            email: company.email || null,
+            phone: company.phone || null,
           };
 
           setInvoice((prev) => ({

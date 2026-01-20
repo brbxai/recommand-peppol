@@ -116,6 +116,8 @@ export function CreditNoteForm({
             city: company.city,
             postalZone: company.postalCode,
             country: company.country,
+            email: company.email || null,
+            phone: company.phone || null,
           };
 
           setCreditNote((prev) => ({
