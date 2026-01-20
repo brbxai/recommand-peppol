@@ -113,6 +113,9 @@ async function _exportDocumentsImplementation(c: ExportDocumentsContext) {
             for (const document of documents) {
                 if (document.xml) {
                     zip.file(`${document.id}.xml`, document.xml);
+                }else if (generatePdf != "never") {
+                    const pdfBuffer = await renderDocumentPdf(document);
+                    zip.file(`${document.id}.pdf`, pdfBuffer);
                 }
             }
         } else {
@@ -128,7 +131,7 @@ async function _exportDocumentsImplementation(c: ExportDocumentsContext) {
                 }
 
                 let hasPdfAttachment = false;
-                if (document.parsed?.attachments) {
+                if (document.parsed && "attachments" in document.parsed && document.parsed.attachments) {
                     for (const attachment of document.parsed.attachments) {
                         const base64 = attachment.embeddedDocument;
                         const mimeCode = attachment.mimeCode;
