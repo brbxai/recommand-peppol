@@ -104,6 +104,7 @@ async function billTeam({
 
   let invoiceReference: number | null = null;
   let billingEventId: string | null = null;
+  let isPaymentRequested: boolean = false;
   let invoiceId: string | null = null;
 
   try {
@@ -411,11 +412,10 @@ async function billTeam({
             billingEventId!,
             totalAmountIncl.toFixed(2)
           );
+          isPaymentRequested = true;
         } catch (error) {
-          throw new TeamBillingResultError(
-            `Failed to request payment: ${error}`,
-            billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: invoiceId ? "x" : "", isPaymentRequested: "?" }))
-          );
+          console.error(`Failed to request payment for billing event ${billingEventId}: ${error}`);
+          // Fail silently, this is passed on through the isPaymentRequested field
         }
       }
     }
@@ -432,7 +432,7 @@ async function billTeam({
       ...generateTeamBillingResult(x, billingProfile),
       status: "success",
       isInvoiceSent: invoiceId ? "x" : "",
-      isPaymentRequested: billingProfile.isManuallyBilled ? "" : "x",
+      isPaymentRequested: billingProfile.isManuallyBilled ? "" : isPaymentRequested ? "x" : "?",
       message: "",
       billingProfileId: billingProfile.id,
       billingProfileStanding: billingProfile.profileStanding,

@@ -1,4 +1,4 @@
-import createMollieClient, { SequenceType } from "@mollie/api-client";
+import createMollieClient, { SequenceType, type Mandate } from "@mollie/api-client";
 import { db } from "@recommand/db";
 import { billingProfiles, subscriptionBillingEvents } from "@peppol/db/schema";
 import { eq, and, not } from "drizzle-orm";
@@ -128,7 +128,46 @@ export async function getMandate(mollieCustomerId: string) {
   return null;
 }
 
+export function getMaxPaymentSize(mandate: Mandate): Decimal {
+  if (mandate.details && "maximumAmount" in mandate.details) {
+    const maximumAmount = mandate.details.maximumAmount as { value: string, currency: string };
+    if (maximumAmount && typeof maximumAmount === "object" && "value" in maximumAmount) {
+      const customLimit = new Decimal(maximumAmount.value);
+      if (customLimit.isNaN() === false && customLimit.isFinite() === true) {
+        return customLimit;
+      }
+    }
+  }
+
+  return new Decimal(1000);
+}
+
 export async function requestPayment(
+  mollieCustomerId: string,
+  mollieMandateId: string,
+  billingProfileId: string,
+  billingEventId: string,
+  amountDue: string
+) {
+  const mandate = await getMandate(mollieCustomerId);
+  if (!mandate) {
+    throw new Error("Mandate not found");
+  }
+  const maxPaymentSize = getMaxPaymentSize(mandate);
+  const amountDueDecimal = new Decimal(amountDue);
+  if (amountDueDecimal.gt(maxPaymentSize)) {
+    let remainingAmount = amountDueDecimal;
+    while (remainingAmount.gt(0)) {
+      const paymentAmount = remainingAmount.gt(maxPaymentSize) ? maxPaymentSize : remainingAmount;
+      await _requestPayment(mollieCustomerId, mollieMandateId, billingProfileId, billingEventId, paymentAmount.toFixed(2));
+      remainingAmount = remainingAmount.minus(paymentAmount);
+    }
+  } else {
+    await _requestPayment(mollieCustomerId, mollieMandateId, billingProfileId, billingEventId, amountDueDecimal.toFixed(2));
+  }
+}
+
+async function _requestPayment(
   mollieCustomerId: string,
   mollieMandateId: string,
   billingProfileId: string,
