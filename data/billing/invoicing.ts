@@ -80,6 +80,7 @@ export async function sendInvoiceAsBRBX(
     issueDate: formatISO(info.issueDate, { representation: "date" }),
     dueDate: formatISO(info.issueDate, { representation: "date" }),
     invoiceNumber: info.invoiceReference ? info.invoiceReference.toString() : "no-number",
+    note: "Thank you for being a customer of the open source Recommand Peppol integration platform and helping us make Peppol more accessible to all businesses. This invoice will be paid automatically.",
     buyer: {
       name: info.companyName,
       street: info.companyStreet,
