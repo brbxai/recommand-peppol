@@ -567,27 +567,25 @@ export function CreditNoteForm({
         </CollapsibleContent>
       </Collapsible>
 
-      {mode !== "billing" && (
-        <Collapsible open={openSections.attachments}>
-          <CollapsibleTrigger
-            className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
-            onClick={() => toggleSection("attachments")}
-          >
-            <span>Attachments</span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${openSections.attachments ? "rotate-180" : ""}`}
-            />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            <AttachmentsEditor
-              attachments={creditNote.attachments || []}
-              onChange={(attachments) =>
-                handleFieldChange("attachments", attachments)
-              }
-            />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
+      <Collapsible open={openSections.attachments}>
+        <CollapsibleTrigger
+          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+          onClick={() => toggleSection("attachments")}
+        >
+          <span>Attachments</span>
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${openSections.attachments ? "rotate-180" : ""}`}
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-4">
+          <AttachmentsEditor
+            attachments={creditNote.attachments || []}
+            onChange={(attachments) =>
+              handleFieldChange("attachments", attachments)
+            }
+          />
+        </CollapsibleContent>
+      </Collapsible>
 
       <Collapsible open={openSections.notes}>
         <CollapsibleTrigger
