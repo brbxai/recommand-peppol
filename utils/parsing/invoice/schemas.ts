@@ -306,6 +306,9 @@ export const lineSchema = z
       description:
         "A reference to a related document, mostly used to refer to a related invoice.",
     }),
+    orderLineReference: z.string().nullish().openapi({
+      description: "A reference to a related order line.",
+    }),
     additionalItemProperties: z
       .array(additionalItemPropertySchema)
       .nullish()

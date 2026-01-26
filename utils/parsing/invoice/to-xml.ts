@@ -360,6 +360,11 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
           "@_currencyID": invoice.currency,
           "#text": item.netAmount,
         },
+        ...(item.orderLineReference && {
+          "cac:OrderLineReference": {
+            "cbc:LineID": item.orderLineReference,
+          },
+        }),
         ...(item.documentReference && {
           "cac:DocumentReference": {
             "cbc:ID": item.documentReference,

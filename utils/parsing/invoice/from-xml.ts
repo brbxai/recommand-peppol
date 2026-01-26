@@ -129,6 +129,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
       identifier: getTextContent(line.Item.StandardItemIdentification.ID["#text"]),
     } : null,
     documentReference: getNullableTextContent(line.DocumentReference?.ID),
+    orderLineReference: getNullableTextContent(line.OrderLineReference?.LineID),
     additionalItemProperties: (line.Item?.AdditionalItemProperty || []).map((property: any) => ({
       name: getTextContent(property.Name),
       value: getTextContent(property.Value),

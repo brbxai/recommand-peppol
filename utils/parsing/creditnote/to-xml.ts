@@ -368,6 +368,11 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
           "@_currencyID": creditNote.currency,
           "#text": item.netAmount,
         },
+        ...(item.orderLineReference && {
+          "cac:OrderLineReference": {
+            "cbc:LineID": item.orderLineReference,
+          },
+        }),
         ...(item.documentReference && {
           "cac:DocumentReference": {
             "cbc:ID": item.documentReference,
