@@ -423,6 +423,15 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
               "cbc:IdentificationCode": item.originCountry,
             },
           }),
+          ...((item.commodityClassifications && item.commodityClassifications.length > 0) && {
+            "cac:CommodityClassification": item.commodityClassifications.map((classification) => ({
+              "cbc:ItemClassificationCode": {
+                "@_listID": classification.scheme,
+                ...(classification.schemeVersion && { "@_listVersionID": classification.schemeVersion }),
+                "#text": classification.value,
+              }
+            })),
+          }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,
             // An Invoice line (BG-25) where the VAT category code (BT-151) is "Not subject to VAT" shall not contain an Invoiced item VAT rate (BT-152).	

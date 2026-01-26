@@ -3,6 +3,7 @@ import { Decimal } from "decimal.js";
 import "zod-openapi/extend";
 import { CURRENCIES, zCurrencies } from "@peppol/utils/currencies";
 import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
+import { ITEM_TYPE_IDENTIFICATION_CODES } from "@peppol/utils/item-type-identification-codes";
 
 export const VAT_CATEGORIES = {
   AE: "Vat Reverse Charge",
@@ -266,6 +267,14 @@ export const additionalItemPropertySchema = z
   })
   .openapi({ ref: "AdditionalItemProperty" });
 
+export const itemClassificationCodeSchema = z
+  .object({
+    scheme: z.enum(ITEM_TYPE_IDENTIFICATION_CODES.map((code) => code.key) as [string, ...string[]]).openapi({ example: "SN", description: "The scheme of the item classification code. Can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNCL7143/)." }),
+    schemeVersion: z.string().nullish(),
+    value: z.string().min(1).openapi({ example: "123456", description: "The value of the item classification code." }),
+  })
+  .openapi({ ref: "ItemClassificationCode" });
+
 export const lineSchema = z
   .object({
     id: z.string().nullish().openapi({
@@ -309,6 +318,7 @@ export const lineSchema = z
     orderLineReference: z.string().nullish().openapi({
       description: "A reference to a related order line.",
     }),
+    commodityClassifications: z.array(itemClassificationCodeSchema).nullish().openapi({ description: "Optional commodity classifications" }),
     additionalItemProperties: z
       .array(additionalItemPropertySchema)
       .nullish()

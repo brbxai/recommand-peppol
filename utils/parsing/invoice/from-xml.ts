@@ -14,7 +14,8 @@ const parser = new XMLParser({
       name === "PartyIdentification" ||
       name === "AdditionalDocumentReference" ||
       name === "AllowanceCharge" ||
-      name === "AdditionalItemProperty";
+      name === "AdditionalItemProperty" ||
+      name === "CommodityClassification";
   },
   parseAttributeValue: false,
   parseTagValue: false,
@@ -130,6 +131,11 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     } : null,
     documentReference: getNullableTextContent(line.DocumentReference?.ID),
     orderLineReference: getNullableTextContent(line.OrderLineReference?.LineID),
+    commodityClassifications: (line.Item?.CommodityClassification || []).map((classification: any) => ({
+      scheme: getTextContent(classification.ItemClassificationCode["@_listID"]),
+      schemeVersion: getNullableTextContent(classification.ItemClassificationCode["@_listVersionID"]),
+      value: getTextContent(classification.ItemClassificationCode["#text"]),
+    })),
     additionalItemProperties: (line.Item?.AdditionalItemProperty || []).map((property: any) => ({
       name: getTextContent(property.Name),
       value: getTextContent(property.Value),
