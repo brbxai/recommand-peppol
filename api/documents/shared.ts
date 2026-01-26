@@ -19,7 +19,7 @@ export const transmittedDocumentResponse = z.object({
     processId: z.string(),
     countryC1: z.string(),
     type: documentTypeSchema,
-    readAt: z.string(),
+    readAt: z.string().nullable(),
     createdAt: z.string(),
     updatedAt: z.string(),
     xml: z.string().nullable(),
