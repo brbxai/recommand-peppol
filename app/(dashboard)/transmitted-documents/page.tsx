@@ -144,6 +144,7 @@ export default function Page() {
           search: globalFilter || undefined, // Add the global search term to the query
           type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as SupportedDocumentType, // When no or all options are selected, don't filter on type
           isUnread: ((filteredIsUnreadValues.length === 0 || filteredIsUnreadValues.length > 1) ? undefined : filteredIsUnreadValues[0]) as "true" | "false" | undefined,
+          excludeAttachments: true,
         },
       });
       const json = await response.json();

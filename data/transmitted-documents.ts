@@ -2,6 +2,7 @@ import { supportedDocumentTypeEnum, transmittedDocuments, transmittedDocumentLab
 import { db } from "@recommand/db";
 import { eq, and, sql, desc, isNull, isNotNull, inArray, or, ilike, SQL, gte, lt } from "drizzle-orm";
 import type { Label } from "./labels";
+import { removeAttachmentsFromParsedDocument } from "@peppol/utils/parsing/remove-attachments";
 
 export type TransmittedDocument = typeof transmittedDocuments.$inferSelect;
 export type InsertTransmittedDocument = typeof transmittedDocuments.$inferInsert;
@@ -60,10 +61,11 @@ export async function getTransmittedDocuments(
     isUnread?: boolean;
     envelopeId?: string | null;
     peppolMessageId?: string | null;
-    peppolConversationId?: string | null
+    peppolConversationId?: string | null;
+    excludeAttachments?: boolean;
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
-  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread, envelopeId, peppolMessageId, peppolConversationId } = options;
+  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread, envelopeId, peppolMessageId, peppolConversationId, excludeAttachments = false } = options;
   const offset = (page - 1) * limit;
 
   // Build the where clause
@@ -163,6 +165,9 @@ export async function getTransmittedDocuments(
   const documentsWithLabels = documents.map((doc) => ({
     ...doc,
     labels: documentLabelsMap.get(doc.id) || [],
+    parsed: excludeAttachments
+      ? (removeAttachmentsFromParsedDocument(doc.parsed) as typeof doc.parsed)
+      : doc.parsed,
   }));
 
   return { documents: documentsWithLabels, total };
