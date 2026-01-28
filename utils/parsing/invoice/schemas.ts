@@ -4,6 +4,7 @@ import "zod-openapi/extend";
 import { CURRENCIES, zCurrencies } from "@peppol/utils/currencies";
 import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
 import { ITEM_TYPE_IDENTIFICATION_CODES } from "@peppol/utils/item-type-identification-codes";
+import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
 
 export const VAT_CATEGORIES = {
   AE: "Vat Reverse Charge",
@@ -68,6 +69,7 @@ export const unlimitedDecimalSchema = z
 export const partySchema = z
   .object({
     vatNumber: z.string().nullish().openapi({ example: "BE1234567894" }),
+    enterpriseNumberScheme: zodValidIsoIcdSchemeIdentifiers.nullish().openapi({ example: "0208", description: "The scheme that corresponds to the enterprise number. Can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/ICD/)." }),
     enterpriseNumber: z.string().nullish().openapi({ example: "1234567894" }),
     name: z.string().openapi({ example: "Example Company" }),
     street: z.string().openapi({ example: "Example Street 1" }),

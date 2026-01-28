@@ -13,6 +13,7 @@ import { companyResponse } from "./shared";
 import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { cleanEnterpriseNumber, cleanVatNumber, UserFacingError } from "@peppol/utils/util";
 import { zodValidCountryCodes } from "@peppol/db/schema";
+import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
 
 const server = new Server();
 
@@ -45,6 +46,7 @@ const updateCompanyJsonBodySchema = z.object({
     postalCode: z.string().optional(),
     city: z.string().optional(),
     country: zodValidCountryCodes.optional(),
+    enterpriseNumberScheme: zodValidIsoIcdSchemeIdentifiers.nullish(),
     enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
     email: z.string().email().or(z.literal("")).nullish().transform((val) => val?.trim() === "" ? null : val),

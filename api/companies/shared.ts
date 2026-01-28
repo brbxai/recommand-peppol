@@ -8,6 +8,7 @@ export const companyResponse = z.object({
     postalCode: z.string(),
     city: z.string(),
     country: z.string(),
+    enterpriseNumberScheme: z.string().nullable(),
     enterpriseNumber: z.string(),
     vatNumber: z.string(),
     email: z.string().nullable(),

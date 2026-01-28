@@ -8,6 +8,10 @@ import { z } from "zod";
 import { AsyncButton } from "@core/components/async-button";
 import { Checkbox } from "@core/components/ui/checkbox";
 import { COUNTRIES } from "@peppol/utils/countries";
+import { Combobox } from "@core/components/ui/combobox";
+import { ISO_ICD_SCHEME_IDENTIFIERS } from "@peppol/utils/iso-icd-scheme-identifiers";
+import { Alert, AlertDescription, AlertTitle } from "@core/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 type CompanyFormProps = {
     company: Partial<Company>;
@@ -19,6 +23,22 @@ type CompanyFormProps = {
 };
 
 export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing = false, showEnterpriseNumberForBelgianCompanies = false }: CompanyFormProps) {
+    const handleCountryChange = (value: string) => {
+        const countryCode = value as z.infer<typeof zodValidCountryCodes>;
+        const countryInfo = COUNTRIES.find((c) => c.code === countryCode);
+        const updates: Partial<Company> = {
+            enterpriseNumber: null,
+            vatNumber: null,
+            country: countryCode,
+        };
+        if (countryInfo?.defaultEnterpriseNumberScheme && ISO_ICD_SCHEME_IDENTIFIERS.find((scheme) => scheme.key === countryInfo.defaultEnterpriseNumberScheme)) {
+            updates.enterpriseNumberScheme = countryInfo.defaultEnterpriseNumberScheme;
+        } else {
+            updates.enterpriseNumberScheme = null;
+        }
+        onChange({ ...company, ...updates });
+    };
+
     return (
         <div className="space-y-4">
             <div className="space-y-2">
@@ -63,7 +83,7 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                 <Label htmlFor="country">Country</Label>
                 <Select
                     value={company.country || ""}
-                    onValueChange={(value) => onChange({ ...company, enterpriseNumber: null, vatNumber: null, country: value as z.infer<typeof zodValidCountryCodes> })}
+                    onValueChange={handleCountryChange}
                 >
                     <SelectTrigger>
                         <SelectValue placeholder="Select a country" />
@@ -109,11 +129,42 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
             {(company.country !== "BE" || showEnterpriseNumberForBelgianCompanies) && <div className="space-y-1">
                 <div className="space-y-2">
                     <Label htmlFor="enterpriseNumber">Enterprise Number (Optional)</Label>
-                    <Input
-                        id="enterpriseNumber"
-                        value={company.enterpriseNumber || ""}
-                        onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value || null })}
-                    />
+                    <div className="flex gap-2">
+                        <div className="w-48">
+                            <Combobox
+                                value={company.enterpriseNumberScheme || ""}
+                                onValueChange={(value) => onChange({ ...company, enterpriseNumberScheme: value || null })}
+                                options={ISO_ICD_SCHEME_IDENTIFIERS.map((scheme) => {
+                                    const truncatedName = scheme.name.length > 30 
+                                        ? scheme.name.substring(0, 30) + "..." 
+                                        : scheme.name;
+                                    return {
+                                        value: scheme.key,
+                                        label: `${scheme.key} - ${truncatedName}`,
+                                    };
+                                })}
+                                placeholder="Select scheme..."
+                                searchPlaceholder="Search scheme..."
+                                emptyText="No scheme found."
+                                className="w-full"
+                            />
+                        </div>
+                        <Input
+                            id="enterpriseNumber"
+                            value={company.enterpriseNumber || ""}
+                            onChange={(e) => onChange({ ...company, enterpriseNumber: e.target.value || null })}
+                            className="flex-1"
+                        />
+                    </div>
+                    {company.country === "NL" && company.enterpriseNumberScheme !== "0106" && company.enterpriseNumberScheme !== "0190" && company.enterpriseNumber?.trim() && (
+                        <Alert variant="destructive" className="bg-transparent">
+                            <AlertTriangle />
+                            <AlertTitle>Enterprise number scheme 0106 or 0190 required</AlertTitle>
+                            <AlertDescription>
+                                For Dutch sellers, the scheme identifier is required to be able to send invoices and credit notes.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </div>
             </div>}
             <div className="space-y-1">

@@ -139,7 +139,10 @@ export function prebuildInvoiceUBL({ invoice, supplierAddress, customerAddress, 
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.seller.name,
-            ...(invoice.seller.enterpriseNumber && { "cbc:CompanyID": invoice.seller.enterpriseNumber }),
+            ...(invoice.seller.enterpriseNumber && { "cbc:CompanyID": {
+              ...(invoice.seller.enterpriseNumberScheme && { "@_schemeID": invoice.seller.enterpriseNumberScheme }),
+              "#text": invoice.seller.enterpriseNumber,
+            } }),
           },
           "cac:Contact": {
             "cbc:Name": invoice.seller.name,
@@ -178,7 +181,10 @@ export function prebuildInvoiceUBL({ invoice, supplierAddress, customerAddress, 
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.buyer.name,
-            ...(invoice.buyer.enterpriseNumber && { "cbc:CompanyID": invoice.buyer.enterpriseNumber }),
+            ...(invoice.buyer.enterpriseNumber && { "cbc:CompanyID": {
+              ...(invoice.buyer.enterpriseNumberScheme && { "@_schemeID": invoice.buyer.enterpriseNumberScheme }),
+              "#text": invoice.buyer.enterpriseNumber,
+            } }),
           },
           "cac:Contact": {
             "cbc:Name": invoice.buyer.name,

@@ -30,6 +30,7 @@ import type {
 } from "@peppol/types/integration";
 import { validationResponse, validationResult } from "@peppol/types/validation";
 import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
+import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -55,6 +56,12 @@ export const zodValidCountryCodes = z.enum(
 export const validCountryCodes = pgEnum(
   "peppol_valid_country_codes",
   zodValidCountryCodes.options
+);
+
+
+export const validIsoIcdSchemeIdentifiers = pgEnum(
+  "peppol_valid_iso_icd_scheme_identifiers",
+  zodValidIsoIcdSchemeIdentifiers.options
 );
 
 export const supportedDocumentTypes = z.enum([
@@ -240,6 +247,7 @@ export const companies = pgTable("peppol_companies", {
   postalCode: text("postal_code").notNull(),
   city: text("city").notNull(),
   country: validCountryCodes("country").notNull(),
+  enterpriseNumberScheme: validIsoIcdSchemeIdentifiers("enterprise_number_scheme"),
   enterpriseNumber: text("enterprise_number"),
   vatNumber: text("vat_number"),
   email: text("email"),
