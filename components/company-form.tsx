@@ -157,7 +157,7 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                         />
                     </div>
                     {company.country === "NL" && company.enterpriseNumberScheme !== "0106" && company.enterpriseNumberScheme !== "0190" && company.enterpriseNumber?.trim() && (
-                        <Alert variant="destructive" className="bg-transparent">
+                        <Alert variant="destructive">
                             <AlertTriangle />
                             <AlertTitle>Enterprise number scheme 0106 or 0190 required</AlertTitle>
                             <AlertDescription>
