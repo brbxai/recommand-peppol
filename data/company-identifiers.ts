@@ -1,5 +1,5 @@
 import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
-import { UserFacingError } from "@peppol/utils/util";
+import { UserFacingError, cleanEnterpriseNumber, cleanVatNumber } from "@peppol/utils/util";
 import { db } from "@recommand/db";
 import { eq, and, asc, ne, or, isNull } from "drizzle-orm";
 import { unregisterCompanyIdentifier, upsertCompanyRegistration } from "./phoss-smp";
@@ -81,6 +81,52 @@ export async function getSendingCompanyIdentifier(companyId: string): Promise<Co
   return identifiers[0];
 }
 
+async function validateProtectedIdentifier({
+  scheme,
+  identifier,
+  companyId,
+}: {
+  scheme: string;
+  identifier: string;
+  companyId: string;
+}): Promise<void> {
+  const teamInfo = await getTeamExtensionAndCompanyByCompanyId(companyId);
+  if (!teamInfo) {
+    throw new Error("Company is not associated with a team");
+  }
+
+  const verificationRequirements = teamInfo.teamExtension?.verificationRequirements ?? "lax";
+  if (verificationRequirements !== "strict") {
+    return;
+  }
+
+  const cleanedScheme = cleanScheme(scheme);
+
+  if (cleanedScheme === "0208") {
+    const cleanedIdentifier = cleanEnterpriseNumber(identifier);
+    const cleanedEnterpriseNumber = cleanEnterpriseNumber(teamInfo.company.enterpriseNumber);
+    
+    if (!cleanedEnterpriseNumber) {
+      throw new UserFacingError("Company identifier with scheme 0208 requires a company enterprise number to be set.");
+    }
+
+    if (cleanedIdentifier !== cleanedEnterpriseNumber) {
+      throw new UserFacingError(`Company identifier with scheme 0208 must match the company enterprise number. Expected: ${cleanedEnterpriseNumber}, got: ${cleanedIdentifier}`);
+    }
+  } else if (cleanedScheme === "9925") {
+    const cleanedIdentifier = cleanVatNumber(identifier);
+    const cleanedVatNumber = cleanVatNumber(teamInfo.company.vatNumber);
+    
+    if (!cleanedVatNumber) {
+      throw new UserFacingError("Company identifier with scheme 9925 requires a company VAT number to be set.");
+    }
+
+    if (cleanedIdentifier !== cleanedVatNumber) {
+      throw new UserFacingError(`Company identifier with scheme 9925 must match the company VAT number. Expected: ${cleanedVatNumber}, got: ${cleanedIdentifier}`);
+    }
+  }
+}
+
 export async function createCompanyIdentifier({
   companyIdentifier,
   skipSmpRegistration,
@@ -90,6 +136,12 @@ export async function createCompanyIdentifier({
   skipSmpRegistration: boolean;
   useTestNetwork: boolean;
 }): Promise<CompanyIdentifier> {
+  await validateProtectedIdentifier({
+    scheme: companyIdentifier.scheme,
+    identifier: companyIdentifier.identifier,
+    companyId: companyIdentifier.companyId,
+  });
+
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, undefined, companyIdentifier.companyId);
   if(!canUpsert){
     throw new UserFacingError(
@@ -131,6 +183,12 @@ export async function updateCompanyIdentifier({
   if (!oldIdentifier) {
     throw new UserFacingError("Company identifier not found");
   }
+
+  await validateProtectedIdentifier({
+    scheme: companyIdentifier.scheme,
+    identifier: companyIdentifier.identifier,
+    companyId: companyIdentifier.companyId,
+  });
 
   // Check if the company identifier can be upserted
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, companyIdentifier.id, companyIdentifier.companyId);

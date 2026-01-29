@@ -196,3 +196,31 @@ export function requireIntegrationAccess() {
     }
   );
 }
+
+export function requireCompanyVerificationForStrictTeams() {
+  return createMiddleware<CompanyAccessContext>(
+    async (c, next) => {
+      const team = c.var.team;
+      let company = c.var.company;
+
+      if (!team || !company) {
+        return c.json(actionFailure("Team or company not found"), 404);
+      }
+
+      const verificationRequirements = team.verificationRequirements ?? "lax";
+
+      if (verificationRequirements === "strict") {
+        if (!company.isVerified) {
+          return c.json(
+            actionFailure(
+              "Company must be verified before sending or retrieving documents. Please verify your company first."
+            ),
+            403
+          );
+        }
+      }
+
+      await next();
+    }
+  );
+}

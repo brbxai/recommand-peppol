@@ -41,6 +41,9 @@ export const paymentStatusEnum = pgEnum("peppol_payment_status", [
 export const zodValidCountryCodes = z.enum(COUNTRIES.map((c) => c.code) as [string, ...string[]]);
 export const validCountryCodes = pgEnum("peppol_valid_country_codes", zodValidCountryCodes.options);
 
+export const zodVerificationRequirements = z.enum(["strict", "trusted", "lax"]);
+export const verificationRequirementsEnum = pgEnum("peppol_verification_requirements", zodVerificationRequirements.options);
+
 export const supportedDocumentTypes = z.enum(["invoice", "creditNote", "selfBillingInvoice", "selfBillingCreditNote", "messageLevelResponse", "unknown"]);
 export const supportedDocumentTypeEnum = pgEnum(
   "peppol_supported_document_type",
@@ -177,6 +180,8 @@ export const companies = pgTable("peppol_companies", {
   vatNumber: text("vat_number"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
   isOutgoingDocumentValidationEnforced: boolean("is_outgoing_document_validation_enforced").notNull().default(true),
+  isVerified: boolean("is_verified").notNull().default(false),
+  verificationProofReference: text("verification_proof_reference"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
@@ -313,6 +318,7 @@ export const teamExtensions = pgTable("peppol_team_extensions", {
     .references(() => teams.id, { onDelete: "cascade" }),
   isPlayground: boolean("is_playground").notNull().default(false),
   useTestNetwork: boolean("use_test_network").notNull().default(false),
+  verificationRequirements: verificationRequirementsEnum("verification_requirements").notNull().default("lax"),
 });
 
 export const labels = pgTable("peppol_labels", {

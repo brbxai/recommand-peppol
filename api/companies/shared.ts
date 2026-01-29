@@ -12,6 +12,7 @@ export const companyResponse = z.object({
     vatNumber: z.string(),
     isSmpRecipient: z.boolean(),
     isOutgoingDocumentValidationEnforced: z.boolean(),
+    isVerified: z.boolean(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
 });

@@ -15,6 +15,7 @@ import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import {
   requireIntegrationSupportedCompanyAccess,
   requireValidSubscription,
+  requireCompanyVerificationForStrictTeams,
   type CompanyAccessContext,
 } from "@peppol/utils/auth-middleware";
 import {
@@ -119,6 +120,7 @@ const _sendDocument = server.post(
   "/:companyId/sendDocument",
   requireIntegrationSupportedCompanyAccess(),
   requireValidSubscription(),
+  requireCompanyVerificationForStrictTeams(),
   describeRoute({ hide: true }),
   zodValidator("json", sendDocumentSchema),
   _sendDocumentImplementation
@@ -128,6 +130,7 @@ const _sendDocumentMinimal = server.post(
   "/:companyId/send",
   requireIntegrationSupportedCompanyAccess(),
   requireValidSubscription(),
+  requireCompanyVerificationForStrictTeams(),
   routeDescription,
   zodValidator("json", sendDocumentSchema),
   _sendDocumentImplementation

@@ -8,15 +8,30 @@ import {
   UserFacingError,
 } from "@peppol/utils/util";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
-import { getTeamExtension } from "./teams";
+import { getTeamExtension, type TeamExtension } from "./teams";
 import { createCompanyDocumentType } from "./company-document-types";
 import { canUpsertCompanyIdentifier, createCompanyIdentifier, getCompanyIdentifiers } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
 import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
+import { createVerificationSession } from "./didit/client";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
+
+export function validateSmpRecipientVerificationRequirement({
+  isSmpRecipient,
+  isVerified,
+  teamExtension,
+}: {
+  isSmpRecipient: boolean;
+  isVerified: boolean;
+  teamExtension: TeamExtension | null;
+}): void {
+  if (isSmpRecipient && !isVerified && teamExtension?.verificationRequirements === "strict") {
+    throw new UserFacingError("Company must be verified before it can be registered as an SMP recipient. Please verify your company first.");
+  }
+}
 
 export async function getCompanies(
   teamId: string,
@@ -122,6 +137,12 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
 
+  validateSmpRecipientVerificationRequirement({
+    isSmpRecipient: company.isSmpRecipient ?? false,
+    isVerified: company.isVerified ?? false,
+    teamExtension,
+  });
+
   const createdCompany = await db
     .insert(companies)
     .values(company)
@@ -218,9 +239,30 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
   const teamExtension = await getTeamExtension(company.teamId);
 
   // Merge with existing company data, only updating provided fields
-  const updatedFields = Object.fromEntries(
+  const updatedFields: Partial<InsertCompany> = Object.fromEntries(
     Object.entries(company).filter(([_, value]) => value !== undefined)
   );
+  
+  // Check if cleaned vat number or enterprise number changed, and reset verification if so
+  const oldCleanedEnterpriseNumber = cleanEnterpriseNumber(oldCompany.enterpriseNumber);
+  const newCleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
+  const oldCleanedVatNumber = cleanVatNumber(oldCompany.vatNumber);
+  const newCleanedVatNumber = cleanVatNumber(company.vatNumber);
+  
+  const enterpriseNumberChanged = company.enterpriseNumber !== undefined && oldCleanedEnterpriseNumber !== newCleanedEnterpriseNumber;
+  const vatNumberChanged = company.vatNumber !== undefined && oldCleanedVatNumber !== newCleanedVatNumber;
+  
+  if ((enterpriseNumberChanged || vatNumberChanged) && oldCompany.isVerified) {
+    updatedFields.isVerified = false;
+    updatedFields.verificationProofReference = null;
+  }
+  
+  // Validate that isSmpRecipient cannot be true if company is not verified and team has strict verification requirements
+  validateSmpRecipientVerificationRequirement({
+    isSmpRecipient: company.isSmpRecipient !== undefined ? company.isSmpRecipient : oldCompany.isSmpRecipient,
+    isVerified: updatedFields.isVerified !== undefined ? updatedFields.isVerified : oldCompany.isVerified,
+    teamExtension,
+  });
 
   const updatedCompany = await db
     .update(companies)
@@ -317,4 +359,42 @@ export async function deleteCompany({
   await db
     .delete(companies)
     .where(and(eq(companies.teamId, teamId), eq(companies.id, companyId)));
+}
+
+export async function verifyCompany({
+  teamId,
+  companyId,
+  callback,
+}: {
+  teamId: string;
+  companyId: string;
+  callback?: string;
+}): Promise<string> {
+  const company = await getCompany(teamId, companyId);
+  if (!company) {
+    throw new UserFacingError("Company not found");
+  }
+
+  const apiKey = process.env.DIDIT_API_KEY;
+  if (!apiKey) {
+    throw new Error("DIDIT_API_KEY environment variable is not set");
+  }
+
+  const workflowId = process.env.DIDIT_WORKFLOW_ID;
+  if (!workflowId) {
+    throw new Error("DIDIT_WORKFLOW_ID environment variable is not set");
+  }
+
+  const session = await createVerificationSession({
+    apiKey,
+    workflowId,
+    vendorData: companyId,
+    callback,
+  });
+
+  if (!session || !session.url) {
+    throw new UserFacingError("Failed to create verification session");
+  }
+
+  return session.url;
 }

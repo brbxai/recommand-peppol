@@ -2,12 +2,13 @@ import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import type { Subscription } from "@peppol/api/subscription";
+import type { GetTeamExtension } from "@peppol/api/teams/get-team-extension";
 import { useEffect, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { useActiveTeam } from "@core/hooks/user";
-import { Loader2, Trash2, ArrowRight, Plug } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, Plug, ShieldCheck } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CompanyForm } from "../../../../components/company-form";
 import { CompanyIdentifiersManager } from "../../../../components/company-identifiers-manager";
@@ -25,6 +26,7 @@ import { ConfirmDialog } from "@core/components/confirm-dialog";
 
 const client = rc<Companies>("peppol");
 const subscriptionClient = rc<Subscription>("v1");
+const teamsClient = rc<GetTeamExtension>("v1");
 
 export default function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +36,8 @@ export default function CompanyDetailPage() {
   const [formData, setFormData] = useState<CompanyFormData>(defaultCompanyFormData);
   const [subscription, setSubscription] = useState<SubscriptionType | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationRequirements, setVerificationRequirements] = useState<"strict" | "trusted" | "lax" | null>(null);
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
 
@@ -41,6 +45,7 @@ export default function CompanyDetailPage() {
     if (id && activeTeam?.id) {
       fetchCompany();
       fetchSubscription();
+      fetchTeamExtension();
     }
   }, [id, activeTeam?.id]);
 
@@ -106,6 +111,23 @@ export default function CompanyDetailPage() {
     }
   };
 
+  const fetchTeamExtension = async () => {
+    if (!activeTeam?.id) return;
+
+    try {
+      const response = await teamsClient[":teamId"]["team-extension"].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setVerificationRequirements(data.verificationRequirements);
+      }
+    } catch (error) {
+      console.error("Error fetching team extension:", error);
+    }
+  };
+
   const handleCompanyUpdate = async () => {
     if (!activeTeam?.id || !company) return;
 
@@ -159,6 +181,32 @@ export default function CompanyDetailPage() {
       toast.error("Failed to delete company: " + error);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleVerifyCompany = async () => {
+    if (!activeTeam?.id || !company) return;
+
+    try {
+      setIsVerifying(true);
+      const response = await client[":teamId"]["companies"][":companyId"]["verify"].$post({
+        param: {
+          teamId: activeTeam.id,
+          companyId: company.id,
+        },
+      });
+
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+
+      window.location.href = json.verificationUrl;
+      toast.success("Redirecting to verification session");
+    } catch (error) {
+      toast.error("Failed to create verification session: " + error);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -230,6 +278,34 @@ export default function CompanyDetailPage() {
         />,
       ]}
     >
+      {verificationRequirements && (verificationRequirements === "strict" || verificationRequirements === "lax") && !company.isVerified && (
+        <Card className="mb-6 border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
+          <CardHeader>
+            <CardTitle>Company Verification Required</CardTitle>
+            <CardDescription>
+              {verificationRequirements === "strict" ? "This company needs to be verified before it can be used." : "This company needs to be verified. Without verification, it will soon be deactivated."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              onClick={handleVerifyCompany}
+              disabled={isVerifying}
+            >
+              {isVerifying ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Verify Company
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Company Form */}
         <Card>

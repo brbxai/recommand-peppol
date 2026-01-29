@@ -8,6 +8,7 @@ import companiesServer from "./api/companies";
 import labelsServer from "./api/labels";
 import sendDocumentServer from "./api/send-document";
 import receiveDocumentServer from "./api/internal/receive-document";
+import diditWebhookServer from "./api/internal/didit-webhook";
 import transmittedDocumentsServer from "./api/documents";
 import { generateSpecs, openAPISpecs, type OpenApiSpecsOptions } from "hono-openapi";
 import webhooksServer from "./api/webhooks";
@@ -15,6 +16,7 @@ import integrationsServer from "./api/integrations";
 import recipientServer from "./api/recipients";
 import playgroundsServer from "./api/playgrounds";
 import suppliersServer from "./api/suppliers";
+import teamsServer from "./api/teams/get-team-extension";
 import { initializeIntegrationCronJobs } from "./data/integrations/cron";
 import { createMarkdownFromOpenApi } from '@scalar/openapi-to-markdown'
 
@@ -155,6 +157,7 @@ for(const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, transmittedDocumentsServer);
   server.route(prefix, recipientServer);
   server.route(prefix + "internal/", receiveDocumentServer);
+  server.route(prefix + "internal/", diditWebhookServer);
 
   server.route(prefix, webhooksServer);
   server.route(prefix, integrationsServer);
@@ -165,7 +168,8 @@ for(const prefix of ["/peppol/", "/v1/"]) {
 
   server.route(prefix, billingProfileServer); 
   server.route(prefix, billingServer); 
-  server.route(prefix, subscriptionServer); 
+  server.route(prefix, subscriptionServer);
+  server.route(prefix, teamsServer);
 }
 
 export default server;

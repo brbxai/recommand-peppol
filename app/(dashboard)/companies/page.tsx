@@ -1,10 +1,13 @@
 import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
+import type { GetTeamExtension } from "@peppol/api/teams/get-team-extension";
 import { useEffect, useState, useCallback } from "react";
 import { DataTable } from "@core/components/data-table";
 import {
   type ColumnDef,
+  type Column,
+  type Row,
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
@@ -18,6 +21,7 @@ import { useActiveTeam } from "@core/hooks/user";
 import { useNavigate } from "react-router-dom";
 import { Trash2, Loader2, Pencil, Copy } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
+import { VerificationStatusIcon } from "../../../components/verification-status-icon";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +38,7 @@ import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
 
 const client = rc<Companies>("peppol");
+const teamsClient = rc<GetTeamExtension>("v1");
 
 // Utility function to handle API responses
 const handleApiResponse = async (
@@ -74,6 +79,7 @@ export default function Page() {
   );
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [deletingCompanyId, setDeletingCompanyId] = useState<string | null>(null);
+  const [verificationRequirements, setVerificationRequirements] = useState<"strict" | "trusted" | "lax" | null>(null);
   const activeTeam = useActiveTeam();
 
   const fetchCompanies = useCallback(async () => {
@@ -109,6 +115,29 @@ export default function Page() {
   useEffect(() => {
     fetchCompanies();
   }, [fetchCompanies]);
+
+  useEffect(() => {
+    if (activeTeam?.id) {
+      fetchTeamExtension();
+    }
+  }, [activeTeam?.id]);
+
+  const fetchTeamExtension = async () => {
+    if (!activeTeam?.id) return;
+
+    try {
+      const response = await teamsClient[":teamId"]["team-extension"].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setVerificationRequirements(data.verificationRequirements);
+      }
+    } catch (error) {
+      console.error("Error fetching team extension:", error);
+    }
+  };
 
   const handleCompanySubmit = async () => {
     if (!activeTeam?.id) {
@@ -234,6 +263,19 @@ export default function Page() {
     createColumn("enterpriseNumber", "Enterprise Number"),
     createColumn("city", "City"),
     createColumn("country", "Country"),
+    ...(verificationRequirements && (verificationRequirements === "strict" || verificationRequirements === "lax")
+      ? [
+          {
+            accessorKey: "isVerified",
+            header: ({ column }: { column: Column<Company> }) => <ColumnHeader column={column} title="Verification" />,
+            cell: ({ row }: { row: Row<Company> }) => {
+              const isVerified = row.getValue("isVerified") as boolean;
+              return <VerificationStatusIcon isVerified={isVerified} />;
+            },
+            enableGlobalFilter: false,
+          } as ColumnDef<Company>,
+        ]
+      : []),
     {
       id: "actions",
       header: "",
