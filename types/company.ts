@@ -8,10 +8,12 @@ export type Company = {
   postalCode: string;
   city: string;
   country: z.infer<typeof zodValidCountryCodes>;
+  enterpriseNumberScheme: string | null;
   enterpriseNumber: string | null;
   vatNumber: string | null;
+  email: string | null;
+  phone: string | null;
   isSmpRecipient: boolean;
-  isOutgoingDocumentValidationEnforced: boolean;
   isVerified: boolean;
 };
 
@@ -23,9 +25,11 @@ export const defaultCompanyFormData: CompanyFormData = {
   postalCode: "",
   city: "",
   country: "BE",
+  enterpriseNumberScheme: null,
   enterpriseNumber: null,
   vatNumber: null,
+  email: null,
+  phone: null,
   isSmpRecipient: true,
-  isOutgoingDocumentValidationEnforced: true,
   isVerified: false,
 }; 

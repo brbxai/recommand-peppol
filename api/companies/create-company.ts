@@ -13,6 +13,7 @@ import { companyResponse } from "./shared";
 import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { cleanEnterpriseNumber, cleanVatNumber, UserFacingError } from "@peppol/utils/util";
 import { zodValidCountryCodes } from "@peppol/db/schema";
+import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
 
 const server = new Server();
 
@@ -34,10 +35,12 @@ const createCompanyJsonBodySchema = z.object({
     postalCode: z.string(),
     city: z.string(),
     country: zodValidCountryCodes,
+    enterpriseNumberScheme: zodValidIsoIcdSchemeIdentifiers.nullish(),
     enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber).openapi({ description: "The enterprise number of the company. Can only contain alphanumeric characters. For Belgian businesses it will be inferred from the VAT number if not provided." }),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
+    email: z.string().email().or(z.literal("")).nullish().transform((val) => val?.trim() === "" ? null : val),
+    phone: z.string().nullish().transform((val) => val?.trim() === "" ? null : val),
     isSmpRecipient: z.boolean().default(true),
-    isOutgoingDocumentValidationEnforced: z.boolean().default(true).openapi({ description: "If document validation is enabled, outgoing documents will be validated against Peppol standards. Defaults to true for new companies." }),
     skipDefaultCompanySetup: z.boolean().default(false).openapi({ description: "If true, the automatic creation of company identifiers and document types will be skipped. You will need to create them afterwards using the company identifier creation endpoint and company document type creation endpoint." }),
 });
 
@@ -66,9 +69,13 @@ const _createCompany = server.post(
 
 async function _createCompanyImplementation(c: CreateCompanyContext) {
     let enterpriseNumber = c.req.valid("json").enterpriseNumber;
+    let enterpriseNumberScheme = c.req.valid("json").enterpriseNumberScheme;
     if (!enterpriseNumber && c.req.valid("json").vatNumber && c.req.valid("json").country === "BE") {
         // If the country is Belgium and the vat number is provided, we can use the vat number to autogenerate the enterprise number
         enterpriseNumber = cleanEnterpriseNumber(c.req.valid("json").vatNumber!);
+        if(!enterpriseNumberScheme){
+            enterpriseNumberScheme = "0208";
+        }
         if (enterpriseNumber?.startsWith("BE")) {
             enterpriseNumber = enterpriseNumber.slice(2);
         }
@@ -79,6 +86,7 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
             ...c.req.valid("json"),
             teamId: c.var.team.id,
             enterpriseNumber,
+            enterpriseNumberScheme,
         });
         return c.json(actionSuccess({ company }));
     } catch (error) {

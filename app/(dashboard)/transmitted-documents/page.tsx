@@ -7,13 +7,13 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
-  type ColumnFiltersState,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { useActiveTeam } from "@core/hooks/user";
-import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, X, CheckCheck, Mail, MailOpen, Download } from "lucide-react";
+import { Trash2, Loader2, Copy, ArrowDown, ArrowUp, FolderArchive, Tag, CheckCheck, Mail, MailOpen, Download } from "lucide-react";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import { ColumnHeader } from "@core/components/data-table/column-header";
 import { format } from "date-fns";
@@ -30,7 +30,7 @@ import {
 import { PartyInfoTooltip } from "@peppol/components/party-info-tooltip";
 import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
 import { DocumentTypeCell } from "@peppol/components/document-type-cell";
-import { Badge } from "@core/components/ui/badge";
+import { LabelBadge } from "@peppol/components/label-badge";
 import {
   Popover,
   PopoverContent,
@@ -51,15 +51,31 @@ const companiesClient = rc<Companies>("peppol");
 const labelsClient = rc<Labels>("v1");
 
 export default function Page() {
+  const {
+    page,
+    limit,
+    columnFilters,
+    setColumnFilters,
+    columnVisibility,
+    setColumnVisibility,
+    paginationState,
+    onPaginationChange,
+  } = useDataTableState({
+    tableId: "transmitted-documents",
+    defaultLimit: 10,
+    defaultColumnVisibility: {
+      documentNumber: false,
+      totalExclVat: false,
+      totalInclVat: false,
+    },
+  });
+
   const [documents, setDocuments] = useState<TransmittedDocumentWithoutBody[]>(
     []
   );
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [labels, setLabels] = useState<Label[]>([]);
@@ -128,6 +144,7 @@ export default function Page() {
           search: globalFilter || undefined, // Add the global search term to the query
           type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as SupportedDocumentType, // When no or all options are selected, don't filter on type
           isUnread: ((filteredIsUnreadValues.length === 0 || filteredIsUnreadValues.length > 1) ? undefined : filteredIsUnreadValues[0]) as "true" | "false" | undefined,
+          excludeAttachments: true,
         },
       });
       const json = await response.json();
@@ -428,6 +445,7 @@ export default function Page() {
     {
       accessorKey: "id",
       header: ({ column }) => <ColumnHeader column={column} title="ID" />,
+      meta: { label: "ID" },
       cell: ({ row }) => {
         const id = row.getValue("id") as string;
         return (
@@ -456,6 +474,7 @@ export default function Page() {
     {
       accessorKey: "companyId",
       header: ({ column }) => <ColumnHeader column={column} title="Company" />,
+      meta: { label: "Company" },
       cell: ({ row }) => {
         const companyId = row.original.companyId;
         const company = companies.find((c) => c.id === companyId);
@@ -467,6 +486,7 @@ export default function Page() {
     {
       accessorKey: "type",
       header: ({ column }) => <ColumnHeader column={column} title="Type" />,
+      meta: { label: "Type" },
       cell: ({ row }) => {
         const document = row.original;
         const type = row.getValue("type") as string;
@@ -477,8 +497,34 @@ export default function Page() {
       enableGlobalFilter: true,
     },
     {
+      id: "documentNumber",
+      accessorFn: (row) => {
+        const parsed = row.parsed;
+        if (!parsed) return null;
+        return (parsed as any)?.invoiceNumber ?? (parsed as any)?.creditNoteNumber ?? null;
+      },
+      header: ({ column }) => <ColumnHeader column={column} title="Document Number" />,
+      meta: { label: "Document Number" },
+      cell: ({ row }) => {
+        const parsed = row.original.parsed;
+        const documentNumber = parsed ? ((parsed as any)?.invoiceNumber ?? (parsed as any)?.creditNoteNumber ?? null) : null;
+        const id = row.original.id;
+        return (
+          <Link
+            to={`/transmitted-documents/${id}`}
+            className={documentNumber ? "hover:underline" : "text-muted-foreground hover:underline"}
+          >
+            {documentNumber ?? "-"}
+          </Link>
+        );
+      },
+      enableHiding: true,
+      enableGlobalFilter: true,
+    },
+    {
       accessorKey: "senderId",
       header: ({ column }) => <ColumnHeader column={column} title="Sender" />,
+      meta: { label: "Sender" },
       cell: ({ row }) => {
         const document = row.original;
         const senderId = row.getValue("senderId") as string;
@@ -511,6 +557,7 @@ export default function Page() {
     {
       accessorKey: "receiverId",
       header: ({ column }) => <ColumnHeader column={column} title="Receiver" />,
+      meta: { label: "Receiver" },
       cell: ({ row }) => {
         const document = row.original;
         const receiverId = row.getValue("receiverId") as string;
@@ -560,10 +607,63 @@ export default function Page() {
       enableGlobalFilter: true,
     },
     {
+      id: "totalExclVat",
+      accessorFn: (row) => {
+        const parsed = row.parsed;
+        if (!parsed) return null;
+        const totals = (parsed as any)?.totals;
+        return totals?.taxExclusiveAmount ? parseFloat(totals.taxExclusiveAmount) : null;
+      },
+      header: ({ column }) => <ColumnHeader column={column} title="Total Excl. VAT" />,
+      meta: { label: "Total Excl. VAT" },
+      cell: ({ row }) => {
+        const parsed = row.original.parsed;
+        if (!parsed) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        const totals = (parsed as any)?.totals;
+        if (totals?.taxExclusiveAmount) {
+          const amount = String(totals.taxExclusiveAmount);
+          const currency = (parsed as any)?.currency || "EUR";
+          return <span className="font-mono">{amount} {currency}</span>;
+        }
+        return <span className="text-muted-foreground">-</span>;
+      },
+      enableHiding: true,
+      enableGlobalFilter: false,
+    },
+    {
+      id: "totalInclVat",
+      accessorFn: (row) => {
+        const parsed = row.parsed;
+        if (!parsed) return null;
+        const totals = (parsed as any)?.totals;
+        return totals?.taxInclusiveAmount ? parseFloat(totals.taxInclusiveAmount) : null;
+      },
+      header: ({ column }) => <ColumnHeader column={column} title="Total Incl. VAT" />,
+      meta: { label: "Total Incl. VAT" },
+      cell: ({ row }) => {
+        const parsed = row.original.parsed;
+        if (!parsed) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        const totals = (parsed as any)?.totals;
+        if (totals?.taxInclusiveAmount) {
+          const amount = String(totals.taxInclusiveAmount);
+          const currency = (parsed as any)?.currency || "EUR";
+          return <span className="font-mono">{amount} {currency}</span>;
+        }
+        return <span className="text-muted-foreground">-</span>;
+      },
+      enableHiding: true,
+      enableGlobalFilter: false,
+    },
+    {
       accessorKey: "direction",
       header: ({ column }) => (
         <ColumnHeader column={column} title="Direction" />
       ),
+      meta: { label: "Direction" },
       cell: ({ row }) => {
         const direction = row.getValue("direction") as string;
         return (
@@ -585,6 +685,7 @@ export default function Page() {
       header: ({ column }) => (
         <ColumnHeader column={column} title="Created At" />
       ),
+      meta: { label: "Created At" },
       cell: ({ row }) => {
         const date = row.getValue("createdAt") as string;
         return format(new Date(date), "PPpp");
@@ -594,6 +695,7 @@ export default function Page() {
     {
       accessorKey: "readAt",
       header: ({ column }) => <ColumnHeader column={column} title="Read At" />,
+      meta: { label: "Read At" },
       cell: ({ row }) => {
         const date = row.getValue("readAt") as string;
         return date ? (
@@ -610,7 +712,7 @@ export default function Page() {
       header: () => null,
       cell: () => null,
       enableHiding: false,
-      filterFn: (row, id, value) => {
+      filterFn: (row, _id, value) => {
         if (!value || value.length === 0) return true;
         const isUnread = row.original.readAt === null;
         return value.includes(isUnread ? "true" : "false");
@@ -619,34 +721,20 @@ export default function Page() {
     {
       accessorKey: "labels",
       header: ({ column }) => <ColumnHeader column={column} title="Labels" />,
+      meta: { label: "Labels" },
       cell: ({ row }) => {
         const documentLabels = row.original.labels || [];
         const documentId = row.original.id;
 
         return (
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {documentLabels.map((label) => (
-              <Badge
+              <LabelBadge
                 key={label.id}
-                variant="outline"
-                className="flex items-center justify-center gap-1 border-none"
-                style={{ color: label.colorHex }}
-              >
-                <div
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: label.colorHex }}
-                />
-                <span className="leading-none pt-0.5">{label.name}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleUnassignLabel(documentId, label.id);
-                  }}
-                  className="ml-1 hover:bg-muted rounded p-0.5 flex items-center justify-center shrink-0"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+                name={label.name}
+                colorHex={label.colorHex}
+                onRemove={() => handleUnassignLabel(documentId, label.id)}
+              />
             ))}
             <Popover>
               <PopoverTrigger asChild>
@@ -722,12 +810,12 @@ export default function Page() {
               <FolderArchive className="h-4 w-4" />
             </Button>
             <Button
-              variant="ghost"
+              variant="ghost-destructive"
               size="icon"
               onClick={() => handleDeleteDocument(id)}
               title="Delete document"
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         );
@@ -742,26 +830,16 @@ export default function Page() {
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       globalFilter,
       columnFilters,
-      pagination: {
-        pageIndex: page - 1,
-        pageSize: limit,
-      },
+      columnVisibility,
+      pagination: paginationState,
     },
     onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: (updater) => {
-      if (typeof updater === "function") {
-        const newState = updater({
-          pageIndex: page - 1,
-          pageSize: limit,
-        });
-        setPage(newState.pageIndex + 1);
-        setLimit(newState.pageSize);
-      }
-    },
+    onPaginationChange,
     pageCount: Math.ceil(total / limit),
     manualPagination: true,
     manualFiltering: true,

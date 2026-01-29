@@ -17,18 +17,10 @@ export function AttachmentsEditor({
   onChange,
 }: AttachmentsEditorProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const allowedExtensions = [
-    "csv",
-    "pdf",
-    "png",
-    "jpg",
-    "jpeg",
-    "xlsx",
-    "ods",
-  ];
+  const allowedExtensions = ["csv", "pdf", "png", "jpg", "jpeg", "xlsx", "ods"];
 
   const handleAddAttachmentFromFile = async (
-    event: React.ChangeEvent<HTMLInputElement>,
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
 
@@ -37,7 +29,7 @@ export function AttachmentsEditor({
     const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!allowedExtensions.includes(extension)) {
       toast.error(
-        "Unsupported file type. Allowed types: CSV, PDF, PNG, JPG, XLSX, ODS.",
+        "Unsupported file type. Allowed types: CSV, PDF, PNG, JPG, XLSX, ODS."
       );
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -73,7 +65,7 @@ export function AttachmentsEditor({
   const handleFieldChange = (
     index: number,
     field: keyof Attachment,
-    value: any,
+    value: any
   ) => {
     const next = [...attachments];
     next[index] = { ...next[index], [field]: value };
@@ -139,7 +131,7 @@ export function AttachmentsEditor({
                   </div>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="ghost-destructive"
                     size="icon"
                     onClick={() => handleRemove(index)}
                   >

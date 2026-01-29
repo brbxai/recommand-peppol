@@ -1,6 +1,7 @@
 import type { Integration, IntegrationManifest } from "@peppol/types/integration";
 import StringField from "./string-field";
 import BooleanField from "./boolean-field";
+import NumberField from "./number-field";
 
 export default function FieldsConfiguration({
     integration,
@@ -13,7 +14,7 @@ export default function FieldsConfiguration({
     const fields = manifest.fields || [];
     const currentFields = integration.configuration?.fields || [];
 
-    const handleFieldChange = (fieldId: string, value: string | boolean | undefined) => {
+    const handleFieldChange = (fieldId: string, value: string | boolean | number | undefined) => {
         const existingIndex = currentFields.findIndex((f) => f.id === fieldId);
         const newFields = [...currentFields];
 
@@ -27,6 +28,8 @@ export default function FieldsConfiguration({
                 newFields[existingIndex] = { ...existingField, value };
             } else if (existingField.type === "boolean" && typeof value === "boolean") {
                 newFields[existingIndex] = { ...existingField, value };
+            } else if (existingField.type === "number" && typeof value === "number") {
+                newFields[existingIndex] = { ...existingField, value };
             }
         } else {
             const manifestField = fields.find((f) => f.id === fieldId);
@@ -36,6 +39,8 @@ export default function FieldsConfiguration({
                 newFields.push({ id: fieldId, type: "string", value });
             } else if (manifestField.type === "boolean" && typeof value === "boolean") {
                 newFields.push({ id: fieldId, type: "boolean", value });
+            } else if (manifestField.type === "number" && typeof value === "number") {
+                newFields.push({ id: fieldId, type: "number", value });
             }
         }
 
@@ -50,7 +55,7 @@ export default function FieldsConfiguration({
         });
     };
 
-    const getFieldValue = (fieldId: string, fieldType: "string" | "boolean"): string | boolean | undefined => {
+    const getFieldValue = (fieldId: string, fieldType: "string" | "boolean" | "number"): string | boolean | number | undefined => {
         const field = currentFields.find((f) => f.id === fieldId);
         if (field && field.type === fieldType) {
             return field.value;
@@ -96,6 +101,21 @@ export default function FieldsConfiguration({
                             key={manifestField.id}
                             field={booleanField}
                             value={value as boolean | undefined}
+                            onChange={(newValue) => handleFieldChange(manifestField.id, newValue)}
+                            required={manifestField.required}
+                            title={manifestField.title}
+                            description={manifestField.description}
+                        />
+                    );
+                } else if (manifestField.type === "number") {
+                    const numberField = currentField && currentField.type === "number"
+                        ? currentField
+                        : { id: manifestField.id, type: "number" as const, value: 0 as number };
+                    return (
+                        <NumberField
+                            key={manifestField.id}
+                            field={numberField}
+                            value={value as number | undefined}
                             onChange={(newValue) => handleFieldChange(manifestField.id, newValue)}
                             required={manifestField.required}
                             title={manifestField.title}

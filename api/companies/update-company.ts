@@ -13,6 +13,7 @@ import { companyResponse } from "./shared";
 import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { cleanEnterpriseNumber, cleanVatNumber, UserFacingError } from "@peppol/utils/util";
 import { zodValidCountryCodes } from "@peppol/db/schema";
+import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
 
 const server = new Server();
 
@@ -45,10 +46,12 @@ const updateCompanyJsonBodySchema = z.object({
     postalCode: z.string().optional(),
     city: z.string().optional(),
     country: zodValidCountryCodes.optional(),
+    enterpriseNumberScheme: zodValidIsoIcdSchemeIdentifiers.nullish(),
     enterpriseNumber: z.string().nullish().transform(cleanEnterpriseNumber),
     vatNumber: z.string().nullish().transform(cleanVatNumber),
+    email: z.string().email().or(z.literal("")).nullish().transform((val) => val?.trim() === "" ? null : val),
+    phone: z.string().nullish().transform((val) => val?.trim() === "" ? null : val),
     isSmpRecipient: z.boolean().optional(),
-    isOutgoingDocumentValidationEnforced: z.boolean().optional().openapi({ description: "If document validation is enabled, outgoing documents will be validated against Peppol standards. Defaults to true for new companies." }),
 });
 
 type UpdateCompanyContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof updateCompanyParamSchemaWithTeamId>, json: z.input<typeof updateCompanyJsonBodySchema> }, out: { param: z.infer<typeof updateCompanyParamSchemaWithTeamId>, json: z.infer<typeof updateCompanyJsonBodySchema> } }>;

@@ -65,6 +65,12 @@ export const DOCUMENT_TYPE_PRESETS: DocumentTypeInfo[] = [
     MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO,
 ];
 
+export const BILLING_DOCUMENT_TYPE_INFO: DocumentTypeInfo[] = [
+    INVOICE_DOCUMENT_TYPE_INFO,
+    CREDIT_NOTE_DOCUMENT_TYPE_INFO,
+    SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO,
+    SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO,
+];
 
 export function getDocumentTypeInfo(type: string): DocumentTypeInfo {
     const documentType = DOCUMENT_TYPE_PRESETS.find(dt => dt.type === type);

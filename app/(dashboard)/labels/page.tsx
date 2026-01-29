@@ -8,9 +8,11 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -47,10 +49,7 @@ const handleApiResponse = async (
   return json;
 };
 
-const createColumn = (
-  key: keyof Label,
-  title: string
-): ColumnDef<Label> => ({
+const createColumn = (key: keyof Label, title: string): ColumnDef<Label> => ({
   accessorKey: key,
   header: ({ column }) => <ColumnHeader column={column} title={title} />,
   cell: ({ row }) => (row.getValue(key) as string) ?? "N/A",
@@ -58,15 +57,23 @@ const createColumn = (
 });
 
 export default function Page() {
+  const {
+    columnVisibility,
+    setColumnVisibility,
+    paginationState,
+    onPaginationChange,
+  } = useDataTableState({
+    tableId: "labels",
+    defaultLimit: 10,
+  });
+
   const [labels, setLabels] = useState<Label[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [formData, setFormData] = useState<LabelFormData>(
-    defaultLabelFormData
-  );
+  const [formData, setFormData] = useState<LabelFormData>(defaultLabelFormData);
   const [editingLabel, setEditingLabel] = useState<Label | null>(null);
   const activeTeam = useActiveTeam();
 
@@ -122,9 +129,7 @@ export default function Page() {
         );
         setLabels((prev) => [...prev, json.label]);
       } else if (editingLabel) {
-        const response = await client[":teamId"]["labels"][
-          ":labelId"
-        ].$put({
+        const response = await client[":teamId"]["labels"][":labelId"].$put({
           param: {
             teamId: activeTeam.id,
             labelId: editingLabel.id,
@@ -155,9 +160,7 @@ export default function Page() {
     if (!activeTeam?.id) return;
 
     try {
-      const response = await client[":teamId"]["labels"][
-        ":labelId"
-      ].$delete({
+      const response = await client[":teamId"]["labels"][":labelId"].$delete({
         param: {
           teamId: activeTeam.id,
           labelId: id,
@@ -170,6 +173,17 @@ export default function Page() {
     }
   };
 
+  const openEditDialog = (label: Label) => {
+    setEditingLabel(label);
+    setFormData({
+      name: label.name,
+      colorHex: label.colorHex,
+      externalId: label.externalId,
+    });
+    setDialogMode("edit");
+    setIsDialogOpen(true);
+  };
+
   const columns: ColumnDef<Label>[] = [
     {
       accessorKey: "id",
@@ -178,9 +192,12 @@ export default function Page() {
         const id = row.getValue("id") as string;
         return (
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs">
+            <button
+              className="font-mono text-xs hover:underline cursor-pointer"
+              onClick={() => openEditDialog(row.original)}
+            >
               {id.slice(0, 6)}...{id.slice(-6)}
-            </span>
+            </button>
             <Button
               variant="ghost"
               size="icon"
@@ -199,19 +216,6 @@ export default function Page() {
     {
       accessorKey: "name",
       header: ({ column }) => <ColumnHeader column={column} title="Name" />,
-      cell: ({ row }) => {
-        const name = row.getValue("name") as string;
-        const colorHex = row.original.colorHex;
-        return (
-          <div className="flex items-center gap-2">
-            <div
-              className="w-4 h-4 rounded-full"
-              style={{ backgroundColor: colorHex }}
-            />
-            <span>{name}</span>
-          </div>
-        );
-      },
       enableGlobalFilter: true,
     },
     {
@@ -222,7 +226,7 @@ export default function Page() {
         return (
           <div className="flex items-center gap-2">
             <div
-              className="w-6 h-6 rounded border border-border"
+              className="w-4 h-4 rounded border border-border"
               style={{ backgroundColor: colorHex }}
             />
             <span className="font-mono text-xs">{colorHex}</span>
@@ -245,27 +249,18 @@ export default function Page() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => {
-                setEditingLabel(row.original);
-                setFormData({
-                  name: row.original.name,
-                  colorHex: row.original.colorHex,
-                  externalId: row.original.externalId,
-                });
-                setDialogMode("edit");
-                setIsDialogOpen(true);
-              }}
+              onClick={() => openEditDialog(row.original)}
               title="Edit"
             >
               <Pencil className="h-4 w-4" />
             </Button>
             <AsyncButton
-              variant="ghost"
+              variant="ghost-destructive"
               size="icon"
               onClick={async () => await handleDeleteLabel(id)}
               title="Delete"
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-4 w-4" />
             </AsyncButton>
           </div>
         );
@@ -279,10 +274,15 @@ export default function Page() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange,
     state: {
       sorting,
       globalFilter,
+      columnVisibility,
+      pagination: paginationState,
     },
     onGlobalFilterChange: setGlobalFilter,
   });
@@ -311,9 +311,7 @@ export default function Page() {
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>
-                {dialogMode === "create"
-                  ? "Create New Label"
-                  : "Edit Label"}
+                {dialogMode === "create" ? "Create New Label" : "Edit Label"}
               </DialogTitle>
             </DialogHeader>
             <LabelForm
@@ -343,4 +341,3 @@ export default function Page() {
     </PageTemplate>
   );
 }
-

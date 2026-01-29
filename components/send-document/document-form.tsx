@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { Label } from "@core/components/ui/label";
 import { toast } from "@core/components/ui/sonner";
@@ -22,8 +22,20 @@ import {
   ensureFileExtension,
   getDocumentFilename,
 } from "@peppol/utils/document-filename";
+import { useActiveTeam } from "@core/hooks/user";
+import type { Customers } from "@peppol/api/customers";
+import type { Party } from "@peppol/utils/parsing/invoice/schemas";
+import { Combobox } from "@core/components/ui/combobox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@core/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
+import { PartyForm } from "./party-form";
 
 const client = rc<SendDocumentAPI>("peppol");
+const customersClient = rc<Customers>("v1");
 
 interface DocumentFormProps {
   type: "invoice" | "creditNote" | "xml";
@@ -31,6 +43,7 @@ interface DocumentFormProps {
   onFormChange: (data: Partial<SendDocument>) => void;
   selectedCompanyId: string;
   onCompanyChange: (companyId: string) => void;
+  mode: "billing" | "developer";
 }
 
 export function DocumentForm({
@@ -39,10 +52,32 @@ export function DocumentForm({
   onFormChange,
   selectedCompanyId,
   onCompanyChange,
+  mode,
 }: DocumentFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const lastAutoPdfFilenameRef = useRef<string | null>(null);
+  const lastAutoRecipientRef = useRef<string | null>(null);
+  const activeTeam = useActiveTeam();
+  const [customers, setCustomers] = useState<
+    Array<{
+      id: string;
+      name: string;
+      vatNumber: string | null;
+      enterpriseNumber: string | null;
+      peppolAddresses: string[];
+      address: string;
+      city: string;
+      postalCode: string;
+      country: string;
+      email: string | null;
+      phone: string | null;
+    }>
+  >([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [isCounterpartyOpen, setIsCounterpartyOpen] = useState(
+    mode === "developer"
+  );
 
   const getAutoPdfFilename = (): string | null => {
     const docType = formData.documentType;
@@ -104,6 +139,141 @@ export function DocumentForm({
     onFormChange,
   ]);
 
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      if (!activeTeam?.id) {
+        setCustomers([]);
+        return;
+      }
+
+      try {
+        const response = await customersClient[":teamId"]["customers"].$get({
+          param: { teamId: activeTeam.id },
+          query: { page: 1, limit: 100 },
+        });
+        const json = await response.json();
+        if (!json.success || !Array.isArray(json.customers)) {
+          setCustomers([]);
+          return;
+        }
+        setCustomers(
+          json.customers.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            vatNumber: c.vatNumber ?? null,
+            enterpriseNumber: c.enterpriseNumber ?? null,
+            peppolAddresses: Array.isArray(c.peppolAddresses)
+              ? c.peppolAddresses
+              : [],
+            address: c.address,
+            city: c.city,
+            postalCode: c.postalCode,
+            country: c.country,
+            email: c.email ?? null,
+            phone: c.phone ?? null,
+          }))
+        );
+      } catch (error) {
+        setCustomers([]);
+      }
+    };
+
+    fetchCustomers();
+  }, [activeTeam?.id]);
+
+  const selectedCustomer = useMemo(() => {
+    if (!selectedCustomerId || customers.length === 0) {
+      return null;
+    }
+    return customers.find((c) => c.id === selectedCustomerId) ?? null;
+  }, [customers, selectedCustomerId]);
+
+  const customerParty: Party | undefined = useMemo(() => {
+    if (!selectedCustomer) {
+      return undefined;
+    }
+    return {
+      name: selectedCustomer.name,
+      street: selectedCustomer.address,
+      street2: null,
+      city: selectedCustomer.city,
+      postalZone: selectedCustomer.postalCode,
+      country: selectedCustomer.country,
+      vatNumber: selectedCustomer.vatNumber,
+      enterpriseNumber: selectedCustomer.enterpriseNumber,
+      email: selectedCustomer.email,
+      phone: selectedCustomer.phone,
+    };
+  }, [selectedCustomer]);
+
+  const counterpartyKey: "buyer" | "seller" | null = useMemo(() => {
+    if (type === "xml") return null;
+    if (
+      formData.documentType === DocumentType.SELF_BILLING_INVOICE ||
+      formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE
+    ) {
+      return "seller";
+    }
+    return "buyer";
+  }, [formData.documentType, type]);
+
+  const counterpartyLabel = useMemo(() => {
+    return counterpartyKey === "seller" ? "Seller details" : "Buyer details";
+  }, [counterpartyKey]);
+
+  const counterpartyParty: Party | undefined = useMemo(() => {
+    if (!counterpartyKey) return undefined;
+    const doc: any = formData.document;
+    const party = doc?.[counterpartyKey];
+    return party && typeof party === "object" ? (party as Party) : undefined;
+  }, [counterpartyKey, formData.document]);
+
+  const handleCounterpartyChange = (party: Party) => {
+    if (!counterpartyKey) return;
+    const doc: any = formData.document;
+    if (!doc || typeof doc !== "object") return;
+    onFormChange({
+      ...formData,
+      document: {
+        ...doc,
+        [counterpartyKey]: party,
+      },
+    });
+  };
+
+  useEffect(() => {
+    if (!selectedCustomer) {
+      lastAutoRecipientRef.current = null;
+      return;
+    }
+
+    const autoRecipientRaw = selectedCustomer.peppolAddresses?.[0];
+    const autoRecipient =
+      typeof autoRecipientRaw === "string" ? autoRecipientRaw.trim() : "";
+    if (!autoRecipient) {
+      return;
+    }
+
+    const currentRecipient =
+      typeof formData.recipient === "string" ? formData.recipient.trim() : "";
+
+    const shouldAutoUpdate =
+      (!currentRecipient && lastAutoRecipientRef.current === null) ||
+      currentRecipient === lastAutoRecipientRef.current;
+
+    if (shouldAutoUpdate && currentRecipient !== autoRecipient) {
+      lastAutoRecipientRef.current = autoRecipient;
+      onFormChange({
+        ...formData,
+        recipient: autoRecipient,
+      });
+    }
+  }, [selectedCustomer, formData.recipient, onFormChange]);
+
+  useEffect(() => {
+    setIsCounterpartyOpen(mode === "developer");
+  }, [mode, selectedCustomerId, selectedCompanyId, formData.documentType]);
+
   const handleDocumentChange = (documentData: any) => {
     onFormChange({
       ...formData,
@@ -159,17 +329,44 @@ export function DocumentForm({
       return;
     }
 
-    if (!formData.recipient) {
-      toast.error("Please enter a recipient Peppol ID");
+    const hasRecipient = !!formData.recipient?.trim();
+    const hasEmailRecipients =
+      (formData.email?.to?.filter((e) => e).length ?? 0) > 0;
+    const billingTypes: DocumentType[] = [
+      DocumentType.INVOICE,
+      DocumentType.CREDIT_NOTE,
+      DocumentType.SELF_BILLING_INVOICE,
+      DocumentType.SELF_BILLING_CREDIT_NOTE,
+    ];
+    const isBillingType = billingTypes.includes(
+      formData.documentType as DocumentType
+    );
+
+    if (!hasRecipient && !hasEmailRecipients) {
+      toast.error(
+        "Please enter a recipient Peppol ID or configure email delivery"
+      );
+      return;
+    }
+
+    if (!hasRecipient && !isBillingType) {
+      toast.error(
+        "Email-only delivery is only supported for (self-billing) invoices and credit notes"
+      );
       return;
     }
 
     setIsSubmitting(true);
 
     try {
+      const payload = {
+        ...formData,
+        recipient: formData.recipient?.trim() || null,
+      } as SendDocument;
+
       const response = await client[":companyId"]["sendDocument"].$post({
         param: { companyId: selectedCompanyId },
-        json: formData as SendDocument,
+        json: payload,
       });
 
       const json = await response.json();
@@ -213,18 +410,97 @@ export function DocumentForm({
           />
         </div>
 
-        <div>
-          <Label htmlFor="recipient">Recipient Peppol ID *</Label>
-          <RecipientSelector
-            value={formData.recipient || ""}
-            onChange={handleRecipientChange}
-          />
-        </div>
+        <Card className="p-4">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="customer">Customer</Label>
+              <Combobox
+                value={selectedCustomerId}
+                onValueChange={setSelectedCustomerId}
+                options={customers.map((c) => ({
+                  value: c.id,
+                  label: c.vatNumber ? `${c.name} - ${c.vatNumber}` : c.name,
+                }))}
+                placeholder="Select a customer..."
+                searchPlaceholder="Search customers..."
+                emptyText="No customers found."
+                disabled={!activeTeam?.id}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="recipient">Recipient Peppol ID</Label>
+              <RecipientSelector
+                value={formData.recipient || ""}
+                onChange={handleRecipientChange}
+                optional
+              />
+            </div>
+
+            {counterpartyKey && (
+              <Collapsible
+                open={isCounterpartyOpen}
+                onOpenChange={setIsCounterpartyOpen}
+              >
+                <CollapsibleTrigger className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary">
+                  <span>{counterpartyLabel}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${isCounterpartyOpen ? "rotate-180" : ""}`}
+                  />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <PartyForm
+                    party={counterpartyParty || {}}
+                    onChange={handleCounterpartyChange as any}
+                    required
+                    disabled={false}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
+        </Card>
 
         <EmailOptions
           value={formData.email}
           onChange={handleEmailOptionsChange}
+          suggestedEmail={selectedCustomer?.email}
         />
+
+        {type !== "xml" && (
+          <Card className="p-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="pdf-generation-enabled">
+                    Include generated PDF
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Generates a PDF of the document and embeds it as an
+                    attachment.
+                  </p>
+                </div>
+                <Switch
+                  id="pdf-generation-enabled"
+                  checked={formData.pdfGeneration?.enabled === true}
+                  onCheckedChange={handlePdfGenerationToggle}
+                />
+              </div>
+
+              {mode === "developer" && formData.pdfGeneration?.enabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="pdf-generation-filename">PDF filename</Label>
+                  <Input
+                    id="pdf-generation-filename"
+                    value={formData.pdfGeneration.filename ?? ""}
+                    onChange={(e) => handlePdfFilenameChange(e.target.value)}
+                    placeholder={getAutoPdfFilename() ?? "document.pdf"}
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
 
       <div className="border-t pt-6">
@@ -236,6 +512,9 @@ export function DocumentForm({
             isSelfBilling={
               formData.documentType === DocumentType.SELF_BILLING_INVOICE
             }
+            customerParty={customerParty}
+            mode={mode}
+            groupedCounterpartyKey={counterpartyKey}
           />
         )}
         {type === "creditNote" && (
@@ -246,6 +525,9 @@ export function DocumentForm({
             isSelfBilling={
               formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE
             }
+            customerParty={customerParty}
+            mode={mode}
+            groupedCounterpartyKey={counterpartyKey}
           />
         )}
         {type === "xml" && (
@@ -261,45 +543,6 @@ export function DocumentForm({
               onFormChange({ ...formData, processId: id })
             }
           />
-        )}
-
-        {type !== "xml" && (
-          <div className="mt-6">
-            <Card className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="pdf-generation-enabled">
-                      Include generated PDF
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Generates a PDF of the document and embeds it as an
-                      attachment.
-                    </p>
-                  </div>
-                  <Switch
-                    id="pdf-generation-enabled"
-                    checked={formData.pdfGeneration?.enabled === true}
-                    onCheckedChange={handlePdfGenerationToggle}
-                  />
-                </div>
-
-                {formData.pdfGeneration?.enabled && (
-                  <div className="space-y-2">
-                    <Label htmlFor="pdf-generation-filename">
-                      PDF filename
-                    </Label>
-                    <Input
-                      id="pdf-generation-filename"
-                      value={formData.pdfGeneration.filename ?? ""}
-                      onChange={(e) => handlePdfFilenameChange(e.target.value)}
-                      placeholder={getAutoPdfFilename() ?? "document.pdf"}
-                    />
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
         )}
       </div>
 

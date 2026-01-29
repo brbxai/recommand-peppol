@@ -3,7 +3,7 @@ import { Label } from "@core/components/ui/label";
 import { Button } from "@core/components/ui/button";
 import type { Label as LabelType } from "../types/label";
 import { AsyncButton } from "@core/components/async-button";
-import { FOLDER, ERROR, DATA, PROGRESS, CONST, SLATE } from "@core/lib/config/colors";
+import { FOLDER, ERROR, DATA, PROGRESS, CONST } from "@core/lib/config/colors";
 
 const COLOR_PRESETS = [
   { name: "Green", value: FOLDER },
@@ -11,7 +11,6 @@ const COLOR_PRESETS = [
   { name: "Yellow", value: DATA },
   { name: "Blue", value: PROGRESS },
   { name: "Purple", value: CONST },
-  { name: "Slate", value: SLATE },
 ] as const;
 
 type LabelFormProps = {

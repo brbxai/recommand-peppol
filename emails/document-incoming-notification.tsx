@@ -1,16 +1,5 @@
-import {
-  Body,
-  Container,
-  Heading,
-  Html,
-  Preview,
-  Section,
-  Text,
-  Tailwind,
-  Img,
-} from "@react-email/components";
-import { Head } from "@core/emails/components/head";
-import { SHADOW, DARK_SLATE, SHEET } from "@core/lib/config/colors";
+import { Text } from "@react-email/components";
+import { EmailLayout, EmailHeading, InfoSection } from "@core/emails/components/shared";
 
 interface DocumentIncomingNotificationProps {
   companyName: string;
@@ -29,44 +18,34 @@ export const DocumentIncomingNotification = ({
   amount,
   currency,
 }: DocumentIncomingNotificationProps) => (
-  <Html>
-    <Head />
-    <Preview>New {documentType.toLowerCase()} received from {senderName}</Preview>
-    <Tailwind>
-      <Body className={`font-sans text-[${DARK_SLATE}]`}>
-        <Container
-          className={`mx-auto my-8 max-w-xl border bg-[${SHEET}] p-6 border-[${SHADOW}] border-solid`}
-        >
-          <Img
-            src={`${process.env.BASE_URL}/icon.png`}
-            alt="Recommand Logo"
-            className="mx-auto mb-6 w-16"
-          />
-          <Heading className="mb-6 text-center text-2xl font-bold">
-            New {documentType} Received
-          </Heading>
-          <Text className="mb-4">
-            Your company <strong>{companyName}</strong> has received a new {documentType.toLowerCase()} via the Peppol network.
-          </Text>
-          <Section className="mb-4 p-4 bg-gray-50 rounded">
-            <Text className="mb-2"><strong>From:</strong> {senderName}</Text>
-            {documentNumber && <Text className="mb-2"><strong>Document Number:</strong> {documentNumber}</Text>}
-            {amount && currency && (
-              <Text className="mb-2"><strong>Amount:</strong> {amount} {currency}</Text>
-            )}
-          </Section>
-          <Text className="mb-4">
-            The document and any attachments are included with this email. Please review and take any necessary action.
-          </Text>
-          <Text>
-            Best regards,
-            <br />
-            The Recommand Team
-          </Text>
-        </Container>
-      </Body>
-    </Tailwind>
-  </Html>
+  <EmailLayout
+    preview={`New ${documentType.toLowerCase()} received from ${senderName}`}
+  >
+    <EmailHeading>New {documentType} Received</EmailHeading>
+    <Text className="mb-4">
+      Your company <strong>{companyName}</strong> has received a new{" "}
+      {documentType.toLowerCase()} via the Peppol network.
+    </Text>
+    <InfoSection>
+      <Text className="my-1">
+        <strong>From:</strong> {senderName}
+      </Text>
+      {documentNumber && (
+        <Text className="my-1">
+          <strong>Document Number:</strong> {documentNumber}
+        </Text>
+      )}
+      {amount && currency && (
+        <Text className="my-1">
+          <strong>Amount:</strong> {amount} {currency}
+        </Text>
+      )}
+    </InfoSection>
+    <Text className="mb-4">
+      The document and any attachments are included with this email. Please
+      review and take any necessary action.
+    </Text>
+  </EmailLayout>
 );
 
 DocumentIncomingNotification.PreviewProps = {

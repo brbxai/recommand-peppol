@@ -50,6 +50,8 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             <p class="text-slate-600">{{postalZone}} {{city}}</p>
             <p class="text-slate-600">{{country}}</p>
             {{#vatNumber}}<p class="mt-1 text-xs text-slate-500">VAT {{vatNumber}}</p>{{/vatNumber}}
+            {{#email}}<p class="mt-1 text-xs text-slate-500">{{email}}</p>{{/email}}
+            {{#phone}}<p class="mt-1 text-xs text-slate-500">{{phone}}</p>{{/phone}}
           {{/seller}}
           {{^seller}}
             <p class="text-slate-500">-</p>
@@ -64,6 +66,8 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             <p class="text-slate-600">{{postalZone}} {{city}}</p>
             <p class="text-slate-600">{{country}}</p>
             {{#vatNumber}}<p class="mt-1 text-xs text-slate-500">VAT {{vatNumber}}</p>{{/vatNumber}}
+            {{#email}}<p class="mt-1 text-xs text-slate-500">{{email}}</p>{{/email}}
+            {{#phone}}<p class="mt-1 text-xs text-slate-500">{{phone}}</p>{{/phone}}
           {{/buyer}}
           {{^buyer}}
             <p class="text-slate-500">-</p>
@@ -201,7 +205,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
         </div>
       </div>
 
-      {{#paymentMeans}}
+      {{#paymentMeans.length}}
         <div class="px-8 py-6 border-t border-slate-200">
           <p class="text-xs font-semibold tracking-wide uppercase text-slate-500 mb-3">Payment Information</p>
           <div class="space-y-3 text-sm">
@@ -219,7 +223,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             {{/paymentMeans}}
           </div>
         </div>
-      {{/paymentMeans}}
+      {{/paymentMeans.length}}
     </div>
   </body>
 </html>`;

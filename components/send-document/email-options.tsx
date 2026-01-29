@@ -1,13 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
 import { Switch } from "@core/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@core/components/ui/select";
 import { Button } from "@core/components/ui/button";
 import { Plus, Trash2, Mail } from "lucide-react";
 import { Card } from "@core/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@core/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@core/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 
 interface EmailOptionsProps {
@@ -18,22 +28,46 @@ interface EmailOptionsProps {
     htmlBody?: string;
   };
   onChange: (value: any) => void;
+  suggestedEmail?: string | null;
 }
 
-export function EmailOptions({ value, onChange }: EmailOptionsProps) {
+export function EmailOptions({
+  value,
+  onChange,
+  suggestedEmail,
+}: EmailOptionsProps) {
   const [enabled, setEnabled] = useState(!!value);
   const [emails, setEmails] = useState(value?.to || [""]);
   const [when, setWhen] = useState(value?.when || "on_peppol_failure");
   const [subject, setSubject] = useState(value?.subject || "");
   const [htmlBody, setHtmlBody] = useState(value?.htmlBody || "");
   const [isOpen, setIsOpen] = useState(false);
+  const lastAutoEmailRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!suggestedEmail) {
+      lastAutoEmailRef.current = null;
+      return;
+    }
+
+    const currentFirstEmail = emails[0]?.trim() || "";
+    const shouldAutoUpdate =
+      (!currentFirstEmail && lastAutoEmailRef.current === null) ||
+      currentFirstEmail === lastAutoEmailRef.current;
+
+    if (shouldAutoUpdate && currentFirstEmail !== suggestedEmail) {
+      lastAutoEmailRef.current = suggestedEmail;
+      const newEmails = [suggestedEmail, ...emails.slice(1)];
+      setEmails(newEmails);
+    }
+  }, [suggestedEmail]);
 
   const handleToggle = (checked: boolean) => {
     setEnabled(checked);
     if (checked) {
       onChange({
         when,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(subject && { subject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -65,7 +99,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when,
-        to: (emailList || emails).filter(e => e),
+        to: (emailList || emails).filter((e) => e),
         ...(subject && { subject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -77,7 +111,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when: newWhen,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(subject && { subject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -89,7 +123,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(newSubject && { subject: newSubject }),
         ...(htmlBody && { htmlBody }),
       });
@@ -101,7 +135,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
     if (enabled) {
       onChange({
         when,
-        to: emails.filter(e => e),
+        to: emails.filter((e) => e),
         ...(subject && { subject }),
         ...(newBody && { htmlBody: newBody }),
       });
@@ -141,6 +175,10 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  If no Peppol recipient is provided, email will be the primary
+                  delivery method regardless of this setting.
+                </p>
               </div>
 
               <div>
@@ -158,7 +196,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                       {emails.length > 1 && (
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="ghost-destructive"
                           size="icon"
                           onClick={() => removeEmail(index)}
                         >
@@ -181,7 +219,9 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
 
               <CollapsibleTrigger className="flex w-full items-center justify-between py-2 text-sm font-medium">
                 <span>Custom Email Content (Optional)</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4">
                 <div>
@@ -190,7 +230,7 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     id="subject"
                     value={subject}
                     onChange={(e) => handleSubjectChange(e.target.value)}
-                    placeholder="Leave blank for auto-generated subject"
+                    placeholder="Default: Invoice {number} or Credit Note {number}"
                   />
                 </div>
 
@@ -200,11 +240,13 @@ export function EmailOptions({ value, onChange }: EmailOptionsProps) {
                     id="htmlBody"
                     value={htmlBody}
                     onChange={(e) => handleBodyChange(e.target.value)}
-                    placeholder="Leave blank for auto-generated email body"
+                    placeholder="Default: Dear {buyer name}, you can find your invoice attached."
                     rows={4}
                   />
                   <p className="mt-1 text-xs text-muted-foreground">
-                    You can use HTML tags for formatting. The document will be attached as XML, plus any embedded attachments (optionally including a generated PDF).
+                    You can use HTML tags for formatting. The document will be
+                    attached as XML, plus any embedded attachments (optionally
+                    including a generated PDF).
                   </p>
                 </div>
               </CollapsibleContent>

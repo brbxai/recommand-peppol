@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Textarea } from "@core/components/ui/textarea";
@@ -11,21 +11,27 @@ import {
   CollapsibleTrigger,
 } from "@core/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
-import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
+import type { Invoice, Party } from "@peppol/utils/parsing/invoice/schemas";
 import { format } from "date-fns";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import { useActiveTeam } from "@core/hooks/user";
 import { AttachmentsEditor } from "./attachments-editor";
 import { isTaxExemptionReasonRequired } from "@peppol/utils/parsing/invoice/calculations";
+import type { DocumentDefaults } from "@peppol/api/document-defaults";
+import { DocumentType } from "@peppol/utils/parsing/send-document";
 
 const companiesClient = rc<Companies>("peppol");
+const sendDocumentClient = rc<DocumentDefaults>("peppol");
 
 interface InvoiceFormProps {
   document: any;
   onChange: (document: any) => void;
   companyId: string;
   isSelfBilling?: boolean;
+  customerParty?: Party;
+  mode: "billing" | "developer";
+  groupedCounterpartyKey: "buyer" | "seller" | null;
 }
 
 export function InvoiceForm({
@@ -33,7 +39,11 @@ export function InvoiceForm({
   onChange,
   companyId,
   isSelfBilling = false,
+  customerParty,
+  mode,
+  groupedCounterpartyKey,
 }: InvoiceFormProps) {
+  const activeTeam = useActiveTeam();
   const [invoice, setInvoice] = useState<Partial<Invoice>>({
     invoiceNumber: "",
     issueDate: format(new Date(), "yyyy-MM-dd"),
@@ -45,15 +55,47 @@ export function InvoiceForm({
     attachments: [],
     ...document,
   });
-  const [openSections, setOpenSections] = useState({
-    buyer: true,
+  const [openSections, setOpenSections] = useState(() => ({
+    buyer: false,
     seller: false,
-    payment: false,
+    payment: mode === "billing",
     notes: false,
     lines: true,
     attachments: false,
-  });
-  const activeTeam = useActiveTeam();
+  }));
+  const lastAutoInvoiceNumberRef = useRef<string | null>(null);
+  const lastAutoIbanRef = useRef<string | null>(null);
+  useEffect(() => {
+    setInvoice({
+      invoiceNumber: "",
+      issueDate: format(new Date(), "yyyy-MM-dd"),
+      dueDate: format(
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        "yyyy-MM-dd"
+      ),
+      lines: [],
+      attachments: [],
+    });
+    lastAutoInvoiceNumberRef.current = null;
+    lastAutoIbanRef.current = null;
+  }, [activeTeam?.id, companyId]);
+
+  const isSameParty = (a: any, b: any) => {
+    if (!a && !b) return true;
+    if (!a || !b) return false;
+    return (
+      a.name === b.name &&
+      a.street === b.street &&
+      a.street2 === b.street2 &&
+      a.city === b.city &&
+      a.postalZone === b.postalZone &&
+      a.country === b.country &&
+      a.vatNumber === b.vatNumber &&
+      a.enterpriseNumber === b.enterpriseNumber &&
+      a.email === b.email &&
+      a.phone === b.phone
+    );
+  };
 
   // Auto-populate company info when company changes
   useEffect(() => {
@@ -77,8 +119,10 @@ export function InvoiceForm({
             city: company.city,
             postalZone: company.postalCode,
             country: company.country,
+            email: company.email || null,
+            phone: company.phone || null,
           };
-          
+
           setInvoice((prev) => ({
             ...prev,
             ...(isSelfBilling
@@ -95,8 +139,160 @@ export function InvoiceForm({
   }, [companyId, activeTeam?.id, isSelfBilling]);
 
   useEffect(() => {
+    const run = async () => {
+      if (!companyId) return;
+
+      const documentType = isSelfBilling
+        ? DocumentType.SELF_BILLING_INVOICE
+        : DocumentType.INVOICE;
+
+      try {
+        const response = await sendDocumentClient[":companyId"][
+          "documentDefaults"
+        ].$get({
+          param: { companyId },
+          query: { documentType },
+        });
+        const json: any = await response.json();
+        if (!json?.success) return;
+
+        const suggestedNumberRaw = json?.documentNumber;
+        const suggestedNumber =
+          typeof suggestedNumberRaw === "string"
+            ? suggestedNumberRaw.trim()
+            : "";
+
+        const suggestedIbanRaw = json?.iban;
+        const suggestedIban =
+          typeof suggestedIbanRaw === "string" ? suggestedIbanRaw.trim() : "";
+
+        setInvoice((prev) => {
+          let next = prev;
+
+          // Handle invoice number suggestion
+          const currentNumber = (prev.invoiceNumber || "").trim();
+          const shouldAutoNumber =
+            !currentNumber ||
+            currentNumber === lastAutoInvoiceNumberRef.current;
+
+          if (suggestedNumber) {
+            if (shouldAutoNumber && currentNumber !== suggestedNumber) {
+              lastAutoInvoiceNumberRef.current = suggestedNumber;
+              next = { ...next, invoiceNumber: suggestedNumber };
+            }
+          } else if (
+            suggestedNumberRaw === null &&
+            lastAutoInvoiceNumberRef.current &&
+            currentNumber === lastAutoInvoiceNumberRef.current
+          ) {
+            // Clear auto-filled number when no suggestion available
+            lastAutoInvoiceNumberRef.current = null;
+            next = { ...next, invoiceNumber: "" };
+          }
+
+          // Handle IBAN suggestion
+          const pm = Array.isArray(prev.paymentMeans) ? prev.paymentMeans : [];
+          const currentIbans = pm
+            .map((p: any) => (typeof p?.iban === "string" ? p.iban.trim() : ""))
+            .filter(Boolean);
+          const currentIban = currentIbans[0] ?? "";
+          const shouldAutoIban =
+            currentIbans.length === 0 ||
+            currentIban === lastAutoIbanRef.current;
+
+          if (suggestedIban) {
+            if (shouldAutoIban && currentIban !== suggestedIban) {
+              lastAutoIbanRef.current = suggestedIban;
+              const nextPaymentMeans =
+                pm.length === 0
+                  ? [
+                      {
+                        paymentMethod: "credit_transfer",
+                        reference: "",
+                        iban: suggestedIban,
+                      },
+                    ]
+                  : pm.map((p: any, idx: number) =>
+                      idx === 0 ? { ...p, iban: suggestedIban } : p
+                    );
+              next = { ...next, paymentMeans: nextPaymentMeans as any };
+            }
+          } else if (
+            suggestedIbanRaw === null &&
+            lastAutoIbanRef.current &&
+            currentIban === lastAutoIbanRef.current
+          ) {
+            // Clear auto-filled IBAN when no suggestion available
+            lastAutoIbanRef.current = null;
+            const nextPaymentMeans = pm.map((p: any, idx: number) =>
+              idx === 0 ? { ...p, iban: "" } : p
+            );
+            next = { ...next, paymentMeans: nextPaymentMeans as any };
+          }
+
+          return next;
+        });
+      } catch {
+        return;
+      }
+    };
+
+    run();
+  }, [companyId, isSelfBilling, mode]);
+
+  useEffect(() => {
     onChange(invoice);
   }, [invoice]);
+
+  useEffect(() => {
+    if (!document || typeof document !== "object") {
+      return;
+    }
+    const doc: any = document;
+    setInvoice((prev) => {
+      const nextBuyer = doc.buyer;
+      const nextSeller = doc.seller;
+      let next = prev;
+      if (nextBuyer && !isSameParty(prev.buyer, nextBuyer)) {
+        next = { ...next, buyer: nextBuyer };
+      }
+      if (nextSeller && !isSameParty(prev.seller, nextSeller)) {
+        next = { ...next, seller: nextSeller };
+      }
+      return next;
+    });
+  }, [document]);
+
+  useEffect(() => {
+    if (!customerParty) return;
+    setInvoice((prev) => ({
+      ...prev,
+      ...(isSelfBilling
+        ? prev.seller?.name === customerParty.name &&
+          prev.seller?.street === customerParty.street &&
+          prev.seller?.postalZone === customerParty.postalZone &&
+          prev.seller?.country === customerParty.country
+          ? {}
+          : { seller: customerParty }
+        : prev.buyer?.name === customerParty.name &&
+            prev.buyer?.street === customerParty.street &&
+            prev.buyer?.postalZone === customerParty.postalZone &&
+            prev.buyer?.country === customerParty.country
+          ? {}
+          : { buyer: customerParty }),
+    }));
+  }, [customerParty, isSelfBilling]);
+
+  useEffect(() => {
+    if (mode !== "billing") {
+      return;
+    }
+    setOpenSections((prev) => ({
+      ...prev,
+      payment: true,
+      attachments: false,
+    }));
+  }, [mode]);
 
   const handleFieldChange = (field: keyof Invoice, value: any) => {
     setInvoice((prev) => ({ ...prev, [field]: value }));
@@ -106,6 +302,11 @@ export function InvoiceForm({
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const showBuyerOutsideGroup =
+    mode === "developer" && groupedCounterpartyKey === "seller";
+  const showSellerOutsideGroup =
+    mode === "developer" && groupedCounterpartyKey === "buyer";
+
   const requiresExemptionReason = useMemo(() => {
     return (invoice.lines || []).some(
       (line) => line.vat && isTaxExemptionReasonRequired(line.vat.category)
@@ -113,7 +314,12 @@ export function InvoiceForm({
   }, [invoice.lines]);
 
   useEffect(() => {
-    if (!requiresExemptionReason && invoice.vat && typeof invoice.vat === "object" && "exemptionReason" in invoice.vat) {
+    if (
+      !requiresExemptionReason &&
+      invoice.vat &&
+      typeof invoice.vat === "object" &&
+      "exemptionReason" in invoice.vat
+    ) {
       setInvoice((prev) => {
         const { vat, ...rest } = prev;
         return rest;
@@ -129,7 +335,9 @@ export function InvoiceForm({
   };
 
   const vatExemptionReason =
-    invoice.vat && typeof invoice.vat === "object" && "exemptionReason" in invoice.vat
+    invoice.vat &&
+    typeof invoice.vat === "object" &&
+    "exemptionReason" in invoice.vat
       ? (invoice.vat.exemptionReason as string) || ""
       : "";
 
@@ -154,7 +362,12 @@ export function InvoiceForm({
               id="issueDate"
               type="date"
               value={invoice.issueDate || ""}
-              onChange={(e) => handleFieldChange("issueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
+              onChange={(e) =>
+                handleFieldChange(
+                  "issueDate",
+                  e.target.value?.trim() ? e.target.value.trim() : null
+                )
+              }
             />
           </div>
           <div>
@@ -163,7 +376,12 @@ export function InvoiceForm({
               id="dueDate"
               type="date"
               value={invoice.dueDate || ""}
-              onChange={(e) => handleFieldChange("dueDate", e.target.value?.trim() ? e.target.value.trim() : null)}
+              onChange={(e) =>
+                handleFieldChange(
+                  "dueDate",
+                  e.target.value?.trim() ? e.target.value.trim() : null
+                )
+              }
             />
           </div>
         </div>
@@ -181,45 +399,57 @@ export function InvoiceForm({
         </div>
       </div>
 
-      <Collapsible open={openSections.buyer}>
-        <CollapsibleTrigger
-          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
-          onClick={() => toggleSection("buyer")}
-        >
-          <span>{isSelfBilling ? "Buyer Information (Auto-populated)" : "Buyer Information *"}</span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-4">
-          <PartyForm
-            party={invoice.buyer || {}}
-            onChange={(buyer) => handleFieldChange("buyer", buyer)}
-            required={!isSelfBilling}
-            disabled={isSelfBilling}
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {showBuyerOutsideGroup && (
+        <Collapsible open={openSections.buyer}>
+          <CollapsibleTrigger
+            className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+            onClick={() => toggleSection("buyer")}
+          >
+            <span>
+              {isSelfBilling
+                ? "Buyer Information (Auto-populated)"
+                : "Buyer Information *"}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${openSections.buyer ? "rotate-180" : ""}`}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <PartyForm
+              party={invoice.buyer || {}}
+              onChange={(buyer) => handleFieldChange("buyer", buyer)}
+              required={!isSelfBilling}
+              disabled={isSelfBilling}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
-      <Collapsible open={openSections.seller}>
-        <CollapsibleTrigger
-          className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
-          onClick={() => toggleSection("seller")}
-        >
-          <span>{isSelfBilling ? "Seller Information *" : "Seller Information (Auto-populated)"}</span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-4">
-          <PartyForm
-            party={invoice.seller || {}}
-            onChange={(seller) => handleFieldChange("seller", seller)}
-            required={isSelfBilling}
-            disabled={!isSelfBilling}
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {showSellerOutsideGroup && (
+        <Collapsible open={openSections.seller}>
+          <CollapsibleTrigger
+            className="flex w-full items-center justify-between py-2 font-medium transition-colors hover:text-primary"
+            onClick={() => toggleSection("seller")}
+          >
+            <span>
+              {isSelfBilling
+                ? "Seller Information *"
+                : "Seller Information (Auto-populated)"}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${openSections.seller ? "rotate-180" : ""}`}
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <PartyForm
+              party={invoice.seller || {}}
+              onChange={(seller) => handleFieldChange("seller", seller)}
+              required={isSelfBilling}
+              disabled={!isSelfBilling}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       <Collapsible open={openSections.lines}>
         <CollapsibleTrigger

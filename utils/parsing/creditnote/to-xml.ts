@@ -147,7 +147,10 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.seller.name,
-            ...(creditNote.seller.enterpriseNumber && { "cbc:CompanyID": creditNote.seller.enterpriseNumber }),
+            ...(creditNote.seller.enterpriseNumber && { "cbc:CompanyID": {
+              ...(creditNote.seller.enterpriseNumberScheme && { "@_schemeID": creditNote.seller.enterpriseNumberScheme }),
+              "#text": creditNote.seller.enterpriseNumber,
+            } }),
           },
           "cac:Contact": {
             "cbc:Name": creditNote.seller.name,
@@ -186,7 +189,10 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": creditNote.buyer.name,
-            ...(creditNote.buyer.enterpriseNumber && { "cbc:CompanyID": creditNote.buyer.enterpriseNumber }),
+            ...(creditNote.buyer.enterpriseNumber && { "cbc:CompanyID": {
+              ...(creditNote.buyer.enterpriseNumberScheme && { "@_schemeID": creditNote.buyer.enterpriseNumberScheme }),
+              "#text": creditNote.buyer.enterpriseNumber,
+            } }),
           },
           "cac:Contact": {
             "cbc:Name": creditNote.buyer.name,
@@ -368,6 +374,11 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
           "@_currencyID": creditNote.currency,
           "#text": item.netAmount,
         },
+        ...(item.orderLineReference && {
+          "cac:OrderLineReference": {
+            "cbc:LineID": item.orderLineReference,
+          },
+        }),
         ...(item.documentReference && {
           "cac:DocumentReference": {
             "cbc:ID": item.documentReference,
@@ -417,6 +428,15 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
             "cac:OriginCountry": {
               "cbc:IdentificationCode": item.originCountry,
             },
+          }),
+          ...((item.commodityClassifications && item.commodityClassifications.length > 0) && {
+            "cac:CommodityClassification": item.commodityClassifications.map((classification) => ({
+              "cbc:ItemClassificationCode": {
+                "@_listID": classification.scheme,
+                ...(classification.schemeVersion && { "@_listVersionID": classification.schemeVersion }),
+                "#text": classification.value,
+              }
+            })),
           }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,

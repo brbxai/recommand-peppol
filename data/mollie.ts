@@ -1,7 +1,7 @@
-import createMollieClient, { SequenceType } from "@mollie/api-client";
+import createMollieClient, { SequenceType, type Mandate } from "@mollie/api-client";
 import { db } from "@recommand/db";
 import { billingProfiles, subscriptionBillingEvents } from "@peppol/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, not } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { sendTelegramNotification } from "@peppol/utils/system-notifications/telegram";
 
@@ -59,26 +59,57 @@ export async function processFirstPayment(paymentId: string) {
   console.log("Payment", payment);
 
   if (payment.status === "paid") {
+    const { profileStanding } = await db
+      .select({ profileStanding: billingProfiles.profileStanding })
+      .from(billingProfiles)
+      .where(
+        eq(billingProfiles.id, (payment.metadata as any).billingProfileId)
+      )
+      .limit(1)
+      .then(result => result[0]);
+
     await db
       .update(billingProfiles)
       .set({
         firstPaymentId: paymentId,
         firstPaymentStatus: payment.status,
         isMandateValidated: true,
+        profileStanding: profileStanding === "suspended" ? "suspended" : "active", // If the profile is suspended, keep it suspended
+        graceStartedAt: null,
+        graceReason: null,
       })
       .where(
         eq(billingProfiles.id, (payment.metadata as any).billingProfileId)
       );
   } else {
+    const { graceStartedAt, graceReason, profileStanding } = await db
+      .select({ graceStartedAt: billingProfiles.graceStartedAt, graceReason: billingProfiles.graceReason, profileStanding: billingProfiles.profileStanding })
+      .from(billingProfiles)
+      .where(
+        eq(billingProfiles.id, (payment.metadata as any).billingProfileId),
+      )
+      .limit(1)
+      .then(result => result[0]);
+
+
+    const isGracePeriodTrigger = ["canceled", "expired", "failed"].includes(payment.status);
     await db
       .update(billingProfiles)
       .set({
         firstPaymentId: paymentId,
         firstPaymentStatus: payment.status,
         isMandateValidated: false,
+        ...((isGracePeriodTrigger && profileStanding !== "suspended") ? {
+          profileStanding: "grace",
+          graceStartedAt: (graceStartedAt ?? new Date()),
+          graceReason: graceReason ? graceReason : "payment_" + payment.status,
+        } : {}),
       })
       .where(
-        eq(billingProfiles.id, (payment.metadata as any).billingProfileId)
+        and(
+          eq(billingProfiles.id, (payment.metadata as any).billingProfileId),
+          eq(billingProfiles.isMandateValidated, false), // Only update if the mandate is not validated, so we don't reset a validated mandate
+        )
       );
   }
 }
@@ -97,7 +128,46 @@ export async function getMandate(mollieCustomerId: string) {
   return null;
 }
 
+export function getMaxPaymentSize(mandate: Mandate): Decimal {
+  if (mandate.details && "maximumAmount" in mandate.details) {
+    const maximumAmount = mandate.details.maximumAmount as { value: string, currency: string };
+    if (maximumAmount && typeof maximumAmount === "object" && "value" in maximumAmount) {
+      const customLimit = new Decimal(maximumAmount.value);
+      if (customLimit.isNaN() === false && customLimit.isFinite() === true) {
+        return customLimit;
+      }
+    }
+  }
+
+  return new Decimal(1000);
+}
+
 export async function requestPayment(
+  mollieCustomerId: string,
+  mollieMandateId: string,
+  billingProfileId: string,
+  billingEventId: string,
+  amountDue: string
+) {
+  const mandate = await getMandate(mollieCustomerId);
+  if (!mandate) {
+    throw new Error("Mandate not found");
+  }
+  const maxPaymentSize = getMaxPaymentSize(mandate);
+  const amountDueDecimal = new Decimal(amountDue);
+  if (amountDueDecimal.gt(maxPaymentSize)) {
+    let remainingAmount = amountDueDecimal;
+    while (remainingAmount.gt(0)) {
+      const paymentAmount = remainingAmount.gt(maxPaymentSize) ? maxPaymentSize : remainingAmount;
+      await _requestPayment(mollieCustomerId, mollieMandateId, billingProfileId, billingEventId, paymentAmount.toFixed(2));
+      remainingAmount = remainingAmount.minus(paymentAmount);
+    }
+  } else {
+    await _requestPayment(mollieCustomerId, mollieMandateId, billingProfileId, billingEventId, amountDueDecimal.toFixed(2));
+  }
+}
+
+async function _requestPayment(
   mollieCustomerId: string,
   mollieMandateId: string,
   billingProfileId: string,
@@ -126,6 +196,14 @@ export async function requestPayment(
 export async function processPayment(paymentId: string) {
   const payment = await mollie.payments.get(paymentId);
   console.log("Payment", payment);
+
+  // Get billing profile id from the subscription billing event
+  const billingProfileId = await db
+    .select({ billingProfileId: subscriptionBillingEvents.billingProfileId })
+    .from(subscriptionBillingEvents)
+    .where(eq(subscriptionBillingEvents.id, (payment.metadata as any).billingEventId))
+    .limit(1)
+    .then(result => result[0].billingProfileId);
 
   if (payment.status === "paid") {
     await db.transaction(async (tx) => {
@@ -162,20 +240,55 @@ export async function processPayment(paymentId: string) {
             (payment.metadata as any).billingEventId
           )
         );
+
+      await tx
+        .update(billingProfiles)
+        .set({
+          profileStanding: "active",
+          graceStartedAt: null,
+          graceReason: null,
+          suspendedAt: null,
+        })
+        .where(and(
+          eq(billingProfiles.id, billingProfileId),
+          not(eq(billingProfiles.profileStanding, "suspended")) // Only update if the profile is not suspended
+        ));
     });
   } else {
-    await db
-      .update(subscriptionBillingEvents)
-      .set({
-        paymentStatus: payment.status,
-        paymentId: paymentId,
-      })
-      .where(
-        eq(
-          subscriptionBillingEvents.id,
-          (payment.metadata as any).billingEventId
-        )
-      );
+
+    const { graceStartedAt, profileStanding } = await db
+      .select({ graceStartedAt: billingProfiles.graceStartedAt, profileStanding: billingProfiles.profileStanding })
+      .from(billingProfiles)
+      .where(eq(billingProfiles.id, (payment.metadata as any).billingProfileId))
+      .limit(1)
+      .then(result => result[0]);
+    const isGracePeriodTrigger = ["canceled", "expired", "failed"].includes(payment.status);
+
+    await db.transaction(async (tx) => {
+      await tx.update(subscriptionBillingEvents)
+        .set({
+          paymentStatus: payment.status,
+          paymentId: paymentId,
+        })
+        .where(
+          eq(
+            subscriptionBillingEvents.id,
+            (payment.metadata as any).billingEventId
+          )
+        );
+      if (isGracePeriodTrigger) {
+        await tx.update(billingProfiles)
+          .set({
+            profileStanding: "grace",
+            graceStartedAt: graceStartedAt ?? new Date(),
+            graceReason: "payment_" + payment.status,
+          })
+          .where(and(
+            eq(billingProfiles.id, billingProfileId),
+            not(eq(billingProfiles.profileStanding, "suspended")) // Only update if the profile is not suspended
+          ));
+      }
+    });
+    sendTelegramNotification(`Payment ${paymentId} failed for billing event ${(payment.metadata as any).billingEventId} with status ${payment.status}`);
   }
-  sendTelegramNotification(`Payment ${paymentId} failed for billing event ${(payment.metadata as any).billingEventId} with status ${payment.status}`);
 }

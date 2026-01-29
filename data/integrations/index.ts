@@ -118,6 +118,12 @@ function validateConfigurationCompatibility(
         `Configuration contains extra field '${configField.id}' that is not defined in manifest`
       );
     }
+    const manifestField = manifest.fields.find(f => f.id === configField.id);
+    if (manifestField && manifestField.type !== configField.type) {
+      throw new UserFacingError(
+        `Configuration field '${configField.id}' has type '${configField.type}' but manifest expects type '${manifestField.type}'`
+      );
+    }
   }
 
   const manifestCapabilityEvents = new Set(manifest.capabilities.map(c => c.event));

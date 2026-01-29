@@ -111,7 +111,7 @@ export default function PlaygroundOption({
               <div className="grid gap-2">
                 <Label className="text-sm font-medium">Switch to existing team</Label>
                 <div className="space-y-2">
-                  {otherTeams.filter(team => team.id !== activeTeam?.id).map((team) => (
+                  {otherTeams.filter((team: any) => team.id !== activeTeam?.id && (team.isMember === true || team.isMember === undefined)).map((team) => (
                     <Button
                       key={team.id}
                       variant="outline"

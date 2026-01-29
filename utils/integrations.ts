@@ -73,6 +73,11 @@ export const BUILT_IN_INTEGRATION_EVENTS: IntegrationEventDescription[] = [
         title: "Integration Teardown",
         description: "",
     },
+    {
+        event: "integration.task.retry",
+        title: "Task Retry",
+        description: "",
+    },
 ]
 
 export const ALL_INTEGRATION_EVENTS = [

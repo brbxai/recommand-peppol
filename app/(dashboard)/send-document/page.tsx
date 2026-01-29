@@ -9,12 +9,17 @@ import {
 import { useState } from "react";
 import { DocumentForm } from "../../../components/send-document/document-form";
 import { ApiPreview } from "../../../components/send-document/api-preview";
+import { DocumentPreview } from "../../../components/send-document/document-preview";
 import { Card } from "@core/components/ui/card";
 import { Switch } from "@core/components/ui/switch";
 import { Label } from "@core/components/ui/label";
 import { DocumentType } from "@peppol/utils/parsing/send-document";
 import type { SendDocument } from "@peppol/utils/parsing/send-document";
 import { useLocalStorageState } from "@peppol/utils/react-hooks";
+import { rc } from "@recommand/lib/client";
+import type { PreviewDocument as PreviewDocumentApi } from "@peppol/api/preview-document";
+import { useEffect, useMemo } from "react";
+import { useActiveTeam } from "@core/hooks/user";
 
 function getFormType(documentType: string): "invoice" | "creditNote" | "xml" {
   switch (documentType) {
@@ -49,6 +54,7 @@ function getDocumentDescription(documentType: string): string {
 }
 
 export default function SendDocumentPage() {
+  const activeTeam = useActiveTeam();
   const [documentType, setDocumentType] = useState<string>(
     DocumentType.INVOICE
   );
@@ -61,14 +67,41 @@ export default function SendDocumentPage() {
     } as any,
   });
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-  const [showApiPreview, setShowApiPreview] = useLocalStorageState<boolean>(
-    "peppol.sendDocument.showApiPreview",
-    true
+  const legacyKey = "peppol.sendDocument.showApiPreview";
+  const legacyValueRaw =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem(legacyKey)
+      : null;
+  const legacyValue =
+    legacyValueRaw !== null ? (JSON.parse(legacyValueRaw) as boolean) : null;
+
+  const [developerMode, setDeveloperMode] = useLocalStorageState<boolean>(
+    "peppol.sendDocument.developerMode",
+    legacyValue ?? false
   );
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [, setIsPreviewLoading] = useState(false);
+
+  const client = useMemo(() => rc<PreviewDocumentApi>("peppol"), []);
 
   const handleFormChange = (data: Partial<SendDocument>) => {
     setFormData(data);
   };
+
+  useEffect(() => {
+    setDocumentType(DocumentType.INVOICE);
+    setSelectedCompanyId("");
+    setFormData({
+      documentType: DocumentType.INVOICE,
+      recipient: "",
+      document: {
+        invoiceNumber: "",
+        lines: [],
+      } as any,
+    });
+    setPreviewHtml(null);
+    setIsPreviewLoading(false);
+  }, [activeTeam?.id]);
 
   const handleDocumentTypeChange = (value: string) => {
     setDocumentType(value);
@@ -92,28 +125,153 @@ export default function SendDocumentPage() {
     });
   };
 
+  useEffect(() => {
+    if (developerMode) {
+      setPreviewHtml(null);
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    if (!selectedCompanyId) {
+      setPreviewHtml(null);
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    if (
+      formData.documentType === DocumentType.XML ||
+      typeof formData.documentType !== "string"
+    ) {
+      setPreviewHtml(null);
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    const canPreview = (() => {
+      const recipient =
+        typeof formData.recipient === "string" ? formData.recipient.trim() : "";
+      if (!recipient) return false;
+      const doc: any = formData.document;
+      const hasLines =
+        Array.isArray(doc?.lines) &&
+        doc.lines.length > 0 &&
+        doc.lines.every(
+          (l: any) =>
+            typeof l?.name === "string" &&
+            l.name.trim().length > 0 &&
+            l?.quantity != null &&
+            l?.netPriceAmount != null
+        );
+      const hasParty = (p: any) =>
+        !!p &&
+        typeof p.name === "string" &&
+        p.name.trim() &&
+        typeof p.street === "string" &&
+        p.street.trim() &&
+        typeof p.city === "string" &&
+        p.city.trim() &&
+        typeof p.postalZone === "string" &&
+        p.postalZone.trim() &&
+        typeof p.country === "string" &&
+        p.country.trim().length === 2;
+
+      if (
+        formData.documentType === DocumentType.INVOICE &&
+        typeof doc?.invoiceNumber === "string" &&
+        doc.invoiceNumber.trim() &&
+        hasParty(doc?.buyer) &&
+        hasLines
+      ) {
+        return true;
+      }
+
+      if (
+        formData.documentType === DocumentType.CREDIT_NOTE &&
+        typeof doc?.creditNoteNumber === "string" &&
+        doc.creditNoteNumber.trim() &&
+        hasParty(doc?.buyer) &&
+        hasLines
+      ) {
+        return true;
+      }
+
+      if (
+        formData.documentType === DocumentType.SELF_BILLING_INVOICE &&
+        typeof doc?.invoiceNumber === "string" &&
+        doc.invoiceNumber.trim() &&
+        hasParty(doc?.seller) &&
+        hasLines
+      ) {
+        return true;
+      }
+
+      if (
+        formData.documentType === DocumentType.SELF_BILLING_CREDIT_NOTE &&
+        typeof doc?.creditNoteNumber === "string" &&
+        doc.creditNoteNumber.trim() &&
+        hasParty(doc?.seller) &&
+        hasLines
+      ) {
+        return true;
+      }
+
+      return false;
+    })();
+
+    if (!canPreview) {
+      setPreviewHtml(null);
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    const handle = window.setTimeout(async () => {
+      try {
+        setIsPreviewLoading(false);
+        const response = await client[":companyId"]["previewDocument"][
+          "render"
+        ][":type"].$post({
+          param: { companyId: selectedCompanyId, type: "html" },
+          json: formData as SendDocument,
+        });
+
+        if (!response.ok) {
+          setPreviewHtml(null);
+          return;
+        }
+
+        const html = await response.text();
+        setPreviewHtml(html);
+      } catch {
+        setPreviewHtml(null);
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    }, 500);
+
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [client, developerMode, formData, selectedCompanyId]);
+
   return (
     <PageTemplate
       breadcrumbs={[{ label: "Peppol" }, { label: "Send document" }]}
-      description="Send invoices and credit notes through the Peppol network with live API preview."
-    >
-      <div className="mb-6 flex justify-end items-center">
-        <div className="flex items-center space-x-2">
+      description="Send invoices and credit notes through the Peppol network."
+      buttons={[
+        <div key="developer-mode" className="flex items-center gap-2">
           <Switch
-            id="api-preview"
-            checked={showApiPreview}
-            onCheckedChange={setShowApiPreview}
+            id="developer-mode"
+            checked={developerMode}
+            onCheckedChange={setDeveloperMode}
           />
-          <Label
-            htmlFor="api-preview"
-            className="text-sm flex items-center gap-2"
-          >
-            API Preview
+          <Label htmlFor="developer-mode" className="text-sm">
+            Developer
           </Label>
-        </div>
-      </div>
+        </div>,
+      ]}
+    >
       <div
-        className={`grid gap-6 ${showApiPreview ? "lg:grid-cols-2" : "lg:grid-cols-1 max-w-screen-lg mx-auto"}`}
+        className={`grid gap-6 ${developerMode ? "lg:grid-cols-2" : "lg:grid-cols-2"}`}
       >
         <div className="space-y-6">
           {/* Document Type Selection */}
@@ -167,14 +325,16 @@ export default function SendDocumentPage() {
                       </span>
                     </div>
                   </SelectItem>
-                  <SelectItem value={DocumentType.XML}>
-                    <div className="flex flex-col py-1">
-                      <span className="font-medium">Raw XML</span>
-                      <span className="text-xs text-muted-foreground">
-                        Custom UBL document
-                      </span>
-                    </div>
-                  </SelectItem>
+                  {developerMode && (
+                    <SelectItem value={DocumentType.XML}>
+                      <div className="flex flex-col py-1">
+                        <span className="font-medium">Raw XML</span>
+                        <span className="text-xs text-muted-foreground">
+                          Custom UBL document
+                        </span>
+                      </div>
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -190,21 +350,28 @@ export default function SendDocumentPage() {
                 </p>
               </div>
               <DocumentForm
+                key={activeTeam?.id ?? "no-team"}
                 type={getFormType(documentType)}
                 formData={formData}
                 onFormChange={handleFormChange}
                 selectedCompanyId={selectedCompanyId}
                 onCompanyChange={setSelectedCompanyId}
+                mode={developerMode ? "developer" : "billing"}
               />
             </div>
           </Card>
         </div>
 
-        {showApiPreview && (
-          <div className="space-y-6">
+        <div className="space-y-6">
+          {developerMode ? (
             <ApiPreview formData={formData} companyId={selectedCompanyId} />
-          </div>
-        )}
+          ) : (
+            <DocumentPreview
+              html={previewHtml}
+              emptyText="Fill in the company, recipient, and required invoice fields to see a preview."
+            />
+          )}
+        </div>
       </div>
     </PageTemplate>
   );

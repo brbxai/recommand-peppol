@@ -61,10 +61,10 @@ export function PaymentMeansForm({ paymentMeans, onChange }: PaymentMeansFormPro
               </div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="ghost-destructive"
                 size="icon"
                 onClick={() => removePaymentMeans(index)}
-                className="ml-2"
+                className="ml-2 mt-6"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

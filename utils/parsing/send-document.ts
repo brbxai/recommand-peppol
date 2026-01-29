@@ -32,9 +32,9 @@ export const documentTypeSchema = z
 export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType];
 
 export const sendDocumentSchema = z.object({
-  recipient: z.string().openapi({
+  recipient: z.string().nullable().openapi({
     description:
-      "The Peppol address of the recipient of the document. If no identifier is provided, 0208 (Belgian Enterprise Number) is assumed.",
+      "The Peppol address of the recipient. If null, the document will be sent via email only (requires `email.to`).",
     example: "0208:987654321",
   }),
   email: z
@@ -43,7 +43,7 @@ export const sendDocumentSchema = z.object({
         .enum(["always", "on_peppol_failure"])
         .default("on_peppol_failure")
         .openapi({
-          description: "When to send the email.",
+          description: "When to send the email. If the provided Peppol recipient is null, email becomes the primary delivery method and emails are always sent.",
         }),
       to: z.array(z.string()).openapi({
         description: "The email addresses to send the document to.",
@@ -64,7 +64,7 @@ export const sendDocumentSchema = z.object({
     .openapi({
       ref: "Email",
       description:
-        "Send your document over email as well. You can choose to always send the email, or only when we cannot reach the recipient via Peppol. Each sent email is counted towards your document quota. When an email is expected to be sent, the request will succeed as long as an email has been sent, even if the Peppol sending failed (e.g. due to a non-existing Peppol address).",
+        "Email delivery options. When Peppol recipient is provided, email is optional and you can choose to always send the email, or only when Peppol delivery fails. When Peppol recipient is null, email becomes the primary delivery method and `email.to` is required. Each sent email is counted towards your document quota.",
     }),
   pdfGeneration: z
     .object({

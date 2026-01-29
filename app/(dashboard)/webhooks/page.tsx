@@ -65,8 +65,8 @@ const WebhookActions = ({
     <Button variant="ghost" size="icon" onClick={onEdit}>
       <Pencil className="h-4 w-4" />
     </Button>
-    <Button variant="ghost" size="icon" onClick={onDelete}>
-      <Trash2 className="h-4 w-4 text-destructive" />
+    <Button variant="ghost-destructive" size="icon" onClick={onDelete}>
+      <Trash2 className="h-4 w-4" />
     </Button>
   </div>
 );

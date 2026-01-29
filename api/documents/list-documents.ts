@@ -79,6 +79,10 @@ const getTransmittedDocumentsQuerySchema = z.object({
   envelopeId: z.string().optional().openapi({
     description: "Filter documents by envelope ID (Standard Business Document Header Instance Identifier)",
   }),
+  excludeAttachments: z.coerce.boolean().optional().default(false).openapi({
+    description: "When true, excludes attachments from the parsed object to reduce payload size",
+    example: false,
+  }),
 });
 
 type GetTransmittedDocumentsContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, {in: { query: z.input<typeof getTransmittedDocumentsQuerySchema> }, out: { query: z.infer<typeof getTransmittedDocumentsQuerySchema> } }>;
@@ -101,7 +105,7 @@ const _transmittedDocuments = server.get(
 
 async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocumentsContext) {
   try {
-    const { page, limit, companyId, direction, search, type, from, to, isUnread, envelopeId } = c.req.valid("query");
+    const { page, limit, companyId, direction, search, type, from, to, isUnread, envelopeId, excludeAttachments } = c.req.valid("query");
     const { documents, total } = await getTransmittedDocuments(
       c.var.team.id,
       {
@@ -119,6 +123,7 @@ async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocuments
         to,
         isUnread: isUnread === "true" ? true : isUnread === "false" ? false : undefined,
         envelopeId,
+        excludeAttachments,
       }
     );
 

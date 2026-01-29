@@ -8,6 +8,7 @@ export type Plan = {
 export const BillingConfigSchema = z.object({
   name: z.string(),
   basePrice: z.number(),
+  minimumPrice: z.number().optional(),
   includedMonthlyDocuments: z.number(),
   documentOveragePrice: z.number(),
   incomingDocumentOveragePrice: z.number().optional(),
@@ -46,6 +47,7 @@ export const allPlans: Plan[] = [
     isAvailable: false,
     name: "Enterprise",
     basePrice: 0,
+    minimumPrice: 0,
     includedMonthlyDocuments: 0,
     documentOveragePrice: 0.05,
   }

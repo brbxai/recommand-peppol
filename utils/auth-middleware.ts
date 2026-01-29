@@ -78,7 +78,8 @@ export function requireCompanyAccess(options: CompanyAccessOptions = {}) {
         return c.json(actionFailure("Unauthorized"), 401);
       }
       // If the user is not authenticated via an API key, ensure they are a member of the team
-      if (!(await isMember(user.id, company.teamId))) {
+      // Admins bypass this check and can access any company
+      if (!user.isAdmin && !(await isMember(user.id, company.teamId))) {
         return c.json(actionFailure("Unauthorized"), 401);
       }
     }
@@ -113,10 +114,18 @@ export function requireValidSubscription() {
       // Ensure the team has a valid billing profile if it's not a playground team
       if (!team.isPlayground) {
         const billingProfile = await getBillingProfile(team.id);
-        if (!billingProfile || !billingProfile.isMandateValidated) {
+        if (!billingProfile) {
           return c.json(
             actionFailure(
               `Team ${team.name} does not have a valid billing profile`
+            ),
+            401
+          );
+        }
+        if(billingProfile.profileStanding === "pending" || billingProfile.profileStanding === "suspended") {
+          return c.json(
+            actionFailure(
+              `Team ${team.name} does not have a valid billing profile. Your subscription is currently in a ${billingProfile.profileStanding} state. Ensure you have a valid payment mandate and your subscription is active. If you need help, please contact support@recommand.eu.`
             ),
             401
           );

@@ -36,9 +36,9 @@ export function invoiceToUBL({
   return builder.build(ublInvoice);
 }
 
-export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, isDocumentValidationEnforced}: {invoice: Invoice, supplierAddress: string, customerAddress: string, isDocumentValidationEnforced: boolean}) {
+export function prebuildInvoiceUBL({ invoice, supplierAddress, customerAddress, isDocumentValidationEnforced }: { invoice: Invoice, supplierAddress: string, customerAddress: string, isDocumentValidationEnforced: boolean }) {
   const totals = calculateTotals(invoice);
-  const vat = (invoice.vat && "subtotals" in invoice.vat && "totalVatAmount" in invoice.vat) ? invoice.vat : calculateVat({document: invoice, isDocumentValidationEnforced});
+  const vat = (invoice.vat && "subtotals" in invoice.vat && "totalVatAmount" in invoice.vat) ? invoice.vat : calculateVat({ document: invoice, isDocumentValidationEnforced });
   const lines = invoice.lines.map((line) => ({
     ...line,
     netAmount: line.netAmount || calculateLineAmount(line),
@@ -89,7 +89,7 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
         "cac:AdditionalDocumentReference": invoice.attachments.map(
           (attachment) => ({
             "cbc:ID": attachment.id,
-            ...(attachment.description && {"cbc:DocumentDescription": attachment.description}),
+            ...(attachment.description && { "cbc:DocumentDescription": attachment.description }),
             ...((attachment.embeddedDocument || attachment.url) && {
               "cac:Attachment": {
                 ...(attachment.embeddedDocument && {
@@ -139,7 +139,10 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.seller.name,
-            ...(invoice.seller.enterpriseNumber && { "cbc:CompanyID": invoice.seller.enterpriseNumber }),
+            ...(invoice.seller.enterpriseNumber && { "cbc:CompanyID": {
+              ...(invoice.seller.enterpriseNumberScheme && { "@_schemeID": invoice.seller.enterpriseNumberScheme }),
+              "#text": invoice.seller.enterpriseNumber,
+            } }),
           },
           "cac:Contact": {
             "cbc:Name": invoice.seller.name,
@@ -178,7 +181,10 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
           }),
           "cac:PartyLegalEntity": {
             "cbc:RegistrationName": invoice.buyer.name,
-            ...(invoice.buyer.enterpriseNumber && { "cbc:CompanyID": invoice.buyer.enterpriseNumber }),
+            ...(invoice.buyer.enterpriseNumber && { "cbc:CompanyID": {
+              ...(invoice.buyer.enterpriseNumberScheme && { "@_schemeID": invoice.buyer.enterpriseNumberScheme }),
+              "#text": invoice.buyer.enterpriseNumber,
+            } }),
           },
           "cac:Contact": {
             "cbc:Name": invoice.buyer.name,
@@ -192,19 +198,23 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
           ...(invoice.delivery.date && { "cbc:ActualDeliveryDate": invoice.delivery.date }),
           ...(invoice.delivery.location && {
             "cac:DeliveryLocation": {
-              ...(invoice.delivery.locationIdentifier && { "cbc:ID": {
-                "@_schemeID": invoice.delivery.locationIdentifier.scheme,
-                "#text": invoice.delivery.locationIdentifier.identifier,
-              }}),
-              ...(invoice.delivery.location && { "cac:Address": {
-                ...(invoice.delivery.location.street && { "cbc:StreetName": invoice.delivery.location.street }),
-                ...(invoice.delivery.location.street2 && { "cbc:AdditionalStreetName": invoice.delivery.location.street2 }),
-                ...(invoice.delivery.location.city && { "cbc:CityName": invoice.delivery.location.city }),
-                ...(invoice.delivery.location.postalZone && { "cbc:PostalZone": invoice.delivery.location.postalZone }),
-                "cac:Country": {
-                  "cbc:IdentificationCode": invoice.delivery.location.country,
-                },
-              }}),
+              ...(invoice.delivery.locationIdentifier && {
+                "cbc:ID": {
+                  "@_schemeID": invoice.delivery.locationIdentifier.scheme,
+                  "#text": invoice.delivery.locationIdentifier.identifier,
+                }
+              }),
+              ...(invoice.delivery.location && {
+                "cac:Address": {
+                  ...(invoice.delivery.location.street && { "cbc:StreetName": invoice.delivery.location.street }),
+                  ...(invoice.delivery.location.street2 && { "cbc:AdditionalStreetName": invoice.delivery.location.street2 }),
+                  ...(invoice.delivery.location.city && { "cbc:CityName": invoice.delivery.location.city }),
+                  ...(invoice.delivery.location.postalZone && { "cbc:PostalZone": invoice.delivery.location.postalZone }),
+                  "cac:Country": {
+                    "cbc:IdentificationCode": invoice.delivery.location.country,
+                  },
+                }
+              }),
             },
           }),
           ...(invoice.delivery.recipientName && {
@@ -326,9 +336,9 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
         },
         ...(extractedTotals.discountAmount && {
           "cbc:AllowanceTotalAmount": {
-          "@_currencyID": invoice.currency,
-          "#text": extractedTotals.discountAmount,
-        },
+            "@_currencyID": invoice.currency,
+            "#text": extractedTotals.discountAmount,
+          },
         }),
         ...(extractedTotals.surchargeAmount && {
           "cbc:ChargeTotalAmount": {
@@ -360,6 +370,11 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
           "@_currencyID": invoice.currency,
           "#text": item.netAmount,
         },
+        ...(item.orderLineReference && {
+          "cac:OrderLineReference": {
+            "cbc:LineID": item.orderLineReference,
+          },
+        }),
         ...(item.documentReference && {
           "cac:DocumentReference": {
             "cbc:ID": item.documentReference,
@@ -409,6 +424,15 @@ export function prebuildInvoiceUBL({invoice, supplierAddress, customerAddress, i
             "cac:OriginCountry": {
               "cbc:IdentificationCode": item.originCountry,
             },
+          }),
+          ...((item.commodityClassifications && item.commodityClassifications.length > 0) && {
+            "cac:CommodityClassification": item.commodityClassifications.map((classification) => ({
+              "cbc:ItemClassificationCode": {
+                "@_listID": classification.scheme,
+                ...(classification.schemeVersion && { "@_listVersionID": classification.schemeVersion }),
+                "#text": classification.value,
+              }
+            })),
           }),
           "cac:ClassifiedTaxCategory": {
             "cbc:ID": item.vat.category,

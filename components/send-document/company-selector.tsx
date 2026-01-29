@@ -38,6 +38,7 @@ export function CompanySelector({ value, onChange }: CompanySelectorProps) {
       try {
         const response = await companiesClient[":teamId"]["companies"].$get({
           param: { teamId: activeTeam.id },
+          query: {},
         });
         const json = await response.json();
 
@@ -92,18 +93,21 @@ export function CompanySelector({ value, onChange }: CompanySelectorProps) {
   }
 
   return (
-    <Select value={value} onValueChange={(newValue) => {
-      // Skip the initial mount call with empty value
-      if (isInitialMount.current && newValue === "") {
-        isInitialMount.current = false;
-        return;
-      }
-      
-      // Only call onChange if we have a valid value and it's different
-      if (newValue && newValue !== value) {
-        onChange(newValue);
-      }
-    }}>
+    <Select
+      value={value}
+      onValueChange={(newValue) => {
+        // Skip the initial mount call with empty value
+        if (isInitialMount.current && newValue === "") {
+          isInitialMount.current = false;
+          return;
+        }
+
+        // Only call onChange if we have a valid value and it's different
+        if (newValue && newValue !== value) {
+          onChange(newValue);
+        }
+      }}
+    >
       <SelectTrigger>
         <SelectValue placeholder="Select a company" />
       </SelectTrigger>

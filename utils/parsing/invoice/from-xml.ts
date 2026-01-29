@@ -14,7 +14,8 @@ const parser = new XMLParser({
       name === "PartyIdentification" ||
       name === "AdditionalDocumentReference" ||
       name === "AllowanceCharge" ||
-      name === "AdditionalItemProperty";
+      name === "AdditionalItemProperty" ||
+      name === "CommodityClassification";
   },
   parseAttributeValue: false,
   parseTagValue: false,
@@ -63,6 +64,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     postalZone: getTextContent(sellerParty.PostalAddress?.PostalZone),
     country: getTextContent(sellerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: sellerParty.PartyTaxScheme?.CompanyID ? getTextContent(sellerParty.PartyTaxScheme?.CompanyID) : null,
+    enterpriseNumberScheme: getNullableTextContent(sellerParty.PartyLegalEntity?.CompanyID?.["@_schemeID"]),
+    enterpriseNumber: getNullableTextContent(sellerParty.PartyLegalEntity?.CompanyID?.["#text"]),
     email: getNullableTextContent(sellerParty.Contact?.ElectronicMail),
     phone: getNullableTextContent(sellerParty.Contact?.Telephone),
   };
@@ -81,6 +84,8 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     postalZone: getTextContent(buyerParty.PostalAddress?.PostalZone),
     country: getTextContent(buyerParty.PostalAddress?.Country?.IdentificationCode),
     vatNumber: buyerParty.PartyTaxScheme?.CompanyID ? getTextContent(buyerParty.PartyTaxScheme?.CompanyID) : null,
+    enterpriseNumberScheme: getNullableTextContent(buyerParty.PartyLegalEntity?.CompanyID?.["@_schemeID"]),
+    enterpriseNumber: getNullableTextContent(buyerParty.PartyLegalEntity?.CompanyID?.["#text"]),
     email: getNullableTextContent(buyerParty.Contact?.ElectronicMail),
     phone: getNullableTextContent(buyerParty.Contact?.Telephone),
   };
@@ -107,6 +112,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     paymentMethod: getPaymentKeyByCode(getTextContent(payment.PaymentMeansCode)),
     reference: getTextContent(payment.PaymentID),
     iban: getTextContent(payment.PayeeFinancialAccount?.ID),
+    name: getNullableTextContent(payment.PayeeFinancialAccount?.Name),
     financialInstitutionBranch: getNullableTextContent(payment.PayeeFinancialAccount?.FinancialInstitutionBranch?.ID),
   }));
 
@@ -128,6 +134,12 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
       identifier: getTextContent(line.Item.StandardItemIdentification.ID["#text"]),
     } : null,
     documentReference: getNullableTextContent(line.DocumentReference?.ID),
+    orderLineReference: getNullableTextContent(line.OrderLineReference?.LineID),
+    commodityClassifications: (line.Item?.CommodityClassification || []).map((classification: any) => ({
+      scheme: getTextContent(classification.ItemClassificationCode["@_listID"]),
+      schemeVersion: getNullableTextContent(classification.ItemClassificationCode["@_listVersionID"]),
+      value: getTextContent(classification.ItemClassificationCode["#text"]),
+    })),
     additionalItemProperties: (line.Item?.AdditionalItemProperty || []).map((property: any) => ({
       name: getTextContent(property.Name),
       value: getTextContent(property.Value),

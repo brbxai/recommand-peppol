@@ -11,9 +11,11 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import type { SortingState } from "@tanstack/react-table";
+import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -68,6 +70,17 @@ const createColumn = (
 
 export default function Page() {
   const navigate = useNavigate();
+
+  const {
+    columnVisibility,
+    setColumnVisibility,
+    paginationState,
+    onPaginationChange,
+  } = useDataTableState({
+    tableId: "companies",
+    defaultLimit: 10,
+  });
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -303,11 +316,11 @@ export default function Page() {
               variant="destructive"
               trigger={
                 <Button
-                  variant="ghost"
+                  variant="ghost-destructive"
                   size="icon"
                   title="Delete"
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               }
             />
@@ -323,10 +336,15 @@ export default function Page() {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onPaginationChange,
     state: {
       sorting,
       globalFilter,
+      columnVisibility,
+      pagination: paginationState,
     },
     onGlobalFilterChange: setGlobalFilter,
   });
