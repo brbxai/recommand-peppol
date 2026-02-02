@@ -32,7 +32,12 @@ export async function resolveNaptr(hostname: string): Promise<string | null> {
         const records = await dns.resolveNaptr(hostname);
 
         if (records && records.length > 0) {
-            const record = records[0];
+            // Filter for SMP service records and sort by order/preference (lower = better)
+            const smpRecords = records
+                .filter(r => r.service && r.service.toLowerCase().includes("meta:smp"))
+                .sort((a, b) => (a.order - b.order) || (a.preference - b.preference));
+
+            const record = smpRecords[0] ?? records[0];
 
             let smpUrl: string | null = null;
 

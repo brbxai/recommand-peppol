@@ -23,6 +23,11 @@ const verifyDocumentSupportRouteDescription = describeRoute({
         ...describeSuccessResponseWithZod("Successfully verified document support", z.object({
             isValid: z.boolean().openapi({ description: "Whether the recipient supports the document type." }),
             smpUrl: z.string().openapi({ description: "The SMP URL of the recipient." }),
+            serviceProvider: z.string().nullable().openapi({ description: "Service description from the endpoint metadata." }),
+            serviceEndpoint: z.string().nullable().openapi({ description: "The AS4/AS2 endpoint URL." }),
+            technicalContact: z.string().nullable().openapi({ description: "Technical contact URL." }),
+            transportProfile: z.string().nullable().openapi({ description: "Transport profile (e.g. AS4, AS2)." }),
+            certificateExpiry: z.string().nullable().openapi({ description: "Certificate expiry date (ISO 8601)." }),
         })),
     },
 });
@@ -54,8 +59,8 @@ async function _verifyDocumentSupportImplementation(c: VerifyDocumentSupportCont
     try {
         const { peppolAddress, documentType } = c.req.valid("json");
         const teamExtension = await getTeamExtension(c.var.team.id);
-        const data = await verifyDocumentSupport({ recipientAddress: peppolAddress, documentType, useTestNetwork: teamExtension?.useTestNetwork ?? false });
-        return c.json(actionSuccess({ isValid: true, ...data }));
+        const { smpUrl, endpointDetails } = await verifyDocumentSupport({ recipientAddress: peppolAddress, documentType, useTestNetwork: teamExtension?.useTestNetwork ?? false });
+        return c.json(actionSuccess({ isValid: true, smpUrl, ...endpointDetails }));
     } catch (error) {
         console.error(error);
         return c.json(actionSuccess({ isValid: false }));
