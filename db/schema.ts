@@ -264,6 +264,27 @@ export const companies = pgTable("peppol_companies", {
   updatedAt: autoUpdateTimestamp(),
 });
 
+export const companyVerificationLog = pgTable(
+  "peppol_company_verification_log",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "cvl_" + ulid()),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    status: pgEnum("status", ["opened", "requested", "verified", "rejected"])("status").notNull().default("opened"),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    companyName: text("company_name"),
+    enterpriseNumber: text("enterprise_number"),
+    verificationProofReference: text("verification_proof_reference").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+);
+
 export const companyIdentifiers = pgTable(
   "peppol_company_identifiers",
   {
