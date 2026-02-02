@@ -152,7 +152,6 @@ export type ServiceMetadataResult = {
   serviceProvider: string | null;
   serviceEndpoint: string | null;
   technicalContact: string | null;
-  transportProfile: string | null;
   certificateExpiry: string | null;
 };
 
@@ -177,12 +176,6 @@ export async function fetchServiceMetadata(serviceMetadataUrl: string): Promise<
 
     if (!endpoint) return null;
 
-    const rawTransport: string = endpoint["@_transportProfile"] ?? "";
-    const transportProfile = rawTransport
-      .replace("peppol-transport-", "")
-      .replace(/-v\d+_\d+$/, "")
-      .toUpperCase() || null;
-
     const endpointRef = endpoint.EndpointReference;
     const serviceEndpoint: string | null = endpointRef?.Address ?? null;
 
@@ -193,7 +186,6 @@ export async function fetchServiceMetadata(serviceMetadataUrl: string): Promise<
       serviceProvider: endpoint.ServiceDescription ?? null,
       serviceEndpoint,
       technicalContact: endpoint.TechnicalContactUrl ?? null,
-      transportProfile,
       certificateExpiry,
     };
   } catch {
