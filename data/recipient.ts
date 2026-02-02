@@ -4,6 +4,8 @@ import { XMLParser } from "fast-xml-parser";
 import { base32Encode } from "@peppol/utils/base32";
 import { resolveNaptr } from "@peppol/utils/naptr";
 import { getDocumentTypeInfo } from "@peppol/utils/document-types";
+import { getDocumentTypeName } from "@peppol/utils/document-type-lookup";
+import { parseCertificateExpiry } from "@peppol/utils/certificate";
 
 const SML_ZONE = "edelivery.tech.ec.europa.eu";
 const SML_TEST_ZONE = "acc.edelivery.tech.ec.europa.eu";
@@ -43,7 +45,7 @@ function getSmpUrlCname({recipientAddress, useTestNetwork}: {recipientAddress: s
   return `http://B-${md5Hash}.${PARTICIPANT_SCHEME}.${dnsZone}/${PARTICIPANT_SCHEME}::${encodedAddress}`;
 }
 
-async function getSmpUrl({recipientAddress, useTestNetwork}: {recipientAddress: string, useTestNetwork: boolean}): Promise<string> {  
+export async function getSmpUrl({recipientAddress, useTestNetwork}: {recipientAddress: string, useTestNetwork: boolean}): Promise<string> {  
   const naptrUrl = await getSmpUrlNaptr({recipientAddress, useTestNetwork});
   if (naptrUrl) {
     return naptrUrl;
@@ -51,6 +53,16 @@ async function getSmpUrl({recipientAddress, useTestNetwork}: {recipientAddress: 
   
   return getSmpUrlCname({recipientAddress, useTestNetwork});
 }
+
+const smpXmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_",
+  textNodeName: "#text",
+  parseAttributeValue: true,
+  parseTagValue: false,
+  trimValues: true,
+  removeNSPrefix: true,
+});
 
 export async function verifyRecipient({recipientAddress, useTestNetwork}: {recipientAddress: string, useTestNetwork: boolean}) {
   const smpUrl = await getSmpUrl({recipientAddress, useTestNetwork});
@@ -61,26 +73,15 @@ export async function verifyRecipient({recipientAddress, useTestNetwork}: {recip
       throw new Error(`Failed to verify recipient: ${response.statusText}`);
     }
     const data = await response.text();
-    
+
     // Extract service metadata references
     const serviceMetadataRefs: string[] = [];
     // Extract SMP hostnames
     const smpHostnames: Set<string> = new Set();
-    
+
     // Navigate through the XML structure to find ServiceMetadataReference elements
     try {
-      // Parse the XML response using fast-xml-parser
-      const parser = new XMLParser({
-        ignoreAttributes: false,
-        attributeNamePrefix: "@_",
-        textNodeName: "#text",
-        parseAttributeValue: true,
-        parseTagValue: false,
-        trimValues: true,
-        removeNSPrefix: true,
-      });
-      
-      const xmlDoc = parser.parse(data);
+      const xmlDoc = smpXmlParser.parse(data);
       // Handle different possible XML structures
       const serviceGroup = xmlDoc.ServiceGroup || xmlDoc["smp:ServiceGroup"];
 
@@ -113,10 +114,31 @@ export async function verifyRecipient({recipientAddress, useTestNetwork}: {recip
     } catch (parseError) {
     }
     
+    // Derive supportedDocuments from service metadata reference URLs
+    const supportedDocuments = serviceMetadataRefs.map(ref => {
+      try {
+        // Extract document type ID from the URL path: .../services/{scheme}::{docTypeId}
+        const url = new URL(ref);
+        const servicesIdx = url.pathname.lastIndexOf("/services/");
+        if (servicesIdx === -1) return null;
+
+        const rawDocType = url.pathname.substring(servicesIdx + "/services/".length);
+        const decoded = decodeURIComponent(rawDocType);
+        // Strip the scheme prefix (e.g. "busdox-docid-qns::")
+        const schemeEnd = decoded.indexOf("::");
+        const docTypeId = schemeEnd !== -1 ? decoded.substring(schemeEnd + 2) : decoded;
+
+        return { name: getDocumentTypeName(docTypeId), docTypeId };
+      } catch {
+        return null;
+      }
+    }).filter((d): d is { name: string; docTypeId: string } => d !== null);
+
     return {
       smpUrl,
       serviceMetadataReferences: serviceMetadataRefs,
       smpHostnames: Array.from(smpHostnames),
+      supportedDocuments,
     };
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -126,11 +148,56 @@ export async function verifyRecipient({recipientAddress, useTestNetwork}: {recip
   }
 }
 
+export type ServiceMetadataResult = {
+  serviceProvider: string | null;
+  serviceEndpoint: string | null;
+  technicalContact: string | null;
+  certificateExpiry: string | null;
+};
+
+/**
+ * Fetch a ServiceMetadata XML from an SMP and parse endpoint details.
+ */
+export async function fetchServiceMetadata(serviceMetadataUrl: string): Promise<ServiceMetadataResult | null> {
+  try {
+    const response = await fetch(serviceMetadataUrl);
+    if (!response.ok) return null;
+
+    const xml = await response.text();
+    const doc = smpXmlParser.parse(xml);
+
+    // Navigate: ServiceMetadata > ServiceInformation > ProcessList > Process > ServiceEndpointList > Endpoint
+    const serviceMetadata = doc.ServiceMetadata || doc.SignedServiceMetadata?.ServiceMetadata;
+    const serviceInfo = serviceMetadata?.ServiceInformation;
+    const processList = serviceInfo?.ProcessList;
+    const process = Array.isArray(processList?.Process) ? processList.Process[0] : processList?.Process;
+    const endpointList = process?.ServiceEndpointList;
+    const endpoint = Array.isArray(endpointList?.Endpoint) ? endpointList.Endpoint[0] : endpointList?.Endpoint;
+
+    if (!endpoint) return null;
+
+    const endpointRef = endpoint.EndpointReference;
+    const serviceEndpoint: string | null = endpointRef?.Address ?? null;
+
+    const rawCert: string | null = endpoint.Certificate ?? null;
+    const certificateExpiry = rawCert ? parseCertificateExpiry(rawCert) : null;
+
+    return {
+      serviceProvider: endpoint.ServiceDescription ?? null,
+      serviceEndpoint,
+      technicalContact: endpoint.TechnicalContactUrl ?? null,
+      certificateExpiry,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyDocumentSupport({recipientAddress, documentType, useTestNetwork}: {recipientAddress: string, documentType: string, useTestNetwork: boolean}) {
   const smpUrl = await getSmpUrl({recipientAddress, useTestNetwork});
 
   // Map the document type to the Peppol document type code, if not possible, just use the document type as is
-  try{
+  try {
     const peppolDocumentTypeInfo = getDocumentTypeInfo(documentType);
     documentType = peppolDocumentTypeInfo?.docTypeId;
   } catch (error) {}
@@ -141,25 +208,53 @@ export async function verifyDocumentSupport({recipientAddress, documentType, use
   // Construct SMP URL according to Peppol spec with proper encoding
   const smpUrlWithDocumentType = `${smpUrl}/services/${DOCUMENT_SCHEME}::${encodedDocumentType}`;
 
-  try {
-    const response = await fetch(smpUrlWithDocumentType);
-    if (!response.ok) {
-      throw new Error(
-        `Failed to verify document type capabilities: ${response.statusText}`
-      );
-    }
+  const endpointDetails = await fetchServiceMetadata(smpUrlWithDocumentType);
 
-    return {
-      smpUrl: smpUrlWithDocumentType,
-    };
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      throw new Error(
-        `Failed to verify document type capabilities: ${error.message}`
-      );
-    }
-    throw new Error(
-      "Failed to verify document type capabilities: Unknown error occurred"
-    );
+  if (!endpointDetails) {
+    throw new Error("Failed to verify document type capabilities: no endpoint found");
+  }
+
+  return {
+    smpUrl: smpUrlWithDocumentType,
+    endpointDetails,
+  };
+}
+
+/**
+ * Fetch business card from an SMP server.
+ * Returns null if the SMP doesn't support business cards (404).
+ */
+export async function fetchBusinessCard({smpUrl, participantId}: {smpUrl: string, participantId: string}): Promise<{
+  companyName: string | null;
+  countryCode: string | null;
+} | null> {
+  try {
+    // Extract SMP base URL (everything before the participant identifier path)
+    const url = new URL(smpUrl);
+    const baseUrl = `${url.protocol}//${url.host}`;
+
+    const bcUrl = `${baseUrl}/businesscard/${PARTICIPANT_SCHEME}::${encodeURIComponent(participantId)}`;
+    const response = await fetch(bcUrl);
+    if (!response.ok) return null;
+
+    const xml = await response.text();
+    const doc = smpXmlParser.parse(xml);
+
+    const businessCard = doc.BusinessCard;
+    if (!businessCard) return null;
+
+    const entity = Array.isArray(businessCard.BusinessEntity)
+      ? businessCard.BusinessEntity[0]
+      : businessCard.BusinessEntity;
+
+    if (!entity) return null;
+
+    const nameObj = Array.isArray(entity.Name) ? entity.Name[0] : entity.Name;
+    const companyName: string | null = (typeof nameObj === "string" ? nameObj : nameObj?.["#text"]) ?? null;
+    const countryCode: string | null = entity.CountryCode ?? null;
+
+    return { companyName, countryCode };
+  } catch {
+    return null;
   }
 }
