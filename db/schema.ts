@@ -602,6 +602,7 @@ export const paymentRetryReminders = pgTable("peppol_payment_retry_reminders", {
   billingEventId: text("billing_event_id")
     .references(() => subscriptionBillingEvents.id, { onDelete: "cascade" })
     .notNull(),
+  emailAddresses: text("email_addresses").notNull().array().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

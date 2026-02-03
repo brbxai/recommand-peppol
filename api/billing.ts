@@ -107,20 +107,52 @@ const _retryFailedPayments = server.post(
   "/billing/retry-failed-payments",
   requireAdmin(),
   describeRoute({ hide: true }),
-  zodValidator("query", z.object({ teamId: z.union([z.string(), z.array(z.string())]).optional() })),
+  zodValidator("query", z.object({ dryRun: z.string().optional().default("false"), teamId: z.union([z.string(), z.array(z.string())]).optional() })),
   async (c) => {
     try {
-      const { teamId } = c.req.valid("query");
+      const { dryRun, teamId } = c.req.valid("query");
       const teamIds = Array.isArray(teamId) ? teamId : teamId ? [teamId] : undefined;
+      const isDryRun = dryRun === "true";
 
-      console.log("Retrying failed payments for", teamIds ? teamIds : "all teams");
-      const results = await retryFailedPayments(teamIds);
+      console.log("Retrying failed payments for", teamIds ? teamIds : "all teams", "with dry run", isDryRun);
+      const results = await retryFailedPayments(teamIds, isDryRun);
 
-      return c.json(actionSuccess({
-        success: results.success,
-        failed: results.failed,
-        errors: results.errors,
-      }));
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Payment Retry Results");
+
+      worksheet.columns = [
+        { header: "Status", key: "status", width: 15 },
+        { header: "Billing Event ID", key: "billingEventId", width: 30 },
+        { header: "Invoice Reference", key: "invoiceReference", width: 20 },
+        { header: "Team ID", key: "teamId", width: 30 },
+        { header: "Company Name", key: "companyName", width: 30 },
+        { header: "Amount Due", key: "amountDue", width: 15 },
+        { header: "Error Message", key: "errorMessage", width: 50 },
+        { header: "Email Sent", key: "emailSent", width: 15 },
+      ];
+
+      worksheet.getRow(1).font = { bold: true };
+
+      for (const result of results) {
+        worksheet.addRow({
+          status: result.status,
+          billingEventId: result.billingEventId,
+          invoiceReference: result.invoiceReference,
+          teamId: result.teamId,
+          companyName: result.companyName,
+          amountDue: result.amountDue,
+          errorMessage: result.errorMessage || "",
+          emailSent: result.emailSent ? "Yes" : "No",
+        });
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const filename = `payment-retry-${format(new Date(), "yyyy-MM-dd")}-${isDryRun ? "dry-run" : "live"}.xlsx`;
+
+      c.header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      c.header("Content-Disposition", `attachment; filename="${filename}"`);
+
+      return c.body(buffer);
     } catch (error) {
       console.error(error);
       return c.json(actionFailure("Failed to retry failed payments"), 500);
