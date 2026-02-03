@@ -63,6 +63,7 @@ import { PlansGrid } from "@peppol/components/plans-grid";
 import {
   updateBillingProfile,
   fetchBillingProfile as fetchBillingProfileFromApi,
+  updatePaymentMethod,
 } from "@peppol/lib/billing";
 import { useIsPlayground } from "@peppol/lib/client/playgrounds";
 import {
@@ -837,7 +838,7 @@ export default function Page() {
                       ) : (
                         <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                       )}
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium">
                           Payment Mandate{" "}
                           {billingProfile.isMandateValidated
@@ -850,6 +851,16 @@ export default function Page() {
                             : "Complete payment setup to activate your subscription."}
                         </p>
                       </div>
+                      {activeTeam?.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updatePaymentMethod(activeTeam.id)}
+                        >
+                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                          {billingProfile.isMandateValidated ? "Update Payment Method" : "Set Up Payment Method"}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -884,10 +895,8 @@ export default function Page() {
                       {((billingProfile && billingProfile.isMandateValidated) ||
                         !billingProfile) && <Pencil className="h-4 w-4 mr-2" />}
                       {billingProfile
-                        ? billingProfile.isMandateValidated
-                          ? "Edit Billing Profile"
-                          : "Validate Payment Mandate"
-                        : "Set Up Profile"}
+                        ? "Edit Billing Profile"
+                        : "Set Up Billing Profile"}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
