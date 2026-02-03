@@ -58,9 +58,12 @@ export async function sendInvoiceAsBRBX(
   if (billingProfile.billingPeppolAddress) {
     recipient = billingProfile.billingPeppolAddress.trim();
   } else if (info.companyVatNumber) {
-    const cleanedVat = cleanVatNumber(info.companyVatNumber);
+    let cleanedVat = cleanVatNumber(info.companyVatNumber);
     if (!cleanedVat) {
       throw new Error("Cannot send invoice: company VAT number is invalid");
+    }
+    if (!cleanedVat.startsWith(info.companyCountry)) {
+      cleanedVat = info.companyCountry + cleanedVat;
     }
     if (cleanedVat.startsWith("BE")) {
       const vatWithoutCountryCode = cleanedVat.substring(2);
