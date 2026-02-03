@@ -53,20 +53,23 @@ export async function sendInvoiceAsBRBX(
   if (!jwt) {
     throw new Error(`BRBX_BILLING_${dryRun ? "DRY_RUN" : "LIVE"}_JWT environment variable is not set`);
   }
+  
+  let cleanedVat: string | null = cleanVatNumber(info.companyVatNumber) as string | null;
+  if(cleanedVat){
+    // If the two first characters of the VAT number are not letters, add the country code
+    if(!/^[A-Z]{2}$/.test(cleanedVat.toUpperCase().substring(0, 2))) {
+      cleanedVat = info.companyCountry.toUpperCase() + cleanedVat;
+    }
+  }
 
   let recipient: string | null = null;
   if (billingProfile.billingPeppolAddress) {
     recipient = billingProfile.billingPeppolAddress.trim();
   } else if (info.companyVatNumber) {
-    let cleanedVat = cleanVatNumber(info.companyVatNumber);
     if (!cleanedVat) {
       throw new Error("Cannot send invoice: company VAT number is invalid");
     }
 
-    // If the two first characters of the VAT number are not letters, add the country code
-    if(!/^[A-Z]{2}$/.test(cleanedVat.toUpperCase().substring(0, 2))) {
-      cleanedVat = info.companyCountry.toUpperCase() + cleanedVat;
-    }
     if (cleanedVat.startsWith("BE")) {
       const vatWithoutCountryCode = cleanedVat.substring(2);
       recipient = `0208:${vatWithoutCountryCode}`;
@@ -92,7 +95,7 @@ export async function sendInvoiceAsBRBX(
       city: info.companyCity,
       postalZone: info.companyPostalCode,
       country: info.companyCountry,
-      vatNumber: info.companyVatNumber,
+      vatNumber: cleanedVat,
     },
     lines: info.lines.map(line => ({
       sellersId: line.planId ?? null,
