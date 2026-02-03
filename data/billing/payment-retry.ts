@@ -82,14 +82,6 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
 
       if (dryRun) {
         console.log(`[DRY RUN] Would retry payment for billing event ${billingEvent.id} (invoice ${billingEvent.invoiceReference ?? "N/A"})`);
-        let emailRecipients: string[] = [];
-        if (billingProfile.billingEmail) {
-          emailRecipients = [billingProfile.billingEmail];
-        } else {
-          const teamMembers = await getMinimalTeamMembers(billingEvent.teamId);
-          emailRecipients = teamMembers.map(member => member.user.email);
-        }
-        console.log(`[DRY RUN] Would send email to: ${emailRecipients.join(", ")} (if payment retry fails)`);
         results.push({
           status: "success",
           billingEventId: billingEvent.id,
