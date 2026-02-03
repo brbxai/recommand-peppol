@@ -245,7 +245,6 @@ async function billTeam({
         mandate = await getMandate(billingProfile.mollieCustomerId);
       } catch (error) {
         console.error(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`);
-        throw new TeamBillingResultError(`Error getting mandate for billing profile ${billingProfile.id}: ${error}`, billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" })));
       }
       if (!mandate) {
         // Update billing profile mandate status
@@ -255,10 +254,6 @@ async function billTeam({
             isMandateValidated: false,
           })
           .where(eq(billingProfiles.id, billingProfile.id));
-        throw new TeamBillingResultError(
-          "Billing profile mandate is not validated according to Mollie",
-          billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
-        );
       }
 
       // Create billing event
@@ -394,7 +389,7 @@ async function billTeam({
       }
 
       // Payment through Mollie
-      if (!dryRun && !billingProfile.isManuallyBilled) {
+      if (!dryRun && !billingProfile.isManuallyBilled && mandate) {
         // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
         try {
           await requestPayment(
