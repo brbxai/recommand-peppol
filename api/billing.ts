@@ -1,8 +1,9 @@
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { Server } from "@recommand/lib/api";
 import { z } from "zod";
-import { actionFailure } from "@recommand/lib/utils";
+import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { endBillingCycle } from "@peppol/data/billing/billing";
+import { retryFailedPayments } from "@peppol/data/billing/payment-retry";
 import { endOfMonth, format, subMonths } from "date-fns";
 import { requireAdmin } from "@core/lib/auth-middleware";
 import { describeRoute } from "hono-openapi";
@@ -102,6 +103,31 @@ const _endBillingCycle = server.post(
   }
 );
 
-export type Billing = typeof _endBillingCycle;
+const _retryFailedPayments = server.post(
+  "/billing/retry-failed-payments",
+  requireAdmin(),
+  describeRoute({ hide: true }),
+  zodValidator("query", z.object({ teamId: z.union([z.string(), z.array(z.string())]).optional() })),
+  async (c) => {
+    try {
+      const { teamId } = c.req.valid("query");
+      const teamIds = Array.isArray(teamId) ? teamId : teamId ? [teamId] : undefined;
+
+      console.log("Retrying failed payments for", teamIds ? teamIds : "all teams");
+      const results = await retryFailedPayments(teamIds);
+
+      return c.json(actionSuccess({
+        success: results.success,
+        failed: results.failed,
+        errors: results.errors,
+      }));
+    } catch (error) {
+      console.error(error);
+      return c.json(actionFailure("Failed to retry failed payments"), 500);
+    }
+  }
+);
+
+export type Billing = typeof _endBillingCycle | typeof _retryFailedPayments;
 
 export default server;
