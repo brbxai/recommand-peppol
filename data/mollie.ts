@@ -82,28 +82,12 @@ export async function processFirstPayment(paymentId: string) {
         eq(billingProfiles.id, (payment.metadata as any).billingProfileId)
       );
   } else {
-    const { graceStartedAt, graceReason, profileStanding } = await db
-      .select({ graceStartedAt: billingProfiles.graceStartedAt, graceReason: billingProfiles.graceReason, profileStanding: billingProfiles.profileStanding })
-      .from(billingProfiles)
-      .where(
-        eq(billingProfiles.id, (payment.metadata as any).billingProfileId),
-      )
-      .limit(1)
-      .then(result => result[0]);
-
-
-    const isGracePeriodTrigger = ["canceled", "expired", "failed"].includes(payment.status);
     await db
       .update(billingProfiles)
       .set({
         firstPaymentId: paymentId,
         firstPaymentStatus: payment.status,
         isMandateValidated: false,
-        ...((isGracePeriodTrigger && profileStanding !== "suspended") ? {
-          profileStanding: "grace",
-          graceStartedAt: (graceStartedAt ?? new Date()),
-          graceReason: graceReason ? graceReason : "payment_" + payment.status,
-        } : {}),
       })
       .where(
         and(

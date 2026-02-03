@@ -233,14 +233,6 @@ async function billTeam({
     }
 
     if (!billingProfile.isManuallyBilled) {
-      // Check if billing profile mandate is validated
-      if (!billingProfile.isMandateValidated) {
-        throw new TeamBillingResultError(
-          "Billing profile mandate is not validated",
-          billingLines.map(x => generateTeamBillingResult(x, billingProfile, { isInvoiceSent: "", isPaymentRequested: "" }))
-        );
-      }
-
       // Get the customer mandate
       if (!billingProfile.mollieCustomerId) {
         throw new TeamBillingResultError(
