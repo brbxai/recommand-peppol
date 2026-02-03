@@ -62,8 +62,10 @@ export async function sendInvoiceAsBRBX(
     if (!cleanedVat) {
       throw new Error("Cannot send invoice: company VAT number is invalid");
     }
-    if (!cleanedVat.startsWith(info.companyCountry)) {
-      cleanedVat = info.companyCountry + cleanedVat;
+
+    // If the two first characters of the VAT number are not letters, add the country code
+    if(!/^[A-Z]{2}$/.test(cleanedVat.toUpperCase().substring(0, 2))) {
+      cleanedVat = info.companyCountry.toUpperCase() + cleanedVat;
     }
     if (cleanedVat.startsWith("BE")) {
       const vatWithoutCountryCode = cleanedVat.substring(2);
