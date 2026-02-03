@@ -36,6 +36,7 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
     .where(
       and(
         gt(subscriptionBillingEvents.amountDue, "0"),
+        inArray(subscriptionBillingEvents.paymentStatus, ["canceled", "expired", "failed"]),
         teamIds && teamIds.length > 0 ? inArray(subscriptionBillingEvents.teamId, teamIds) : undefined,
         eq(billingProfiles.isManuallyBilled, false),
       )
