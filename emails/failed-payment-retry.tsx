@@ -1,4 +1,4 @@
-import { Text } from "@react-email/components";
+import { Link, Text } from "@react-email/components";
 import { EmailLayout, EmailHeading, InfoSection } from "@core/emails/components/shared";
 
 interface FailedPaymentRetryEmailProps {
@@ -33,6 +33,7 @@ export const FailedPaymentRetryEmail = ({
     </InfoSection>
     <Text className="mb-4">
       Please update your payment method in your account settings or contact us at billing@recommand.eu to resolve this issue.
+      You can update your payment method in your <Link href="https://app.recommand.eu/billing/subscription">billing settings</Link>.
     </Text>
     <Text className="mb-4">
       Thank you for your understanding.
