@@ -4,6 +4,7 @@ import { billingProfiles, subscriptionBillingEvents } from "@peppol/db/schema";
 import { eq, and, not } from "drizzle-orm";
 import Decimal from "decimal.js";
 import { sendTelegramNotification } from "@peppol/utils/system-notifications/telegram";
+import { sendFailedPaymentEmail } from "./billing/send-failed-payment-email";
 
 if (!process.env.MOLLIE_API_KEY) {
   throw new Error("MOLLIE_API_KEY is not set");
@@ -181,13 +182,19 @@ export async function processPayment(paymentId: string) {
   const payment = await mollie.payments.get(paymentId);
   console.log("Payment", payment);
 
-  // Get billing profile id from the subscription billing event
-  const billingProfileId = await db
-    .select({ billingProfileId: subscriptionBillingEvents.billingProfileId })
+  const billingEventId = (payment.metadata as any).billingEventId;
+
+  const [{ billingProfileId, invoiceReference, totalAmountIncl, billingDate, teamId }] = await db
+    .select({
+      billingProfileId: subscriptionBillingEvents.billingProfileId,
+      invoiceReference: subscriptionBillingEvents.invoiceReference,
+      totalAmountIncl: subscriptionBillingEvents.totalAmountIncl,
+      billingDate: subscriptionBillingEvents.billingDate,
+      teamId: subscriptionBillingEvents.teamId,
+    })
     .from(subscriptionBillingEvents)
-    .where(eq(subscriptionBillingEvents.id, (payment.metadata as any).billingEventId))
-    .limit(1)
-    .then(result => result[0].billingProfileId);
+    .where(eq(subscriptionBillingEvents.id, billingEventId))
+    .limit(1);
 
   if (payment.status === "paid") {
     await db.transaction(async (tx) => {
@@ -200,7 +207,7 @@ export async function processPayment(paymentId: string) {
         .where(
           eq(
             subscriptionBillingEvents.id,
-            (payment.metadata as any).billingEventId
+            billingEventId
           )
         );
 
@@ -221,7 +228,7 @@ export async function processPayment(paymentId: string) {
         .where(
           eq(
             subscriptionBillingEvents.id,
-            (payment.metadata as any).billingEventId
+            billingEventId
           )
         );
 
@@ -240,12 +247,17 @@ export async function processPayment(paymentId: string) {
     });
   } else {
 
-    const { graceStartedAt, profileStanding } = await db
-      .select({ graceStartedAt: billingProfiles.graceStartedAt, profileStanding: billingProfiles.profileStanding })
+    const { graceStartedAt, companyName, billingEmail } = await db
+      .select({
+        graceStartedAt: billingProfiles.graceStartedAt,
+        companyName: billingProfiles.companyName,
+        billingEmail: billingProfiles.billingEmail,
+      })
       .from(billingProfiles)
-      .where(eq(billingProfiles.id, (payment.metadata as any).billingProfileId))
+      .where(eq(billingProfiles.id, billingProfileId))
       .limit(1)
       .then(result => result[0]);
+    
     const isGracePeriodTrigger = ["canceled", "expired", "failed"].includes(payment.status);
 
     await db.transaction(async (tx) => {
@@ -257,7 +269,7 @@ export async function processPayment(paymentId: string) {
         .where(
           eq(
             subscriptionBillingEvents.id,
-            (payment.metadata as any).billingEventId
+            billingEventId
           )
         );
       if (isGracePeriodTrigger) {
@@ -273,6 +285,19 @@ export async function processPayment(paymentId: string) {
           ));
       }
     });
-    sendTelegramNotification(`Payment ${paymentId} failed for billing event ${(payment.metadata as any).billingEventId} with status ${payment.status}`);
+
+    if (isGracePeriodTrigger) {
+      await sendFailedPaymentEmail({
+        billingEventId,
+        teamId,
+        companyName,
+        billingEmail,
+        invoiceReference,
+        totalAmountIncl,
+        billingDate,
+      });
+    }
+
+    sendTelegramNotification(`Payment ${paymentId} failed for billing event ${billingEventId} with status ${payment.status}`);
   }
 }

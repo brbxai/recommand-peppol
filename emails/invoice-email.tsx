@@ -59,8 +59,8 @@ export const InvoiceEmail = ({
       </Text>
     </InfoSection>
     <Text className="mb-4">
-      We have tried to deliver the invoice to you via the Peppol network. The
-      PDF and XML documents are attached to this email for your records.
+      We have tried to deliver the invoice to you via the Peppol network.
+      It is attached to this email for your records.
     </Text>
   </EmailLayout>
 );

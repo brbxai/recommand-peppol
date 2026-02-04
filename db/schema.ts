@@ -595,10 +595,10 @@ export const integrationTaskLogs = pgTable("integration_task_logs", {
   updatedAt: autoUpdateTimestamp(),
 });
 
-export const paymentRetryReminders = pgTable("peppol_payment_retry_reminders", {
+export const paymentFailureReminders = pgTable("peppol_payment_failure_reminders", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => "prr_" + ulid()),
+    .$defaultFn(() => "pfr_" + ulid()),
   billingEventId: text("billing_event_id")
     .references(() => subscriptionBillingEvents.id, { onDelete: "cascade" })
     .notNull(),

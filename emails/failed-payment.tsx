@@ -1,20 +1,20 @@
 import { Link, Text } from "@react-email/components";
 import { EmailLayout, EmailHeading, InfoSection } from "@core/emails/components/shared";
 
-interface FailedPaymentRetryEmailProps {
+interface FailedPaymentEmailProps {
   companyName: string;
   invoiceReference: number;
   totalAmountIncl: number;
   billingDate: string;
 }
 
-export const FailedPaymentRetryEmail = ({
+export const FailedPaymentEmail = ({
   companyName,
   invoiceReference,
   totalAmountIncl,
   billingDate,
-}: FailedPaymentRetryEmailProps) => (
-  <EmailLayout preview={`Payment retry failed for invoice ${invoiceReference}`}>
+}: FailedPaymentEmailProps) => (
+  <EmailLayout preview={`Payment failed for invoice ${invoiceReference}`}>
     <EmailHeading>Payment Failed</EmailHeading>
     <Text className="mb-4">Dear {companyName},</Text>
     <Text className="mb-4">
@@ -32,7 +32,7 @@ export const FailedPaymentRetryEmail = ({
       </Text>
     </InfoSection>
     <Text className="mb-4">
-      Please update your payment method in your account settings or contact us at billing@recommand.eu to resolve this issue.
+      Please update your payment method in your account settings or contact us at <Link href="mailto:billing@recommand.eu">billing@recommand.eu</Link> to resolve this issue.
       You can update your payment method in your <Link href="https://app.recommand.eu/billing/subscription">billing settings</Link>.
     </Text>
     <Text className="mb-4">
@@ -41,11 +41,11 @@ export const FailedPaymentRetryEmail = ({
   </EmailLayout>
 );
 
-FailedPaymentRetryEmail.PreviewProps = {
+FailedPaymentEmail.PreviewProps = {
   companyName: "Acme Corporation",
   invoiceReference: 5001,
   totalAmountIncl: 1210.0,
   billingDate: "2024-01-31",
-} as FailedPaymentRetryEmailProps;
+} as FailedPaymentEmailProps;
 
-export default FailedPaymentRetryEmail;
+export default FailedPaymentEmail;

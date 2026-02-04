@@ -470,6 +470,13 @@
       "when": 1770136328175,
       "tag": "20260203163208_clammy_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1770196745465,
+      "tag": "20260204091905_numerous_leper_queen",
+      "breakpoints": true
     }
   ]
 }
