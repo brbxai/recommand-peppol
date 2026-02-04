@@ -389,16 +389,21 @@ async function billTeam({
       }
 
       // Payment through Mollie
-      if (!dryRun && !billingProfile.isManuallyBilled && mandate) {
+      if (!dryRun && !billingProfile.isManuallyBilled) {
         // Send payment request to mollie (on webhook, update billing event with payment result, notify admin on failure)
         try {
-          await requestPayment(
-            billingProfile.mollieCustomerId!,
-            mandate.id,
-            billingProfile.id,
-            billingEventId!,
-            totalAmountIncl.toFixed(2)
-          );
+          await requestPayment({
+            mollieCustomerId: billingProfile.mollieCustomerId!,
+            mollieMandateId: mandate?.id ?? null,
+            billingProfileId: billingProfile.id,
+            billingEventId: billingEventId!,
+            amountDue: totalAmountIncl.toFixed(2),
+            teamId: teamId,
+            companyName: billingProfile.companyName,
+            billingEmail: billingProfile.billingEmail,
+            invoiceReference: invoiceReference,
+            billingDate: billingDate,
+          });
           isPaymentRequested = true;
         } catch (error) {
           console.error(`Failed to request payment for billing event ${billingEventId}: ${error}`);

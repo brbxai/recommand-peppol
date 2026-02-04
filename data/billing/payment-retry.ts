@@ -7,7 +7,6 @@ import { db } from "@recommand/db";
 import { and, eq, gte, inArray, gt } from "drizzle-orm";
 import { subDays } from "date-fns";
 import { getMandate, requestPayment } from "../mollie";
-import { sendFailedPaymentEmail } from "./send-failed-payment-email";
 
 export type PaymentRetryResult = {
   status: "success" | "failed" | "skipped";
@@ -17,7 +16,6 @@ export type PaymentRetryResult = {
   companyName: string;
   amountDue: string;
   errorMessage?: string;
-  emailSent?: boolean;
 };
 
 export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = false): Promise<PaymentRetryResult[]> {
@@ -73,9 +71,6 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
       }
 
       const mandate = await getMandate(billingProfile.mollieCustomerId);
-      if (!mandate) {
-        throw new Error("Mandate not found");
-      }
 
       if (dryRun) {
         console.log(`[DRY RUN] Would retry payment for billing event ${billingEvent.id} (invoice ${billingEvent.invoiceReference ?? "N/A"})`);
@@ -86,19 +81,23 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
           teamId: billingEvent.teamId,
           companyName: billingProfile.companyName,
           amountDue: billingEvent.amountDue,
-          emailSent: false,
         });
         continue;
       }
 
       try {
-        await requestPayment(
-          billingProfile.mollieCustomerId,
-          mandate.id,
-          billingProfile.id,
-          billingEvent.id,
-          billingEvent.amountDue
-        );
+        await requestPayment({
+          mollieCustomerId: billingProfile.mollieCustomerId,
+          mollieMandateId: mandate?.id ?? null,
+          billingProfileId: billingProfile.id,
+          billingEventId: billingEvent.id,
+          amountDue: billingEvent.amountDue,
+          teamId: billingEvent.teamId,
+          companyName: billingProfile.companyName,
+          billingEmail: billingProfile.billingEmail,
+          invoiceReference: billingEvent.invoiceReference,
+          billingDate: billingEvent.billingDate,
+        });
         results.push({
           status: "success",
           billingEventId: billingEvent.id,
@@ -106,19 +105,8 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
           teamId: billingEvent.teamId,
           companyName: billingProfile.companyName,
           amountDue: billingEvent.amountDue,
-          emailSent: false,
         });
       } catch (paymentError) {
-        const { emailSent } = await sendFailedPaymentEmail({
-          billingEventId: billingEvent.id,
-          teamId: billingEvent.teamId,
-          companyName: billingProfile.companyName,
-          billingEmail: billingProfile.billingEmail,
-          invoiceReference: billingEvent.invoiceReference,
-          totalAmountIncl: billingEvent.totalAmountIncl,
-          billingDate: billingEvent.billingDate,
-        });
-
         results.push({
           status: "failed",
           billingEventId: billingEvent.id,
@@ -127,7 +115,6 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
           companyName: billingProfile.companyName,
           amountDue: billingEvent.amountDue,
           errorMessage: paymentError instanceof Error ? paymentError.message : String(paymentError),
-          emailSent,
         });
       }
     } catch (error) {
@@ -140,7 +127,6 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
         companyName: billingProfile.companyName,
         amountDue: billingEvent.amountDue,
         errorMessage,
-        emailSent: false,
       });
       console.error(`Failed to retry payment for billing event ${billingEvent.id}:`, error);
     }

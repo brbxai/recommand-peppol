@@ -128,7 +128,6 @@ const _retryFailedPayments = server.post(
         { header: "Company Name", key: "companyName", width: 30 },
         { header: "Amount Due", key: "amountDue", width: 15 },
         { header: "Error Message", key: "errorMessage", width: 50 },
-        { header: "Email Sent", key: "emailSent", width: 15 },
       ];
 
       worksheet.getRow(1).font = { bold: true };
@@ -142,7 +141,6 @@ const _retryFailedPayments = server.post(
           companyName: result.companyName,
           amountDue: result.amountDue,
           errorMessage: result.errorMessage || "",
-          emailSent: result.emailSent ? "Yes" : "No",
         });
       }
 
