@@ -52,20 +52,6 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
         )
         .limit(1);
 
-      if (recentReminder.length > 0) {
-        console.log(`Skipping reminder for billing event ${billingEvent.id} - reminder sent within last 7 days`);
-        results.push({
-          status: "skipped",
-          billingEventId: billingEvent.id,
-          invoiceReference: billingEvent.invoiceReference,
-          teamId: billingEvent.teamId,
-          companyName: billingProfile.companyName,
-          amountDue: billingEvent.amountDue,
-          errorMessage: "Reminder sent within last 7 days",
-        });
-        continue;
-      }
-
       if (!billingProfile.mollieCustomerId) {
         throw new Error("Billing profile has no Mollie customer ID");
       }

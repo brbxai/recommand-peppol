@@ -1,10 +1,11 @@
 import { paymentFailureReminders } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { getMinimalTeamMembers } from "@core/data/team-members";
 import { render } from "@react-email/render";
 import { FailedPaymentEmail } from "@peppol/emails/failed-payment";
 import { ServerClient } from "postmark";
+import { and, eq, gte } from "drizzle-orm";
 
 export type FailedPaymentEmailParams = {
   billingEventId: string;
@@ -25,6 +26,22 @@ export async function sendFailedPaymentEmail({
   totalAmountIncl,
   billingDate,
 }: FailedPaymentEmailParams): Promise<{ emailSent: boolean; emailRecipients: string[] }> {
+
+  // Check if the billing event has a payment failure reminder within the last 7 days
+  const sevenDaysAgo = subDays(new Date(), 7);
+  const recentReminder = await db
+    .select()
+    .from(paymentFailureReminders)
+    .where(
+      and(eq(paymentFailureReminders.billingEventId, billingEventId), gte(paymentFailureReminders.createdAt, sevenDaysAgo))
+    )
+    .limit(1);
+
+  if (recentReminder.length > 0) {
+    console.log(`Skipping reminder for billing event ${billingEventId} - reminder sent within last 7 days`);
+    return { emailSent: false, emailRecipients: [] };
+  }
+
   let emailRecipients: string[] = [];
   if (billingEmail) {
     emailRecipients = [billingEmail];
