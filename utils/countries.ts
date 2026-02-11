@@ -23,6 +23,12 @@ export const COUNTRIES: CountryInfo[] = [
         defaultEnterpriseNumberScheme: "0208",
     },
     {
+        code: "BG",
+        name: "Bulgaria",
+        flag: "🇧🇬",
+        defaultVatScheme: "9926",
+    },
+    {
         code: "CA",
         name: "Canada",
         flag: "🇨🇦",
