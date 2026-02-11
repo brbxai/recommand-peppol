@@ -127,9 +127,10 @@ export async function postToIntegration({
             await createIntegrationTaskLog(integration.id, event, parsedResponse.error.task, false, message, parsedResponse.error.context ?? "");
         }
         
-        if (failedTasks.length > 0) {
-            await sendFailureEmailToTeam({ integration, event, failedTasks });
-        }
+        // Temporarily disabled failure email notifications until we have a better approach to handling errors.
+        // if (failedTasks.length > 0) {
+        //     await sendFailureEmailToTeam({ integration, event, failedTasks });
+        // }
         
         console.error("Error response from integration", integration.manifest.url, event, JSON.stringify(json, null, 2));
         throw new UserFacingError(message);
@@ -162,9 +163,10 @@ export async function postToIntegration({
             }
         }
         
-        if (failedTasks.length > 0) {
-            await sendFailureEmailToTeam({ integration, event, failedTasks });
-        }
+        // Temporarily disabled failure email notifications until we have a better approach to handling errors.
+        // if (failedTasks.length > 0) {
+        //     await sendFailureEmailToTeam({ integration, event, failedTasks });
+        // }
     }
 
 
