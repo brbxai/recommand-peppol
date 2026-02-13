@@ -242,11 +242,11 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
           vatAmount,
           discountAmount:
             totalsRaw.discountAmount != null
-              ? String(totalsRaw.discountAmount)
+              ? reverseAmountSign(String(totalsRaw.discountAmount))
               : null,
           surchargeAmount:
             totalsRaw.surchargeAmount != null
-              ? String(totalsRaw.surchargeAmount)
+              ? reverseAmountSign(String(totalsRaw.surchargeAmount))
               : null,
           payableAmount,
           paidAmount:
