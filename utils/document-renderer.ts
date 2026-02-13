@@ -109,7 +109,7 @@ function reverseAmountSign(value: string): string {
   const trimmedValue = value.trim();
   if (!trimmedValue) return trimmedValue;
   if (trimmedValue.startsWith("-")) {
-    return trimmedValue.slice(1);
+    return `+${trimmedValue.slice(1)}`;
   }
   if (trimmedValue.startsWith("+")) {
     return `-${trimmedValue.slice(1)}`;
