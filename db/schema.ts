@@ -12,6 +12,7 @@ import {
   index,
   primaryKey,
   serial,
+  date,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { isNotNull, SQL, sql } from "drizzle-orm";
@@ -31,6 +32,7 @@ import type {
 import { validationResponse, validationResult } from "@peppol/types/validation";
 import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
+import type { Representative } from "@peppol/data/cbe-public-search/types";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -60,7 +62,7 @@ export const validCountryCodes = pgEnum(
 
 
 export const zodVerificationRequirements = z.enum(["strict", "trusted", "lax"]);
-export const verificationRequirementsEnum = pgEnum("peppol_verification_requirements", zodVerificationRequirements.options);
+export const verificationRequirementsEnum = pgEnum("verification_requirements", zodVerificationRequirements.options);
 
 export const validIsoIcdSchemeIdentifiers = pgEnum(
   "peppol_valid_iso_icd_scheme_identifiers",
@@ -264,8 +266,10 @@ export const companies = pgTable("peppol_companies", {
   updatedAt: autoUpdateTimestamp(),
 });
 
+export const verificationStatusEnum = pgEnum("verification_status", ["opened", "requested", "verified", "rejected"]);
+
 export const companyVerificationLog = pgTable(
-  "peppol_company_verification_log",
+  "company_verification_log",
   {
     id: text("id")
       .primaryKey()
@@ -273,7 +277,7 @@ export const companyVerificationLog = pgTable(
     companyId: text("company_id")
       .references(() => companies.id, { onDelete: "cascade" })
       .notNull(),
-    status: pgEnum("status", ["opened", "requested", "verified", "rejected"])("status").notNull().default("opened"),
+    status: verificationStatusEnum("status").notNull().default("opened"),
     firstName: text("first_name"),
     lastName: text("last_name"),
     companyName: text("company_name"),
@@ -283,6 +287,37 @@ export const companyVerificationLog = pgTable(
       .defaultNow()
       .notNull(),
   },
+);
+
+export const enterpriseDataCache = pgTable(
+  "enterprise_data_cache",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "edc_" + ulid()),
+    enterpriseNumber: text("enterprise_number").notNull(),
+    country: validCountryCodes("country").notNull(),
+    name: text("name").notNull(),
+    beginDate: date("begin_date").notNull(),
+    street: text("street").notNull(),
+    number: text("number").notNull(),
+    postalCode: text("postal_code").notNull(),
+    city: text("city").notNull(),
+    juridicalFormCode: text("juridical_form_code").notNull(),
+    juridicalFormDescription: text("juridical_form_description").notNull(),
+    juridicalFormBeginDate: date("juridical_form_begin_date").notNull(),
+    denominationCode: text("denomination_code").notNull(),
+    denominationDescription: text("denomination_description").notNull(),
+    denominationBeginDate: date("denomination_begin_date").notNull(),
+    representatives: jsonb("representatives").$type<Representative[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("enterprise_data_cache_unique").on(table.enterpriseNumber, table.country),
+  ]
 );
 
 export const companyIdentifiers = pgTable(

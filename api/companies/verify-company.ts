@@ -1,9 +1,5 @@
 import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
-import {
-    verifyCompany,
-    getCompany,
-} from "@peppol/data/companies";
-import { getEnterpriseData } from "@peppol/data/cbe-public-search/client";
+import { verifyCompany } from "@peppol/data/companies";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -82,94 +78,6 @@ async function _verifyCompanyImplementation(c: VerifyCompanyContext) {
 }
 
 export type VerifyCompany = typeof _verifyCompany | typeof _verifyCompanyMinimal;
-
-const enterpriseDataResponseSchema = z.object({
-  enterpriseNumber: z.string(),
-  address: z.object({
-    street: z.string(),
-    number: z.string(),
-    postalCode: z.string(),
-    city: z.string(),
-    country: z.string(),
-  }).optional(),
-  companyType: z.object({
-    juridicalForm: z.object({
-      code: z.string(),
-      description: z.string(),
-      beginDate: z.string().optional(),
-    }),
-    denomination: z.object({
-      code: z.string(),
-      description: z.string(),
-      beginDate: z.string().optional(),
-    }),
-  }).optional(),
-  representatives: z.array(z.object({
-    firstName: z.string(),
-    lastName: z.string(),
-    function: z.string(),
-    beginDate: z.string(),
-    endDate: z.string().optional(),
-  })),
-});
-
-const _getCompanyEnterpriseDataMinimal = server.get(
-    "/companies/:companyId/enterprise-data",
-    requireTeamAccess(),
-    describeRoute({
-        operationId: "getCompanyEnterpriseData",
-        description: "Get comprehensive enterprise data from CBE registry",
-        summary: "Get Company Enterprise Data",
-        tags: ["Companies"],
-        responses: {
-            ...describeSuccessResponseWithZod("Successfully fetched enterprise data", enterpriseDataResponseSchema),
-            ...describeErrorResponse(400, "Invalid request data"),
-            ...describeErrorResponse(404, "Company not found"),
-            ...describeErrorResponse(500, "Failed to fetch enterprise data"),
-        },
-    }),
-    zodValidator("param", verifyCompanyParamSchema),
-    _getCompanyEnterpriseDataImplementation,
-);
-
-const _getCompanyEnterpriseData = server.get(
-    "/:teamId/companies/:companyId/enterprise-data",
-    requireTeamAccess(),
-    describeRoute({ hide: true }),
-    zodValidator("param", verifyCompanyParamSchemaWithTeamId),
-    _getCompanyEnterpriseDataImplementation,
-);
-
-async function _getCompanyEnterpriseDataImplementation(c: VerifyCompanyContext) {
-    try {
-        const companyId = c.req.valid("param").companyId;
-        const teamId = c.var.team.id;
-        
-        const company = await getCompany(teamId, companyId);
-        if (!company) {
-            return c.json(actionFailure("Company not found"), 404);
-        }
-
-        if (!company.enterpriseNumber) {
-            return c.json(actionFailure("Company does not have an enterprise number"), 400);
-        }
-
-        if (company.country !== "BE") {
-            return c.json(actionFailure("Enterprise data is only available for Belgian companies"), 400);
-        }
-
-        const enterpriseData = await getEnterpriseData(company.enterpriseNumber);
-        return c.json(actionSuccess(enterpriseData));
-    } catch (error) {
-        console.error(error);
-        if (error instanceof UserFacingError) {
-            return c.json(actionFailure(error), 400);
-        }
-        return c.json(actionFailure("Could not fetch enterprise data"), 500);
-    }
-}
-
-export type GetCompanyEnterpriseData = typeof _getCompanyEnterpriseData | typeof _getCompanyEnterpriseDataMinimal;
 
 export default server;
 
