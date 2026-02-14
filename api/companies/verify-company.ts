@@ -1,5 +1,5 @@
 import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
-import { verifyCompany } from "@peppol/data/companies";
+import { createCompanyVerificationLog } from "@peppol/data/company-verification";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -60,13 +60,15 @@ async function _verifyCompanyImplementation(c: VerifyCompanyContext) {
         if (!baseUrl) {
             throw new Error("BASE_URL environment variable is not set");
         }
-        const callbackUrl = `${baseUrl}/companies/${companyId}`;
-        
-        const verificationUrl = await verifyCompany({
+
+        // Create a company verification log
+        const companyVerificationLog = await createCompanyVerificationLog({
             teamId: c.var.team.id,
             companyId,
-            callback: callbackUrl,
         });
+
+        const verificationUrl = `${baseUrl}/company-verification/${companyVerificationLog.id}/verify`;
+        
         return c.json(actionSuccess({ verificationUrl }));
     } catch (error) {
         console.error(error);

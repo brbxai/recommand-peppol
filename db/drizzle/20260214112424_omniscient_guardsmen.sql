@@ -1,0 +1,1 @@
+ALTER TABLE "company_verification_log" ALTER COLUMN "verification_proof_reference" DROP NOT NULL;

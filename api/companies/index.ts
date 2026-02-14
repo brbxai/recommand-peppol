@@ -10,8 +10,9 @@ import enterpriseDataServer, { type GetCompanyEnterpriseData } from "./enterpris
 import companyIdentifiersServer, { type CompanyIdentifiers } from "./identifiers";
 import companyDocumentTypesServer, { type CompanyDocumentTypes } from "./document-types";
 import companyNotificationEmailAddressesServer, { type CompanyNotificationEmailAddresses } from "./notification-email-addresses";
+import companyVerificationServer, { type CompanyVerification } from "./verification";
 
-export type Companies = GetCompanies | GetCompany | CreateCompany | UpdateCompany | DeleteCompany | VerifyCompany | GetCompanyEnterpriseData | CompanyIdentifiers | CompanyDocumentTypes | CompanyNotificationEmailAddresses;
+export type Companies = GetCompanies | GetCompany | CreateCompany | UpdateCompany | DeleteCompany | VerifyCompany | GetCompanyEnterpriseData | CompanyIdentifiers | CompanyDocumentTypes | CompanyNotificationEmailAddresses | CompanyVerification;
 
 const server = new Server();
 server.route("/", getCompaniesServer);
@@ -24,4 +25,5 @@ server.route("/", enterpriseDataServer);
 server.route("/", companyIdentifiersServer);
 server.route("/", companyDocumentTypesServer);
 server.route("/", companyNotificationEmailAddressesServer);
+server.route("/", companyVerificationServer);
 export default server;

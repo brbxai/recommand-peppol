@@ -266,7 +266,7 @@ export const companies = pgTable("peppol_companies", {
   updatedAt: autoUpdateTimestamp(),
 });
 
-export const verificationStatusEnum = pgEnum("verification_status", ["opened", "requested", "verified", "rejected"]);
+export const verificationStatusEnum = pgEnum("verification_status", ["opened", "formSubmitted", "idVerificationRequested", "verified", "rejected"]);
 
 export const companyVerificationLog = pgTable(
   "company_verification_log",
@@ -282,7 +282,7 @@ export const companyVerificationLog = pgTable(
     lastName: text("last_name"),
     companyName: text("company_name"),
     enterpriseNumber: text("enterprise_number"),
-    verificationProofReference: text("verification_proof_reference").notNull(),
+    verificationProofReference: text("verification_proof_reference"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
