@@ -8,6 +8,7 @@ import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { UserFacingError } from "@peppol/utils/util";
+import { describeRoute } from "hono-openapi";
 
 const server = new Server();
 
@@ -26,6 +27,7 @@ type SubmitIdentityFormContext = Context<AuthenticatedUserContext & Authenticate
 const _submitIdentityForm = server.post(
     "/:teamId/companies/verification/:companyVerificationLogId/submit-identity-form",
     requireTeamAccess(),
+    describeRoute({ hide: true }),
     zodValidator("param", submitIdentityFormParamSchema),
     zodValidator("json", submitIdentityFormJsonBodySchema),
     _submitIdentityFormImplementation,

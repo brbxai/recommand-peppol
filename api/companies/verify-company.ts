@@ -14,7 +14,7 @@ const server = new Server();
 
 const verifyCompanyRouteDescription = describeRoute({
     operationId: "verifyCompany",
-    description: "Create a verification session for a company",
+    description: "To send or receive documents on behalf of a company, you must first verify your identity to confirm you are authorized to act for that company. This endpoint initiates a verification session and returns a URL. The URL leads to a secure form where an official company representative can provide proof of identity.",
     summary: "Verify Company",
     tags: ["Companies"],
     responses: {
