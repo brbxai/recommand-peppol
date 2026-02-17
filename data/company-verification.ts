@@ -7,7 +7,7 @@ import { getCompany, verifyCompany, type Company } from "./companies";
 
 export type CompanyVerificationLog = typeof companyVerificationLog.$inferSelect;
 
-function normalizeName(name: string): string {
+export function normalizeName(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-zA-Z]/g, "");
 }
 
@@ -77,8 +77,6 @@ export async function submitIdentityForm(
 }
 
 export async function requestIdVerification(
-  teamId: string,
-  companyId: string,
   companyVerificationLogId: string
 ): Promise<string> {
   const baseUrl = process.env.BASE_URL;
@@ -86,10 +84,9 @@ export async function requestIdVerification(
     throw new Error("BASE_URL environment variable is not set");
   }
   
-  const callbackUrl = `${baseUrl}/companies/${companyId}`;
+  const callbackUrl = `${baseUrl}/company-verification/${companyVerificationLogId}/status`;
   const verificationUrl = await verifyCompany({
-    teamId: teamId,
-    companyId: companyId,
+    companyVerificationLogId,
     callback: callbackUrl,
   });
   if (!verificationUrl) {

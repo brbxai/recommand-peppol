@@ -2,11 +2,11 @@ import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { describeRoute } from "hono-openapi";
 import { createHmac, timingSafeEqual } from "crypto";
-import { getCompanyById, updateCompany } from "@peppol/data/companies";
 import { UserFacingError } from "@peppol/utils/util";
-import { companies } from "@peppol/db/schema";
-import { and, eq } from "drizzle-orm";
+import { companies, companyVerificationLog } from "@peppol/db/schema";
+import { eq } from "drizzle-orm";
 import { db } from "@recommand/db";
+import { getCompanyVerificationLog, normalizeName } from "@peppol/data/company-verification";
 
 const server = new Server();
 
@@ -64,15 +64,39 @@ server.post(
         return c.json(actionFailure("Missing session_id"), 400);
       }
 
-      const company = await getCompanyById(vendor_data);
-      if (!company) {
-        return c.json(actionFailure("Company not found"), 404);
+      const companyVerificationLogRecord = await getCompanyVerificationLog(vendor_data);
+      if (!companyVerificationLogRecord) {
+        return c.json(actionFailure("Company verification log not found"), 404);
       }
 
-      const isVerified = status === "Approved";
+      let isVerified = false;
       const verificationProofReference = session_id;
 
-      await db.update(companies).set({ isVerified, verificationProofReference }).where(and(eq(companies.teamId, company.teamId), eq(companies.id, company.id)));
+      if (
+        status === "Approved" &&
+        "decision" in body &&
+        "id_verification" in body.decision &&
+        "first_name" in body.decision.id_verification &&
+        "last_name" in body.decision.id_verification) {
+        const diditFirstName = body.decision.id_verification.first_name;
+        const diditLastName = body.decision.id_verification.last_name;
+        const storedFirstName = companyVerificationLogRecord.firstName;
+        const storedLastName = companyVerificationLogRecord.lastName;
+
+        if (diditFirstName && diditLastName && storedFirstName && storedLastName && normalizeName(diditFirstName) === normalizeName(storedFirstName) && normalizeName(diditLastName) === normalizeName(storedLastName)) {
+          isVerified = true;
+        }
+      }
+
+      // Open transaction
+      await db.transaction(async (tx) => {
+        await tx.update(companyVerificationLog).set({ status: isVerified ? "verified" : "rejected", verificationProofReference }).where(eq(companyVerificationLog.id, companyVerificationLogRecord.id));
+        if (isVerified) {
+          // Only update the company if the verification is approved
+          await tx.update(companies).set({ isVerified, verificationProofReference }).where(eq(companies.id, companyVerificationLogRecord.companyId));
+        }
+      });
+
 
       return c.json(actionSuccess({ message: "Verification status updated" }), 200);
     } catch (error) {

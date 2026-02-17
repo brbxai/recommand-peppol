@@ -15,6 +15,7 @@ import { COUNTRIES } from "@peppol/utils/countries";
 import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
 import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
 import { createVerificationSession } from "./didit/client";
+import { getCompanyVerificationLog } from "./company-verification";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -362,17 +363,15 @@ export async function deleteCompany({
 }
 
 export async function verifyCompany({
-  teamId,
-  companyId,
+  companyVerificationLogId,
   callback,
 }: {
-  teamId: string;
-  companyId: string;
+  companyVerificationLogId: string;
   callback?: string;
 }): Promise<string> {
-  const company = await getCompany(teamId, companyId);
-  if (!company) {
-    throw new UserFacingError("Company not found");
+  const companyVerificationLog = await getCompanyVerificationLog(companyVerificationLogId);
+  if (!companyVerificationLog) {
+    throw new UserFacingError("Company verification log not found");
   }
 
   const apiKey = process.env.DIDIT_API_KEY;
@@ -388,7 +387,7 @@ export async function verifyCompany({
   const session = await createVerificationSession({
     apiKey,
     workflowId,
-    vendorData: companyId,
+    vendorData: companyVerificationLog.id,
     callback,
   });
 

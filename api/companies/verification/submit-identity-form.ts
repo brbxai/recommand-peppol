@@ -53,7 +53,7 @@ async function _submitIdentityFormImplementation(c: SubmitIdentityFormContext) {
         await submitIdentityForm(companyVerificationLogId, company, firstName, lastName);
 
         // Request ID verification
-        const verificationUrl = await requestIdVerification(c.var.team.id, company.id, companyVerificationLogId);
+        const verificationUrl = await requestIdVerification(companyVerificationLogId);
         return c.json(actionSuccess({ verificationUrl }));
     } catch (error) {
         console.error(error);
