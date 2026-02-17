@@ -154,7 +154,7 @@ export default function CompanyDetailPage() {
       toast.success("Company updated successfully");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update company. (" + error + ")");
+      toast.error("Failed to update company. (" + (error instanceof Error ? error.message : String(error)) + ")");
     }
   };
 

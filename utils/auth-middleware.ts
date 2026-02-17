@@ -222,7 +222,7 @@ export function requireCompanyVerificationForStrictTeams() {
         if (!company.isVerified) {
           return c.json(
             actionFailure(
-              "Company must be verified before sending or retrieving documents. Please verify your company first."
+              "Company must be verified before sending or receiving documents. Please verify your company first."
             ),
             403
           );

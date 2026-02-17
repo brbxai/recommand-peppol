@@ -49,6 +49,7 @@ export async function createPlayground(
       id: newTeam.id,
       isPlayground: true,
       useTestNetwork,
+      verificationRequirements: "strict",
     }).returning();
 
     
