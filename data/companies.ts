@@ -20,20 +20,6 @@ import { getCompanyVerificationLog } from "./company-verification";
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
 
-export function validateSmpRecipientVerificationRequirement({
-  isSmpRecipient,
-  isVerified,
-  teamExtension,
-}: {
-  isSmpRecipient: boolean;
-  isVerified: boolean;
-  teamExtension: TeamExtension | null;
-}): void {
-  if (isSmpRecipient && !isVerified && teamExtension?.verificationRequirements === "strict") {
-    throw new UserFacingError("Company must be verified before it can be registered as an SMP recipient. Please verify your company first.");
-  }
-}
-
 export async function getCompanies(
   teamId: string,
   filters?: {
@@ -137,12 +123,6 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
   const teamExtension = await getTeamExtension(company.teamId);
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-
-  validateSmpRecipientVerificationRequirement({
-    isSmpRecipient: company.isSmpRecipient ?? false,
-    isVerified: company.isVerified ?? false,
-    teamExtension,
-  });
 
   const createdCompany = await db
     .insert(companies)
@@ -257,13 +237,6 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
     updatedFields.isVerified = false;
     updatedFields.verificationProofReference = null;
   }
-  
-  // Validate that isSmpRecipient cannot be true if company is not verified and team has strict verification requirements
-  validateSmpRecipientVerificationRequirement({
-    isSmpRecipient: company.isSmpRecipient !== undefined ? company.isSmpRecipient : oldCompany.isSmpRecipient,
-    isVerified: updatedFields.isVerified !== undefined ? updatedFields.isVerified : oldCompany.isVerified,
-    teamExtension,
-  });
 
   const updatedCompany = await db
     .update(companies)
