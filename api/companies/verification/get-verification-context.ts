@@ -45,7 +45,10 @@ async function _getVerificationContextImplementation(c: GetVerificationContextCo
         const isRepresentativeSelectionRequired = company.country === "BE";
 
         let representatives: { firstName: string; lastName: string; function: string }[] = [];
-        if (isRepresentativeSelectionRequired && company.enterpriseNumber) {
+        if (isRepresentativeSelectionRequired) {
+            if (!company.enterpriseNumber) {
+                return c.json(actionFailure("Company does not have an enterprise number. Please complete the company details first."), 400);
+            }
             try {
                 const enterpriseData = await getEnterpriseData(company.enterpriseNumber, company.country);
                 representatives = enterpriseData.representatives.map((rep) => ({

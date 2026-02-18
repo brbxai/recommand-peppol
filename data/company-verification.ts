@@ -50,7 +50,10 @@ export async function submitIdentityForm(
   firstName: string,
   lastName: string
 ): Promise<CompanyVerificationLog> {
-  if (company.country === "BE" && company.enterpriseNumber) {
+  if (company.country === "BE") {
+    if (!company.enterpriseNumber) {
+      throw new UserFacingError("Company does not have an enterprise number. Please complete the company details first.");
+    }
     const enterpriseData = await getEnterpriseData(company.enterpriseNumber, company.country);
     const isRepresentative = enterpriseData.representatives.some(
       (rep) =>
