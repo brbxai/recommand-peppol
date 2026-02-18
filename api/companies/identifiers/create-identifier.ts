@@ -12,7 +12,7 @@ import { requireCompanyAccess, type CompanyAccessContext } from "@peppol/utils/a
 import { companyIdentifierResponse } from "./shared";
 import type { AuthenticatedUserContext, AuthenticatedTeamContext } from "@core/lib/auth-middleware";
 import { UserFacingError } from "@peppol/utils/util";
-import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
+import { shouldRegisterWithSmp } from "@peppol/utils/playground";
 
 const server = new Server();
 
@@ -67,7 +67,7 @@ const _createIdentifier = server.post(
 
 async function _createIdentifierImplementation(c: CreateIdentifierContext) {
     try {
-        const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground: c.var.team.isPlayground, useTestNetwork: c.var.team.useTestNetwork }) || !c.var.company.isSmpRecipient;
+        const skipSmpRegistration = !shouldRegisterWithSmp({ isPlayground: c.var.team.isPlayground, useTestNetwork: c.var.team.useTestNetwork, isSmpRecipient: c.var.company.isSmpRecipient, isVerified: c.var.company.isVerified, verificationRequirements: c.var.team.verificationRequirements ?? undefined });
         const identifier = await createCompanyIdentifier({
             companyIdentifier: {
                 ...c.req.valid("json"),

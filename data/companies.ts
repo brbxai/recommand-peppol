@@ -12,7 +12,7 @@ import { getTeamExtension, type TeamExtension } from "./teams";
 import { createCompanyDocumentType } from "./company-document-types";
 import { canUpsertCompanyIdentifier, createCompanyIdentifier, getCompanyIdentifiers } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
-import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
+import { shouldRegisterWithSmp } from "@peppol/utils/playground";
 import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
 import { createVerificationSession } from "./didit/client";
 import { getCompanyVerificationLog } from "./company-verification";
@@ -156,7 +156,7 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
       `Company ${createdCompany.name} has been created. It is ${createdCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
     );
     if (!company.skipDefaultCompanySetup) {
-      await setupCompanyDefaults({ company: createdCompany, isPlayground: isPlaygroundTeam, useTestNetwork });
+      await setupCompanyDefaults({ company: createdCompany, isPlayground: isPlaygroundTeam, useTestNetwork, verificationRequirements: teamExtension?.verificationRequirements ?? undefined });
     }
   } catch (error) {
     sendSystemAlert(
@@ -175,8 +175,8 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
  * @param company The company to setup defaults for
  * @param isPlayground Whether the company is in a playground team, if so we don't register the company in the SMP
  */
-async function setupCompanyDefaults({ company, isPlayground, useTestNetwork }: { company: Company, isPlayground: boolean, useTestNetwork: boolean }): Promise<void> {
-  const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground, useTestNetwork }) || !company.isSmpRecipient;
+async function setupCompanyDefaults({ company, isPlayground, useTestNetwork, verificationRequirements }: { company: Company, isPlayground: boolean, useTestNetwork: boolean, verificationRequirements?: string }): Promise<void> {
+  const skipSmpRegistration = !shouldRegisterWithSmp({ isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements });
   await createCompanyDocumentType({
     companyDocumentType: {
       companyId: company.id,
@@ -276,37 +276,39 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
 
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
-  if (shouldInteractWithPeppolNetwork({ isPlayground: isPlaygroundTeam, useTestNetwork }) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient) {
-    if (updatedCompany.isSmpRecipient) {
-      try {
-        await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-      } catch (error) {
-        // If registration fails, unregister any company registrations that might have been registered
-        try {
-          await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-        } catch (error) {
-          // If this fails, we can't do much about it, we at least want to rollback the update of the company
-          console.error(`Failed to unregister company registrations for company ${updatedCompany.id} after registration failed: ${error}`);
-        }
-        // Also rollback the update of the company
-        await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
-        throw error;
-      }
-    } else {
+  const verificationRequirements = teamExtension?.verificationRequirements ?? undefined;
+  const wasRegistered = shouldRegisterWithSmp({ isPlayground: isPlaygroundTeam, useTestNetwork, isSmpRecipient: oldCompany.isSmpRecipient, isVerified: oldCompany.isVerified, verificationRequirements });
+  const shouldBeRegistered = shouldRegisterWithSmp({ isPlayground: isPlaygroundTeam, useTestNetwork, isSmpRecipient: updatedCompany.isSmpRecipient, isVerified: updatedCompany.isVerified, verificationRequirements });
+
+  if (!wasRegistered && shouldBeRegistered) {
+    try {
+      await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+    } catch (error) {
+      // If registration fails, unregister any company registrations that might have been registered
       try {
         await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-      } catch (error) {
-        // If unregistration fails, register all company registrations that might have been unregistered
-        try {
-          await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-        } catch (error) {
-          // If this fails, we can't do much about it, we at least want to rollback the update of the company
-          console.error(`Failed to register company registrations for company ${updatedCompany.id} after unregistration failed: ${error}`);
-        }
-        // Also rollback the update of the company
-        await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
-        throw error;
+      } catch (rollbackError) {
+        // If this fails, we can't do much about it, we at least want to rollback the update of the company
+        console.error(`Failed to unregister company registrations for company ${updatedCompany.id} after registration failed: ${rollbackError}`);
       }
+      // Also rollback the update of the company
+      await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
+      throw error;
+    }
+  } else if (wasRegistered && !shouldBeRegistered) {
+    try {
+      await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+    } catch (error) {
+      // If unregistration fails, register all company registrations that might have been unregistered
+      try {
+        await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+      } catch (rollbackError) {
+        // If this fails, we can't do much about it, we at least want to rollback the update of the company
+        console.error(`Failed to register company registrations for company ${updatedCompany.id} after unregistration failed: ${rollbackError}`);
+      }
+      // Also rollback the update of the company
+      await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
+      throw error;
     }
   } else {
     try {
@@ -354,7 +356,7 @@ export async function deleteCompany({
   const teamExtension = await getTeamExtension(teamId);
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-  if (shouldInteractWithPeppolNetwork({ isPlayground: isPlaygroundTeam, useTestNetwork }) && company.isSmpRecipient) {
+  if (shouldRegisterWithSmp({ isPlayground: isPlaygroundTeam, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
     await unregisterCompanyRegistrations({ companyId, useTestNetwork });
   }
   await db

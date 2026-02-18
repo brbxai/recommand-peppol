@@ -7,6 +7,10 @@ import { companies, companyVerificationLog } from "@peppol/db/schema";
 import { eq } from "drizzle-orm";
 import { db } from "@recommand/db";
 import { getCompanyVerificationLog, normalizeName } from "@peppol/data/company-verification";
+import { getCompanyById } from "@peppol/data/companies";
+import { getTeamExtension } from "@peppol/data/teams";
+import { upsertCompanyRegistrations } from "@peppol/data/phoss-smp";
+import { shouldRegisterWithSmp } from "@peppol/utils/playground";
 
 const server = new Server();
 
@@ -97,6 +101,21 @@ server.post(
         }
       });
 
+      // Update company SMP registrations if verification succeeded
+      if (isVerified) {
+        try {
+          const company = await getCompanyById(companyVerificationLogRecord.companyId);
+          if (company) {
+            const teamExtension = await getTeamExtension(company.teamId);
+            const useTestNetwork = teamExtension?.useTestNetwork ?? false;
+            if (shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
+              await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
+            }
+          }
+        } catch (error) {
+          console.error(`Failed to register company ${companyVerificationLogRecord.companyId} with SMP after verification:`, error);
+        }
+      }
 
       return c.json(actionSuccess({ message: "Verification status updated" }), 200);
     } catch (error) {
