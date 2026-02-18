@@ -656,3 +656,16 @@ export const integrationTaskLogs = pgTable("integration_task_logs", {
     .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
+
+export const paymentFailureReminders = pgTable("peppol_payment_failure_reminders", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => "pfr_" + ulid()),
+  billingEventId: text("billing_event_id")
+    .references(() => subscriptionBillingEvents.id, { onDelete: "cascade" })
+    .notNull(),
+  emailAddresses: text("email_addresses").notNull().array().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});

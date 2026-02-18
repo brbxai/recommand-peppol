@@ -57,4 +57,23 @@ export async function updateBillingProfile(
   } catch (error) {
     toast.error('Failed to update billing profile');
   }
+}
+
+export async function updatePaymentMethod(teamId: string) {
+  try {
+    const response = await billingProfileClient[':teamId']['billing-profile']['update-payment-method'].$post({
+      param: { teamId }
+    });
+    const data = await response.json();
+    if (!data.success) {
+      toast.error(stringifyActionFailure(data.errors));
+      return;
+    }
+
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+    }
+  } catch (error) {
+    toast.error('Failed to update payment method');
+  }
 } 

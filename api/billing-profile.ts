@@ -110,6 +110,35 @@ const _getCurrentUsage = server.get(
     }
   }
 );
+
+const _updatePaymentMethod = server.post(
+  "/:teamId/billing-profile/update-payment-method",
+  requireTeamAccess(),
+  describeRoute({ hide: true }),
+  zodValidator("param", z.object({ teamId: z.string() })),
+  async (c) => {
+    try {
+      const billingProfile = await getBillingProfile(c.var.team.id);
+
+      if (!billingProfile.mollieCustomerId) {
+        return c.json(actionFailure("Billing profile customer not found"), 404);
+      }
+
+      const payment = await createFirstPayment(billingProfile.mollieCustomerId, billingProfile.id);
+
+      if (!payment._links?.checkout?.href) {
+        return c.json(actionFailure("Payment checkout URL not found"), 500);
+      }
+
+      return c.json(actionSuccess({ checkoutUrl: payment._links.checkout.href }));
+    } catch (error) {
+      if (error instanceof Error && error.message === "Billing profile not found") {
+        return c.json(actionFailure("Billing profile not found"), 404);
+      }
+      return c.json(actionFailure("Failed to update payment method"), 500);
+    }
+  }
+);
 server.post(
   "/mollie/mandate-webhook",
   async (c) => {
@@ -137,6 +166,7 @@ server.post(
 export type BillingProfile =
   | typeof _getBillingProfile
   | typeof _upsertBillingProfile
-  | typeof _getCurrentUsage;
+  | typeof _getCurrentUsage
+  | typeof _updatePaymentMethod;
 
 export default server;

@@ -37,4 +37,14 @@ export const PAYMENT_MEANS: { key: string, code: string, name: string }[] = [
         code: "55",
         name: "Debit card",
     },
+    {
+        key: "sepa_credit_transfer",
+        code: "58",
+        name: "SEPA credit transfer",
+    },
+    {
+        key: "sepa_direct_debit",
+        code: "59",
+        name: "SEPA direct debit",
+    }
 ]

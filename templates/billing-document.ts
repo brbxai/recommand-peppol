@@ -102,13 +102,13 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
                   {{#discounts}}
                     <p class="mt-0.5 text-[11px] text-slate-500">
                       <span class="text-red-600">Discount:</span>
-                      <span class="font-mono">-{{amount}} {{currency}}</span>
+                      <span class="font-mono">{{amount}} {{currency}}</span>
                     </p>
                   {{/discounts}}
                   {{#surcharges}}
                     <p class="mt-0.5 text-[11px] text-slate-500">
                       <span class="text-green-600">Surcharge:</span>
-                      <span class="font-mono">+{{amount}} {{currency}}</span>
+                      <span class="font-mono">{{amount}} {{currency}}</span>
                     </p>
                   {{/surcharges}}
                 </td>
@@ -142,7 +142,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             <div class="flex justify-between py-1">
               <span class="text-slate-500">Discount</span>
               <span class="font-mono">
-                -{{totals.discountAmount}} {{currency}}
+                {{totals.discountAmount}} {{currency}}
               </span>
             </div>
           {{/totals.discountAmount}}
@@ -150,7 +150,7 @@ export const BILLING_DOCUMENT_TEMPLATE = `<!DOCTYPE html>
             <div class="flex justify-between py-1">
               <span class="text-slate-500">Surcharge</span>
               <span class="font-mono">
-                +{{totals.surchargeAmount}} {{currency}}
+                {{totals.surchargeAmount}} {{currency}}
               </span>
             </div>
           {{/totals.surchargeAmount}}
