@@ -34,6 +34,7 @@ type VerificationContext = {
     };
     isRepresentativeSelectionRequired: boolean;
     representatives: Representative[];
+    isPlayground: boolean;
 };
 
 export default function Page() {
@@ -101,7 +102,33 @@ export default function Page() {
     }, [activeTeam?.id, companyVerificationLogId]);
 
     const handleSubmit = async () => {
-        if (!activeTeam?.id || !companyVerificationLogId || !isFormComplete) return;
+        if (!activeTeam?.id || !companyVerificationLogId) return;
+
+        if (context?.isPlayground) {
+            try {
+                setIsSubmitting(true);
+                setSubmitError(null);
+                const response = await client[":teamId"]["companies"]["verification"][":companyVerificationLogId"]["submit-playground-verification"].$post({
+                    param: {
+                        teamId: activeTeam.id,
+                        companyVerificationLogId,
+                    },
+                });
+                const json = await response.json();
+                if (!json.success) {
+                    setSubmitError(stringifyActionFailure(json.errors));
+                    return;
+                }
+                window.location.href = `/company-verification/${companyVerificationLogId}/status`;
+            } catch (error) {
+                setSubmitError("An unexpected error occurred. Please try again.");
+            } finally {
+                setIsSubmitting(false);
+            }
+            return;
+        }
+
+        if (!isFormComplete) return;
 
         try {
             setIsSubmitting(true);
@@ -178,140 +205,180 @@ export default function Page() {
                     </p>
                 </div>
 
-                {representativeSelectionError ? (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                            {context.company.enterpriseNumber ? (
-                            <div className="text-pretty">
-                                    No registered representatives could be found for your company with enterprise number {context.company.enterpriseNumber}. Please contact <a href={`mailto:support@recommand.eu?subject=Company Verification Assistance for ${context.company.id}`} className="underline underline-offset-4 hover:text-primary/80">support@recommand.eu</a> for assistance.
-                                </div>
+                {context.isPlayground ? (
+                    <>
+                        <Card>
+                            <CardContent className="pt-6">
+                                <p className="text-sm text-muted-foreground text-pretty">
+                                    This is a playground team. Identity verification is simulated. In production environments you would have to provide proof of identity. Click the button below to verify <span className="font-medium text-foreground">{companyName}</span> immediately.
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        {submitError && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>{submitError}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            className="w-full"
+                            size="lg"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Verifying...
+                                </>
                             ) : (
-                                <div className="text-pretty">
-                                    No registered representatives could be found for your company. Please ensure your enterprise number is set correctly and try again.
-                                </div>
+                                <>
+                                    <ShieldCheck className="h-4 w-4" />
+                                    Verify Company
+                                </>
                             )}
-                        </AlertDescription>
-                    </Alert>
+                        </Button>
+                    </>
                 ) : (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Representative Details</CardTitle>
-                            <CardDescription>
-                                {showRepresentativeSelection
-                                    ? "Select your name from the list of registered representatives."
-                                    : "Enter the name of the person authorised to represent this company."
-                                }
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {showRepresentativeSelection ? (
-                                <RadioGroup
-                                    value={selectedRepresentativeIndex ?? ""}
-                                    onValueChange={(value) => setSelectedRepresentativeIndex(value)}
-                                >
-                                    {context.representatives.map((rep, index) => (
-                                        <label
-                                            key={index}
-                                            className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5"
+                    <>
+                        {representativeSelectionError ? (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>
+                                    {context.company.enterpriseNumber ? (
+                                    <div className="text-pretty">
+                                            No registered representatives could be found for your company with enterprise number {context.company.enterpriseNumber}. Please contact <a href={`mailto:support@recommand.eu?subject=Company Verification Assistance for ${context.company.id}`} className="underline underline-offset-4 hover:text-primary/80">support@recommand.eu</a> for assistance.
+                                        </div>
+                                    ) : (
+                                        <div className="text-pretty">
+                                            No registered representatives could be found for your company. Please ensure your enterprise number is set correctly and try again.
+                                        </div>
+                                    )}
+                                </AlertDescription>
+                            </Alert>
+                        ) : (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">Representative Details</CardTitle>
+                                    <CardDescription>
+                                        {showRepresentativeSelection
+                                            ? "Select your name from the list of registered representatives."
+                                            : "Enter the name of the person authorised to represent this company."
+                                        }
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {showRepresentativeSelection ? (
+                                        <RadioGroup
+                                            value={selectedRepresentativeIndex ?? ""}
+                                            onValueChange={(value) => setSelectedRepresentativeIndex(value)}
                                         >
-                                            <RadioGroupItem value={String(index)} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium leading-none">
-                                                    {rep.firstName} {rep.lastName}
-                                                </p>
-                                                {rep.function && (
-                                                    <p className="text-xs text-muted-foreground mt-1">{rep.function}</p>
-                                                )}
+                                            {context.representatives.map((rep, index) => (
+                                                <label
+                                                    key={index}
+                                                    className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors hover:bg-muted/50 has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5"
+                                                >
+                                                    <RadioGroupItem value={String(index)} />
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-medium leading-none">
+                                                            {rep.firstName} {rep.lastName}
+                                                        </p>
+                                                        {rep.function && (
+                                                            <p className="text-xs text-muted-foreground mt-1">{rep.function}</p>
+                                                        )}
+                                                    </div>
+                                                </label>
+                                            ))}
+                                        </RadioGroup>
+                                    ) : (
+                                        <div className="grid gap-4 sm:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="firstName">First name</Label>
+                                                <Input
+                                                    id="firstName"
+                                                    value={firstName}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
+                                                    placeholder="John"
+                                                />
                                             </div>
-                                        </label>
-                                    ))}
-                                </RadioGroup>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="lastName">Last name</Label>
+                                                <Input
+                                                    id="lastName"
+                                                    value={lastName}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
+                                                    placeholder="Doe"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        <Card>
+                            <CardContent className="pt-6 space-y-4">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <Checkbox
+                                        checked={acceptTerms}
+                                        onCheckedChange={(checked) => setAcceptTerms(checked === true)}
+                                        className="mt-0.5"
+                                    />
+                                    <span className="text-sm leading-snug text-muted-foreground">
+                                        I accept the{" "}
+                                        <a href="https://recommand.eu/en/legal/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                                            terms and conditions
+                                        </a>{" "}
+                                        of Recommand on behalf of <span className="font-medium text-foreground">{companyName}</span>.
+                                    </span>
+                                </label>
+
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <Checkbox
+                                        checked={confirmPermission}
+                                        onCheckedChange={(checked) => setConfirmPermission(checked === true)}
+                                        className="mt-0.5"
+                                    />
+                                    <span className="text-sm leading-snug text-muted-foreground">
+                                        I confirm that I am authorised to act on behalf of <span className="font-medium text-foreground">{companyName}</span> on the Peppol network.
+                                    </span>
+                                </label>
+                            </CardContent>
+                        </Card>
+
+                        {submitError && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertDescription>{submitError}</AlertDescription>
+                            </Alert>
+                        )}
+
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={!isFormComplete || isSubmitting}
+                            className="w-full"
+                            size="lg"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Verifying...
+                                </>
                             ) : (
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="firstName">First name</Label>
-                                        <Input
-                                            id="firstName"
-                                            value={firstName}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
-                                            placeholder="John"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="lastName">Last name</Label>
-                                        <Input
-                                            id="lastName"
-                                            value={lastName}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
-                                            placeholder="Doe"
-                                        />
-                                    </div>
-                                </div>
+                                <>
+                                    <ShieldCheck className="h-4 w-4" />
+                                    Continue to Identity Verification
+                                </>
                             )}
-                        </CardContent>
-                    </Card>
+                        </Button>
+
+                        <p className="text-xs text-center text-muted-foreground">
+                            You will be redirected to our verification partner to complete the identity check.
+                        </p>
+                    </>
                 )}
-
-                <Card>
-                    <CardContent className="pt-6 space-y-4">
-                        <label className="flex items-start gap-3 cursor-pointer">
-                            <Checkbox
-                                checked={acceptTerms}
-                                onCheckedChange={(checked) => setAcceptTerms(checked === true)}
-                                className="mt-0.5"
-                            />
-                            <span className="text-sm leading-snug text-muted-foreground">
-                                I accept the{" "}
-                                <a href="https://recommand.eu/en/legal/terms" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4 hover:text-primary/80">
-                                    terms and conditions
-                                </a>{" "}
-                                of Recommand on behalf of <span className="font-medium text-foreground">{companyName}</span>.
-                            </span>
-                        </label>
-
-                        <label className="flex items-start gap-3 cursor-pointer">
-                            <Checkbox
-                                checked={confirmPermission}
-                                onCheckedChange={(checked) => setConfirmPermission(checked === true)}
-                                className="mt-0.5"
-                            />
-                            <span className="text-sm leading-snug text-muted-foreground">
-                                I confirm that I am authorised to act on behalf of <span className="font-medium text-foreground">{companyName}</span> on the Peppol network.
-                            </span>
-                        </label>
-                    </CardContent>
-                </Card>
-
-                {submitError && (
-                    <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{submitError}</AlertDescription>
-                    </Alert>
-                )}
-
-                <Button
-                    onClick={handleSubmit}
-                    disabled={!isFormComplete || isSubmitting}
-                    className="w-full"
-                    size="lg"
-                >
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Verifying...
-                        </>
-                    ) : (
-                        <>
-                            <ShieldCheck className="h-4 w-4" />
-                            Continue to Identity Verification
-                        </>
-                    )}
-                </Button>
-
-                <p className="text-xs text-center text-muted-foreground">
-                    You will be redirected to our verification partner to complete the identity check.
-                </p>
             </div>
         </div>
     );

@@ -1,9 +1,12 @@
-import { companyVerificationLog } from "@peppol/db/schema";
+import { companies, companyVerificationLog } from "@peppol/db/schema";
 import { db } from "@recommand/db";
 import { eq } from "drizzle-orm";
 import { getEnterpriseData } from "./cbe-public-search/client";
 import { UserFacingError } from "@peppol/utils/util";
 import { getCompany, verifyCompany, type Company } from "./companies";
+import { getTeamExtension } from "./teams";
+import { shouldRegisterWithSmp } from "@peppol/utils/playground";
+import { upsertCompanyRegistrations } from "./phoss-smp";
 
 export type CompanyVerificationLog = typeof companyVerificationLog.$inferSelect;
 
@@ -77,6 +80,50 @@ export async function submitIdentityForm(
     .where(eq(companyVerificationLog.id, companyVerificationLogId))
     .returning()
     .then((rows) => rows[0]);
+}
+
+export async function submitPlaygroundVerification(
+  companyVerificationLogId: string,
+  teamId: string
+): Promise<void> {
+  const log = await getCompanyVerificationLog(companyVerificationLogId);
+  if (!log) {
+    throw new UserFacingError("Company verification log not found");
+  }
+
+  const company = await getCompany(teamId, log.companyId);
+  if (!company) {
+    throw new UserFacingError("Company not found");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(companyVerificationLog)
+      .set({ status: "verified", verificationProofReference: "PLAYGROUND" })
+      .where(eq(companyVerificationLog.id, companyVerificationLogId));
+    await tx
+      .update(companies)
+      .set({ isVerified: true, verificationProofReference: "PLAYGROUND" })
+      .where(eq(companies.id, log.companyId));
+  });
+
+  try {
+    const teamExtension = await getTeamExtension(teamId);
+    const useTestNetwork = teamExtension?.useTestNetwork ?? false;
+    if (
+      shouldRegisterWithSmp({
+        isPlayground: teamExtension?.isPlayground,
+        useTestNetwork,
+        isSmpRecipient: company.isSmpRecipient,
+        isVerified: true,
+        verificationRequirements: teamExtension?.verificationRequirements ?? undefined,
+      })
+    ) {
+      await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
+    }
+  } catch (error) {
+    console.error(`Failed to register company ${log.companyId} with SMP after playground verification:`, error);
+  }
 }
 
 export async function requestIdVerification(

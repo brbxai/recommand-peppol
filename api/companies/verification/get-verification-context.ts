@@ -2,6 +2,7 @@ import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUse
 import { getCompany } from "@peppol/data/companies";
 import { getCompanyVerificationLog } from "@peppol/data/company-verification";
 import { getEnterpriseData } from "@peppol/data/cbe-public-search/client";
+import { isPlayground } from "@peppol/data/teams";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -42,7 +43,8 @@ async function _getVerificationContextImplementation(c: GetVerificationContextCo
             return c.json(actionFailure("Company not found"), 404);
         }
 
-        const isRepresentativeSelectionRequired = company.country === "BE";
+        const teamIsPlayground = await isPlayground(c.var.team.id);
+        const isRepresentativeSelectionRequired = !teamIsPlayground && company.country === "BE";
 
         let representatives: { firstName: string; lastName: string; function: string }[] = [];
         if (isRepresentativeSelectionRequired) {
@@ -74,6 +76,7 @@ async function _getVerificationContextImplementation(c: GetVerificationContextCo
             },
             isRepresentativeSelectionRequired,
             representatives,
+            isPlayground: teamIsPlayground,
         }));
     } catch (error) {
         console.error(error);
