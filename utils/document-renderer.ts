@@ -117,6 +117,18 @@ function reverseAmountSign(value: string): string {
   return `-${trimmedValue}`;
 }
 
+function forcePositiveAmountSign(value: string): string {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return trimmedValue;
+  if (trimmedValue.startsWith("-")) {
+    return `+${trimmedValue.slice(1)}`;
+  }
+  if (trimmedValue.startsWith("+")) {
+    return trimmedValue;
+  }
+  return `+${trimmedValue}`;
+}
+
 function getDocumentTypeLabel(type: TransmittedDocument["type"]): string {
   switch (type) {
     case "invoice":
@@ -196,7 +208,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
         : undefined,
       surcharges: Array.isArray(line.surcharges) && line.surcharges.length > 0
         ? line.surcharges.map((surcharge: any) => ({
-            amount: reverseAmountSign(String(surcharge.amount ?? "")),
+            amount: forcePositiveAmountSign(String(surcharge.amount ?? "")),
           }))
         : undefined,
       // Mustache doesn't support @index, so we synthesise index+1 when building data
@@ -246,7 +258,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
               : null,
           surchargeAmount:
             totalsRaw.surchargeAmount != null
-              ? reverseAmountSign(String(totalsRaw.surchargeAmount))
+              ? forcePositiveAmountSign(String(totalsRaw.surchargeAmount))
               : null,
           payableAmount,
           paidAmount:
