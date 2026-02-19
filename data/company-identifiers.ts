@@ -1,4 +1,5 @@
 import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
+import { ENABLE_IDENTIFIER_VALIDATION, validateIdentifier } from "@peppol/utils/identifier-validation";
 import { UserFacingError, cleanEnterpriseNumber, cleanVatNumber } from "@peppol/utils/util";
 import { db } from "@recommand/db";
 import { eq, and, asc, ne, or, isNull } from "drizzle-orm";
@@ -95,11 +96,9 @@ async function validateProtectedIdentifier({
     throw new Error("Company is not associated with a team");
   }
 
-  const verificationRequirements = teamInfo.teamExtension?.verificationRequirements ?? "lax";
-  if (verificationRequirements !== "strict") {
+  if(!ENABLE_IDENTIFIER_VALIDATION) {
     return;
   }
-
   const cleanedScheme = cleanScheme(scheme);
 
   if (cleanedScheme === "0208") {
@@ -136,6 +135,11 @@ export async function createCompanyIdentifier({
   skipSmpRegistration: boolean;
   useTestNetwork: boolean;
 }): Promise<CompanyIdentifier> {
+  const cleanedScheme = cleanScheme(companyIdentifier.scheme);
+  const cleanedIdentifierValue = cleanIdentifier(companyIdentifier.identifier);
+
+  validateIdentifier(cleanedScheme, cleanedIdentifierValue);
+
   await validateProtectedIdentifier({
     scheme: companyIdentifier.scheme,
     identifier: companyIdentifier.identifier,
@@ -157,8 +161,8 @@ export async function createCompanyIdentifier({
     .insert(companyIdentifiers)
     .values({
       companyId: companyIdentifier.companyId,
-      scheme: cleanScheme(companyIdentifier.scheme),
-      identifier: cleanIdentifier(companyIdentifier.identifier),
+      scheme: cleanedScheme,
+      identifier: cleanedIdentifierValue,
     })
     .returning()
     .then((rows) => rows[0]);
@@ -184,6 +188,11 @@ export async function updateCompanyIdentifier({
     throw new UserFacingError("Company identifier not found");
   }
 
+  const cleanedScheme = cleanScheme(companyIdentifier.scheme);
+  const cleanedIdentifierValue = cleanIdentifier(companyIdentifier.identifier);
+
+  validateIdentifier(cleanedScheme, cleanedIdentifierValue);
+
   await validateProtectedIdentifier({
     scheme: companyIdentifier.scheme,
     identifier: companyIdentifier.identifier,
@@ -199,7 +208,7 @@ export async function updateCompanyIdentifier({
   }
 
   // Return if there is no change (taking lowercase into account)
-  if(oldIdentifier.scheme === cleanScheme(companyIdentifier.scheme) && oldIdentifier.identifier === cleanIdentifier(companyIdentifier.identifier)){
+  if(oldIdentifier.scheme === cleanedScheme && oldIdentifier.identifier === cleanedIdentifierValue){
     return oldIdentifier;
   }
 
@@ -211,8 +220,8 @@ export async function updateCompanyIdentifier({
   const updatedIdentifier = await db
     .update(companyIdentifiers)
     .set({
-      scheme: cleanScheme(companyIdentifier.scheme),
-      identifier: cleanIdentifier(companyIdentifier.identifier),
+      scheme: cleanedScheme,
+      identifier: cleanedIdentifierValue,
     })
     .where(
       and(

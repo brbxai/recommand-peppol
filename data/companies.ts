@@ -16,6 +16,7 @@ import { shouldRegisterWithSmp } from "@peppol/utils/playground";
 import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
 import { createVerificationSession } from "./didit/client";
 import { getCompanyVerificationLog } from "./company-verification";
+import { ENABLE_IDENTIFIER_VALIDATION } from "@peppol/utils/identifier-validation";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -120,6 +121,16 @@ export async function getCompanyByPeppolId({
 }
 
 export async function createCompany(company: InsertCompany & { skipDefaultCompanySetup: boolean }): Promise<Company> {
+  if (ENABLE_IDENTIFIER_VALIDATION) {
+    const cleanedVat = cleanVatNumber(company.vatNumber);
+    if (cleanedVat && !/^[A-Z]{2}/.test(cleanedVat)) {
+      throw new UserFacingError("VAT number must start with a country code (e.g. BE, NL, DE)");
+    }
+    if (cleanedVat && company.country && cleanedVat.substring(0, 2) !== company.country) {
+      throw new UserFacingError(`VAT number country code (${cleanedVat.substring(0, 2)}) does not match the selected country (${company.country})`);
+    }
+  }
+
   const teamExtension = await getTeamExtension(company.teamId);
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
@@ -212,9 +223,24 @@ async function setupCompanyDefaults({ company, isPlayground, useTestNetwork, ver
 }
 
 export async function updateCompany(company: Partial<InsertCompany> & { id: string; teamId: string }): Promise<Company> {
+  const newCleanedVatNumber = cleanVatNumber(company.vatNumber);
+  if (ENABLE_IDENTIFIER_VALIDATION) {
+    if (newCleanedVatNumber && !/^[A-Z]{2}/.test(newCleanedVatNumber)) {
+      throw new UserFacingError("VAT number must start with a country code (e.g. BE, NL, DE)");
+    }
+  }
+
   const oldCompany = await getCompany(company.teamId, company.id);
   if (!oldCompany) {
     throw new UserFacingError("Company not found");
+  }
+
+  if (ENABLE_IDENTIFIER_VALIDATION) {
+    const effectiveCountry = company.country ?? oldCompany.country;
+    const effectiveVat = newCleanedVatNumber ?? cleanVatNumber(oldCompany.vatNumber);
+    if (effectiveVat && effectiveCountry && effectiveVat.substring(0, 2) !== effectiveCountry) {
+      throw new UserFacingError(`VAT number country code (${effectiveVat.substring(0, 2)}) does not match the selected country (${effectiveCountry})`);
+    }
   }
 
   const teamExtension = await getTeamExtension(company.teamId);
@@ -228,7 +254,6 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
   const oldCleanedEnterpriseNumber = cleanEnterpriseNumber(oldCompany.enterpriseNumber);
   const newCleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
   const oldCleanedVatNumber = cleanVatNumber(oldCompany.vatNumber);
-  const newCleanedVatNumber = cleanVatNumber(company.vatNumber);
   
   const enterpriseNumberChanged = company.enterpriseNumber !== undefined && oldCleanedEnterpriseNumber !== newCleanedEnterpriseNumber;
   const vatNumberChanged = company.vatNumber !== undefined && oldCleanedVatNumber !== newCleanedVatNumber;
