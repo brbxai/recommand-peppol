@@ -11,6 +11,7 @@ import { getCompanyById } from "@peppol/data/companies";
 import { getTeamExtension } from "@peppol/data/teams";
 import { upsertCompanyRegistrations } from "@peppol/data/phoss-smp";
 import { shouldRegisterWithSmp } from "@peppol/utils/playground";
+import { callWebhooks } from "@peppol/data/webhooks";
 
 const server = new Server();
 
@@ -102,19 +103,25 @@ server.post(
       });
 
       // Update company SMP registrations if verification succeeded
-      if (isVerified) {
+      const company = await getCompanyById(companyVerificationLogRecord.companyId);
+      if (isVerified && company) {
         try {
-          const company = await getCompanyById(companyVerificationLogRecord.companyId);
-          if (company) {
-            const teamExtension = await getTeamExtension(company.teamId);
-            const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-            if (shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
-              await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
-            }
+          const teamExtension = await getTeamExtension(company.teamId);
+          const useTestNetwork = teamExtension?.useTestNetwork ?? false;
+          if (shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
+            await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
           }
         } catch (error) {
           console.error(`Failed to register company ${companyVerificationLogRecord.companyId} with SMP after verification:`, error);
         }
+      }
+
+      if (company) {
+        await callWebhooks(company.teamId, company.id, "company.verification", {
+          companyId: company.id,
+          teamId: company.teamId,
+          status: isVerified ? "verified" : "rejected",
+        });
       }
 
       return c.json(actionSuccess({ message: "Verification status updated" }), 200);

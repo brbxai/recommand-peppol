@@ -1,7 +1,7 @@
 import { db } from "@recommand/db";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import { getCompanyByPeppolId } from "@peppol/data/companies";
-import { callWebhook, getWebhooksByCompany } from "@peppol/data/webhooks";
+import { callWebhooks } from "@peppol/data/webhooks";
 import { UserFacingError } from "@peppol/utils/util";
 import { parseDocument } from "@peppol/utils/parsing/parse-document";
 import { DOCUMENT_SCHEME, PROCESS_SCHEME } from "./phoss-smp/service-metadata";
@@ -92,22 +92,11 @@ export async function receiveDocument(options: {
     .then((rows) => rows[0]);
 
   // Call the webhooks
-  try {
-    const webhooks = await getWebhooksByCompany(company.teamId, company.id);
-    for (const webhook of webhooks) {
-      try {
-        await callWebhook(webhook, {
-          id: transmittedDocument.id,
-          teamId: company.teamId,
-          companyId: company.id,
-        }, "document.received");
-      } catch (error) {
-        console.error("Failed to call webhook:", error);
-      }
-    }
-  } catch (error) {
-    console.error("Failed to call webhooks:", error);
-  }
+  await callWebhooks(company.teamId, company.id, "document.received", {
+    documentId: transmittedDocument.id,
+    teamId: company.teamId,
+    companyId: company.id,
+  });
 
   // Create a new transferEvent for billing
   if (!options.skipBilling) {

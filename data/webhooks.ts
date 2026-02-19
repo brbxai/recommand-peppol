@@ -72,23 +72,31 @@ export async function deleteWebhook(
     .where(and(eq(webhooks.teamId, teamId), eq(webhooks.id, webhookId)));
 } 
 
-export async function callWebhook(
-  webhook: Webhook,
-  transmittedDocument: { id: string, teamId: string, companyId: string },
+export async function callWebhooks(
+  teamId: string,
+  companyId: string,
   eventType: string,
   data: Record<string, string> = {}
 ) {
-  const response = await fetch(webhook.url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      ...data,
-      eventType,
-      documentId: transmittedDocument.id,
-      teamId: transmittedDocument.teamId,
-      companyId: transmittedDocument.companyId,
-    }),
-  });
+  try {
+    const matchedWebhooks = await getWebhooksByCompany(teamId, companyId);
+    for (const webhook of matchedWebhooks) {
+      try {
+        await fetch(webhook.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            eventType,
+            ...data,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to call webhook:", error);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to call webhooks:", error);
+  }
 }

@@ -7,6 +7,7 @@ import { getCompany, verifyCompany, type Company } from "./companies";
 import { getTeamExtension } from "./teams";
 import { shouldRegisterWithSmp } from "@peppol/utils/playground";
 import { upsertCompanyRegistrations } from "./phoss-smp";
+import { callWebhooks } from "@peppol/data/webhooks";
 
 export type CompanyVerificationLog = typeof companyVerificationLog.$inferSelect;
 
@@ -124,6 +125,12 @@ export async function submitPlaygroundVerification(
   } catch (error) {
     console.error(`Failed to register company ${log.companyId} with SMP after playground verification:`, error);
   }
+
+  await callWebhooks(teamId, company.id, "company.verification", {
+    companyId: company.id,
+    teamId,
+    status: "verified",
+  });
 }
 
 export async function requestIdVerification(
