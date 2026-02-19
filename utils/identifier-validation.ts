@@ -1,6 +1,6 @@
 import { UserFacingError } from "@peppol/utils/util";
 
-export const ENABLE_IDENTIFIER_VALIDATION = false;
+export const ENABLE_IDENTIFIER_VALIDATION = false; // TODO: change to true when ready to enforce
 
 type IdentifierValidator = (identifier: string) => void;
 
