@@ -425,7 +425,10 @@ export default function TransmittedDocumentDetailPage() {
                         key={attachment.id ?? `${attachment.filename}-${index}`}
                         value={`attachment-${index}`}
                       >
-                        {attachment.filename || attachment.description || (attachment.url ? "External link" : `Attachment ${index + 1}`)}
+                        {(() => {
+                          const label = attachment.filename || attachment.description || (attachment.url ? "External link" : `Attachment ${index + 1}`);
+                          return label.length > 24 ? `${label.slice(0, 24)}…` : label;
+                        })()}
                       </TabsTrigger>
                     ))}
                   </TabsList>
