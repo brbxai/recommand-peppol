@@ -14,6 +14,7 @@ import {
   ArrowUp,
   Copy,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 import {
   Card,
@@ -85,7 +86,7 @@ export default function TransmittedDocumentDetailPage() {
             documentId: id,
           },
         });
-        const json = await response.json();
+        const json = await response.json() as any;
 
         if (!json.success) {
           toast.error(stringifyActionFailure(json.errors));
@@ -424,7 +425,7 @@ export default function TransmittedDocumentDetailPage() {
                         key={attachment.id ?? `${attachment.filename}-${index}`}
                         value={`attachment-${index}`}
                       >
-                        {attachment.filename || `Attachment ${index + 1}`}
+                        {attachment.filename || attachment.description || (attachment.url ? "External link" : `Attachment ${index + 1}`)}
                       </TabsTrigger>
                     ))}
                   </TabsList>
@@ -486,14 +487,30 @@ export default function TransmittedDocumentDetailPage() {
                     }
                   }
 
+                  const isUrlOnly = !hasEmbedded && !!attachment.url;
+                  const attachmentTitle =
+                    attachment.description ||
+                    attachment.filename ||
+                    (attachment.url
+                      ? (() => {
+                          try {
+                            return new URL(attachment.url).hostname;
+                          } catch {
+                            return attachment.url;
+                          }
+                        })()
+                      : null) ||
+                    "Attachment";
+                  const showMimeType = hasEmbedded || (!isUrlOnly && mimeType !== "application/octet-stream");
+
                   return (
                     <TabsContent key={tabValue} value={tabValue}>
                       <div className="space-y-3">
                         <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
                           <span className="font-mono break-all">
-                            {attachment.filename || "Unnamed attachment"}
+                            {attachmentTitle}
                           </span>
-                          {mimeType && (
+                          {showMimeType && (
                             <>
                               <span>•</span>
                               <span>{mimeType}</span>
@@ -541,18 +558,23 @@ export default function TransmittedDocumentDetailPage() {
                           )}
 
                         {!hasEmbedded && attachment.url && (
-                          <p className="text-sm text-muted-foreground">
-                            This attachment is referenced externally.{" "}
-                            <a
-                              href={attachment.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-primary underline break-all"
-                            >
-                              Open external reference
-                            </a>
-                            .
-                          </p>
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-3 rounded-md border bg-muted/40 px-4 py-3">
+                              <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                              <span className="flex-1 text-sm break-all text-muted-foreground">
+                                {attachment.url}
+                              </span>
+                              <a
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                              >
+                                Open link
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
                         )}
 
                         {hasEmbedded &&
