@@ -73,9 +73,10 @@ const schemeValidators: Record<string, IdentifierValidator> = {
 
 export function validateIdentifier(
   scheme: string,
-  identifier: string
+  identifier: string,
+  force: boolean = false
 ): void {
-  if (!ENABLE_IDENTIFIER_VALIDATION) {
+  if (!ENABLE_IDENTIFIER_VALIDATION && !force) {
     return;
   }
   const validator = schemeValidators[scheme];
