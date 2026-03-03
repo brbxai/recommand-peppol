@@ -12,7 +12,7 @@ import { callWebhooks } from "@peppol/data/webhooks";
 export type CompanyVerificationLog = typeof companyVerificationLog.$inferSelect;
 
 export function normalizeName(name: string): string {
-  return name.toLowerCase().trim().replace(/[^a-zA-Z]/g, "");
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-zA-Z]/g, "");
 }
 
 export async function getCompanyVerificationLog(

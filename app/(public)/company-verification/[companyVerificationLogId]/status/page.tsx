@@ -156,7 +156,6 @@ export default function Page() {
             <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
                 <div className="w-full max-w-lg space-y-8">
                     <div className="text-center space-y-2">
-                        <img src="/logo.svg" alt="Recommand" className="h-7 w-auto mx-auto opacity-40 mb-12 -mt-12" />
                         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 mb-2">
                             <ShieldCheck className="h-6 w-6 text-green-600" />
                         </div>

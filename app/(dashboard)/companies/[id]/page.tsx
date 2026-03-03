@@ -201,8 +201,8 @@ export default function CompanyDetailPage() {
         throw new Error(stringifyActionFailure(json.errors));
       }
 
-      window.location.href = json.verificationUrl;
-      toast.success("Redirecting to verification session");
+      window.open(json.verificationUrl, "_blank");
+      toast.success("Verification session opened in a new tab");
     } catch (error) {
       toast.error("Failed to create verification session: " + error);
     } finally {
