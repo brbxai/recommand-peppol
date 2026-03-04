@@ -13,7 +13,7 @@ import { createCompanyDocumentType } from "./company-document-types";
 import { canUpsertCompanyIdentifier, createCompanyIdentifier, getCompanyIdentifiers } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
 import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
-import { CREDIT_NOTE_DOCUMENT_TYPE_INFO, INVOICE_DOCUMENT_TYPE_INFO } from "@peppol/utils/document-types";
+
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -155,26 +155,19 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
  */
 async function setupCompanyDefaults({ company, isPlayground, useTestNetwork }: { company: Company, isPlayground: boolean, useTestNetwork: boolean }): Promise<void> {
   const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground, useTestNetwork }) || !company.isSmpRecipient;
-  await createCompanyDocumentType({
-    companyDocumentType: {
-      companyId: company.id,
-      docTypeId: INVOICE_DOCUMENT_TYPE_INFO.docTypeId,
-      processId: INVOICE_DOCUMENT_TYPE_INFO.processId,
-    },
-    skipSmpRegistration,
-    useTestNetwork,
-  });
-  await createCompanyDocumentType({
-    companyDocumentType: {
-      companyId: company.id,
-      docTypeId: CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId,
-      processId: CREDIT_NOTE_DOCUMENT_TYPE_INFO.processId,
-    },
-    skipSmpRegistration,
-    useTestNetwork,
-  });
-
   const countryInfo = COUNTRIES.find((country) => country.code === company.country);
+
+  for (const documentType of countryInfo?.defaultDocumentTypes ?? []) {
+    await createCompanyDocumentType({
+      companyDocumentType: {
+        companyId: company.id,
+        docTypeId: documentType.docTypeId,
+        processId: documentType.processId,
+      },
+      skipSmpRegistration,
+      useTestNetwork,
+    });
+  }
   const cleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
   if (countryInfo?.defaultEnterpriseNumberScheme && cleanedEnterpriseNumber) {
     try {
