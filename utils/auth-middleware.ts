@@ -66,14 +66,14 @@ export function requireCompanyAccess(options: CompanyAccessOptions = {}) {
     }
 
     const contextTeamId = c.get("teamId");
+    const user: { id: string; isAdmin: boolean } | null = c.get("user");
     if (contextTeamId) {
       // If the user is authenticated via an API key, ensure the API key belongs to the team
-      if (contextTeamId !== company.teamId) {
+      // Admins bypass this check and can access any company
+      if (!user?.isAdmin && contextTeamId !== company.teamId) {
         return c.json(actionFailure("Unauthorized"), 401);
       }
     } else {
-      // Get user from context
-      const user: { id: string; isAdmin: boolean } | null = c.get("user");
       if (!user?.id) {
         return c.json(actionFailure("Unauthorized"), 401);
       }
