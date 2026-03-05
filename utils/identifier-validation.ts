@@ -1,7 +1,5 @@
 import { UserFacingError } from "@peppol/utils/util";
 
-export const ENABLE_IDENTIFIER_VALIDATION = false; // TODO: change to true when ready to enforce
-
 type IdentifierValidator = (identifier: string) => void;
 
 function validateBelgianEnterpriseNumber(identifier: string): void {
@@ -74,11 +72,7 @@ const schemeValidators: Record<string, IdentifierValidator> = {
 export function validateIdentifier(
   scheme: string,
   identifier: string,
-  force: boolean = false
 ): void {
-  if (!ENABLE_IDENTIFIER_VALIDATION && !force) {
-    return;
-  }
   const validator = schemeValidators[scheme];
   if (!validator) {
     return;

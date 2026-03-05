@@ -2,7 +2,6 @@ import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { useActiveTeam } from "@core/hooks/user";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
@@ -39,7 +38,6 @@ type VerificationContext = {
 
 export default function Page() {
     const { companyVerificationLogId } = useParams<{ companyVerificationLogId: string }>();
-    const activeTeam = useActiveTeam();
 
     const [context, setContext] = useState<VerificationContext | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -73,17 +71,14 @@ export default function Page() {
         confirmPermission;
 
     useEffect(() => {
-        if (!activeTeam?.id || !companyVerificationLogId) return;
+        if (!companyVerificationLogId) return;
 
         const fetchContext = async () => {
             try {
                 setIsLoading(true);
                 setLoadError(null);
-                const response = await client[":teamId"]["companies"]["verification"][":companyVerificationLogId"]["context"].$get({
-                    param: {
-                        teamId: activeTeam.id,
-                        companyVerificationLogId,
-                    },
+                const response = await client["companies"]["verification"][":companyVerificationLogId"]["context"].$get({
+                    param: { companyVerificationLogId },
                 });
                 const json = await response.json();
                 if (!json.success) {
@@ -99,20 +94,17 @@ export default function Page() {
         };
 
         fetchContext();
-    }, [activeTeam?.id, companyVerificationLogId]);
+    }, [companyVerificationLogId]);
 
     const handleSubmit = async () => {
-        if (!activeTeam?.id || !companyVerificationLogId) return;
+        if (!companyVerificationLogId) return;
 
         if (context?.isPlayground) {
             try {
                 setIsSubmitting(true);
                 setSubmitError(null);
-                const response = await client[":teamId"]["companies"]["verification"][":companyVerificationLogId"]["submit-playground-verification"].$post({
-                    param: {
-                        teamId: activeTeam.id,
-                        companyVerificationLogId,
-                    },
+                const response = await client["companies"]["verification"][":companyVerificationLogId"]["submit-playground-verification"].$post({
+                    param: { companyVerificationLogId },
                 });
                 const json = await response.json();
                 if (!json.success) {
@@ -133,11 +125,8 @@ export default function Page() {
         try {
             setIsSubmitting(true);
             setSubmitError(null);
-            const response = await client[":teamId"]["companies"]["verification"][":companyVerificationLogId"]["submit-identity-form"].$post({
-                param: {
-                    teamId: activeTeam.id,
-                    companyVerificationLogId,
-                },
+            const response = await client["companies"]["verification"][":companyVerificationLogId"]["submit-identity-form"].$post({
+                param: { companyVerificationLogId },
                 json: {
                     firstName: effectiveFirstName,
                     lastName: effectiveLastName,

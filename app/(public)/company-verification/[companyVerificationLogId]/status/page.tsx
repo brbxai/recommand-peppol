@@ -2,11 +2,11 @@ import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useActiveTeam } from "@core/hooks/user";
 import { stringifyActionFailure } from "@recommand/lib/utils";
+import { Button } from "@core/components/ui/button";
 import { Card, CardContent } from "@core/components/ui/card";
 import { Alert, AlertDescription } from "@core/components/ui/alert";
-import { Loader2, AlertCircle, ShieldCheck, XCircle } from "lucide-react";
+import { Loader2, AlertCircle, ShieldCheck, XCircle, RefreshCw } from "lucide-react";
 
 const client = rc<Companies>("v1");
 
@@ -24,23 +24,21 @@ type StatusData = {
 
 export default function Page() {
     const { companyVerificationLogId } = useParams<{ companyVerificationLogId: string }>();
-    const activeTeam = useActiveTeam();
     const navigate = useNavigate();
 
     const [statusData, setStatusData] = useState<StatusData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
+    const [isRestarting, setIsRestarting] = useState(false);
+    const [restartError, setRestartError] = useState<string | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const fetchStatus = useCallback(async () => {
-        if (!activeTeam?.id || !companyVerificationLogId) return;
+        if (!companyVerificationLogId) return;
 
         try {
-            const response = await client[":teamId"]["companies"]["verification"][":companyVerificationLogId"]["context"].$get({
-                param: {
-                    teamId: activeTeam.id,
-                    companyVerificationLogId,
-                },
+            const response = await client["companies"]["verification"][":companyVerificationLogId"]["status"].$get({
+                param: { companyVerificationLogId },
             });
             const json = await response.json();
             if (!json.success) {
@@ -50,18 +48,19 @@ export default function Page() {
 
             const data = json as unknown as {
                 success: true;
-                verificationLog: { id: string; status: VerificationStatus; companyName: string | null };
-                company: { id: string; name: string; enterpriseNumber: string | null };
+                status: VerificationStatus;
+                companyName: string;
+                companyId: string;
             };
 
-            const status = data.verificationLog.status;
+            const status = data.status;
 
             if (!(FINAL_STATUSES as readonly string[]).includes(status) && !(POLLING_STATUSES as readonly string[]).includes(status)) {
                 navigate(`/company-verification/${companyVerificationLogId}/verify`, { replace: true });
                 return;
             }
 
-            setStatusData({ status, companyName: data.company.name, companyId: data.company.id });
+            setStatusData({ status, companyName: data.companyName, companyId: data.companyId });
             setIsLoading(false);
 
             if ((FINAL_STATUSES as readonly string[]).includes(status) && intervalRef.current) {
@@ -72,10 +71,33 @@ export default function Page() {
             setLoadError("Failed to load verification status. Please try again.");
             setIsLoading(false);
         }
-    }, [activeTeam?.id, companyVerificationLogId, navigate]);
+    }, [companyVerificationLogId, navigate]);
+
+    const handleRestart = useCallback(async () => {
+        if (!companyVerificationLogId) return;
+        try {
+            setIsRestarting(true);
+            setRestartError(null);
+            const response = await client["companies"]["verification"][":companyVerificationLogId"]["restart-id-verification"].$post({
+                param: { companyVerificationLogId },
+            });
+            const json = await response.json();
+            if (!json.success) {
+                setRestartError(stringifyActionFailure(json.errors));
+                return;
+            }
+            if ("verificationUrl" in json) {
+                window.location.href = json.verificationUrl as string;
+            }
+        } catch {
+            setRestartError("An unexpected error occurred. Please try again.");
+        } finally {
+            setIsRestarting(false);
+        }
+    }, [companyVerificationLogId]);
 
     useEffect(() => {
-        if (!activeTeam?.id || !companyVerificationLogId) return;
+        if (!companyVerificationLogId) return;
 
         fetchStatus();
 
@@ -87,7 +109,7 @@ export default function Page() {
                 intervalRef.current = null;
             }
         };
-    }, [activeTeam?.id, companyVerificationLogId, fetchStatus]);
+    }, [companyVerificationLogId, fetchStatus]);
 
     if (isLoading) {
         return (
@@ -146,6 +168,35 @@ export default function Page() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {restartError && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>{restartError}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    <div className="text-center space-y-2">
+                        <p className="text-xs text-muted-foreground">Did not complete the identity check?</p>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleRestart}
+                            disabled={isRestarting}
+                        >
+                            {isRestarting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Restarting...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="h-4 w-4" />
+                                    Restart identity verification
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </div>
             </div>
         );

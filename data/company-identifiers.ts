@@ -1,5 +1,5 @@
 import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
-import { ENABLE_IDENTIFIER_VALIDATION, validateIdentifier } from "@peppol/utils/identifier-validation";
+import { validateIdentifier } from "@peppol/utils/identifier-validation";
 import { UserFacingError, cleanEnterpriseNumber, cleanVatNumber } from "@peppol/utils/util";
 import { db } from "@recommand/db";
 import { eq, and, asc, ne, or, isNull } from "drizzle-orm";
@@ -96,9 +96,6 @@ async function validateProtectedIdentifier({
     throw new Error("Company is not associated with a team");
   }
 
-  if(!ENABLE_IDENTIFIER_VALIDATION) {
-    return;
-  }
   const cleanedScheme = cleanScheme(scheme);
 
   if (cleanedScheme === "0208") {

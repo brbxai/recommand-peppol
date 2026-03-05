@@ -1,32 +1,28 @@
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
-import { getCompany } from "@peppol/data/companies";
+import { getCompanyById } from "@peppol/data/companies";
 import { getCompanyVerificationLog, requestIdVerification, submitIdentityForm } from "@peppol/data/company-verification";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { UserFacingError } from "@peppol/utils/util";
 import { describeRoute } from "hono-openapi";
 
 const server = new Server();
 
 const submitIdentityFormParamSchema = z.object({
-    teamId: z.string(),
     companyVerificationLogId: z.string(),
 });
 
 const submitIdentityFormJsonBodySchema = z.object({
-    firstName: z.string(),
-    lastName: z.string(),
+    firstName: z.string().trim().min(1),
+    lastName: z.string().trim().min(1),
 });
 
-type SubmitIdentityFormContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof submitIdentityFormParamSchema>, json: z.input<typeof submitIdentityFormJsonBodySchema> }, out: { param: z.infer<typeof submitIdentityFormParamSchema>, json: z.infer<typeof submitIdentityFormJsonBodySchema> } }>;
+type SubmitIdentityFormContext = Context<Record<string, never>, string, { in: { param: z.input<typeof submitIdentityFormParamSchema>, json: z.input<typeof submitIdentityFormJsonBodySchema> }, out: { param: z.infer<typeof submitIdentityFormParamSchema>, json: z.infer<typeof submitIdentityFormJsonBodySchema> } }>;
 
 const _submitIdentityForm = server.post(
-    "/:teamId/companies/verification/:companyVerificationLogId/submit-identity-form",
-    requireTeamAccess(),
+    "/companies/verification/:companyVerificationLogId/submit-identity-form",
     describeRoute({ hide: true }),
     zodValidator("param", submitIdentityFormParamSchema),
     zodValidator("json", submitIdentityFormJsonBodySchema),
@@ -35,27 +31,22 @@ const _submitIdentityForm = server.post(
 
 async function _submitIdentityFormImplementation(c: SubmitIdentityFormContext) {
     try {
-        const companyVerificationLogId = c.req.valid("param").companyVerificationLogId;
-        const firstName = c.req.valid("json").firstName;
-        const lastName = c.req.valid("json").lastName;
+        const { companyVerificationLogId } = c.req.valid("param");
+        const { firstName, lastName } = c.req.valid("json");
 
-        // Get the company verification log
-        const companyVerificationLog = await getCompanyVerificationLog(companyVerificationLogId);
-        if (!companyVerificationLog) {
+        const verificationLog = await getCompanyVerificationLog(companyVerificationLogId);
+        if (!verificationLog) {
             return c.json(actionFailure("Company verification log not found"), 404);
         }
 
-        // Ensure the company verification log belongs to the team
-        const company = await getCompany(c.var.team.id, companyVerificationLog.companyId);
+        const company = await getCompanyById(verificationLog.companyId);
         if (!company) {
-            return c.json(actionFailure("Company verification log not found"), 404);
+            return c.json(actionFailure("Company not found"), 404);
         }
 
-        // Submit the identity form
-        await submitIdentityForm(companyVerificationLogId, company, firstName, lastName);
+        const updatedLog = await submitIdentityForm(companyVerificationLogId, verificationLog, company, firstName, lastName);
 
-        // Request ID verification
-        const verificationUrl = await requestIdVerification(companyVerificationLogId);
+        const verificationUrl = await requestIdVerification(companyVerificationLogId, updatedLog);
         return c.json(actionSuccess({ verificationUrl }));
     } catch (error) {
         console.error(error);
@@ -66,8 +57,6 @@ async function _submitIdentityFormImplementation(c: SubmitIdentityFormContext) {
     }
 }
 
-
 export type SubmitIdentityForm = typeof _submitIdentityForm;
 
 export default server;
-

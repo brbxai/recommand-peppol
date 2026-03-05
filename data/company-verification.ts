@@ -12,7 +12,12 @@ import { callWebhooks } from "@peppol/data/webhooks";
 export type CompanyVerificationLog = typeof companyVerificationLog.$inferSelect;
 
 export function normalizeName(name: string): string {
-  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-zA-Z]/g, "");
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z]/g, "");
 }
 
 export async function getCompanyVerificationLog(
@@ -50,10 +55,15 @@ export async function createCompanyVerificationLog({
 
 export async function submitIdentityForm(
   companyVerificationLogId: string,
+  log: CompanyVerificationLog,
   company: Company,
   firstName: string,
   lastName: string
 ): Promise<CompanyVerificationLog> {
+  if (log.status !== "opened") {
+    throw new UserFacingError("This verification has already been submitted.");
+  }
+
   if (company.country === "BE") {
     if (!company.enterpriseNumber) {
       throw new UserFacingError("Company does not have an enterprise number. Please complete the company details first.");
@@ -85,16 +95,11 @@ export async function submitIdentityForm(
 
 export async function submitPlaygroundVerification(
   companyVerificationLogId: string,
-  teamId: string
+  log: CompanyVerificationLog,
+  company: Company
 ): Promise<void> {
-  const log = await getCompanyVerificationLog(companyVerificationLogId);
-  if (!log) {
-    throw new UserFacingError("Company verification log not found");
-  }
-
-  const company = await getCompany(teamId, log.companyId);
-  if (!company) {
-    throw new UserFacingError("Company not found");
+  if (log.status === "verified" || log.status === "rejected") {
+    throw new UserFacingError("This verification has already been completed.");
   }
 
   await db.transaction(async (tx) => {
@@ -105,11 +110,11 @@ export async function submitPlaygroundVerification(
     await tx
       .update(companies)
       .set({ isVerified: true, verificationProofReference: "PLAYGROUND" })
-      .where(eq(companies.id, log.companyId));
+      .where(eq(companies.id, company.id));
   });
 
   try {
-    const teamExtension = await getTeamExtension(teamId);
+    const teamExtension = await getTeamExtension(company.teamId);
     const useTestNetwork = teamExtension?.useTestNetwork ?? false;
     if (
       shouldRegisterWithSmp({
@@ -123,19 +128,24 @@ export async function submitPlaygroundVerification(
       await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
     }
   } catch (error) {
-    console.error(`Failed to register company ${log.companyId} with SMP after playground verification:`, error);
+    console.error(`Failed to register company ${company.id} with SMP after playground verification:`, error);
   }
 
-  await callWebhooks(teamId, company.id, "company.verification", {
+  await callWebhooks(company.teamId, company.id, "company.verification", {
     companyId: company.id,
-    teamId,
+    teamId: company.teamId,
     status: "verified",
   });
 }
 
 export async function requestIdVerification(
-  companyVerificationLogId: string
+  companyVerificationLogId: string,
+  log: CompanyVerificationLog
 ): Promise<string> {
+  if (log.status !== "formSubmitted" && log.status !== "idVerificationRequested") {
+    throw new UserFacingError("Verification is not in a state that allows identity verification.");
+  }
+
   const baseUrl = process.env.BASE_URL;
   if (!baseUrl) {
     throw new Error("BASE_URL environment variable is not set");

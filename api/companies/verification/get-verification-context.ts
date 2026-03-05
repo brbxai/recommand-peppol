@@ -1,5 +1,4 @@
-import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
-import { getCompany } from "@peppol/data/companies";
+import { getCompanyById } from "@peppol/data/companies";
 import { getCompanyVerificationLog } from "@peppol/data/company-verification";
 import { getEnterpriseData } from "@peppol/data/cbe-public-search/client";
 import { isPlayground } from "@peppol/data/teams";
@@ -9,21 +8,18 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
-import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { UserFacingError } from "@peppol/utils/util";
 
 const server = new Server();
 
 const getVerificationContextParamSchema = z.object({
-    teamId: z.string(),
     companyVerificationLogId: z.string(),
 });
 
-type GetVerificationContextContext = Context<AuthenticatedUserContext & AuthenticatedTeamContext & CompanyAccessContext, string, { in: { param: z.input<typeof getVerificationContextParamSchema> }, out: { param: z.infer<typeof getVerificationContextParamSchema> } }>;
+type GetVerificationContextContext = Context<Record<string, never>, string, { in: { param: z.input<typeof getVerificationContextParamSchema> }, out: { param: z.infer<typeof getVerificationContextParamSchema> } }>;
 
 const _getVerificationContext = server.get(
-    "/:teamId/companies/verification/:companyVerificationLogId/context",
-    requireTeamAccess(),
+    "/companies/verification/:companyVerificationLogId/context",
     describeRoute({ hide: true }),
     zodValidator("param", getVerificationContextParamSchema),
     _getVerificationContextImplementation,
@@ -31,19 +27,19 @@ const _getVerificationContext = server.get(
 
 async function _getVerificationContextImplementation(c: GetVerificationContextContext) {
     try {
-        const companyVerificationLogId = c.req.valid("param").companyVerificationLogId;
+        const { companyVerificationLogId } = c.req.valid("param");
 
         const verificationLog = await getCompanyVerificationLog(companyVerificationLogId);
         if (!verificationLog) {
             return c.json(actionFailure("Company verification log not found"), 404);
         }
 
-        const company = await getCompany(c.var.team.id, verificationLog.companyId);
+        const company = await getCompanyById(verificationLog.companyId);
         if (!company) {
             return c.json(actionFailure("Company not found"), 404);
         }
 
-        const teamIsPlayground = await isPlayground(c.var.team.id);
+        const teamIsPlayground = await isPlayground(company.teamId);
         const isRepresentativeSelectionRequired = !teamIsPlayground && company.country === "BE";
 
         let representatives: { firstName: string; lastName: string; function: string }[] = [];

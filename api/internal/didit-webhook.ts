@@ -2,6 +2,7 @@ import { Server } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { describeRoute } from "hono-openapi";
 import { createHmac, timingSafeEqual } from "crypto";
+import { z } from "zod";
 import { UserFacingError } from "@peppol/utils/util";
 import { companies, companyVerificationLog } from "@peppol/db/schema";
 import { eq } from "drizzle-orm";
@@ -54,19 +55,28 @@ server.post(
         return c.json(actionFailure("Invalid signature"), 401);
       }
 
-      const body = JSON.parse(rawBody);
-      const { session_id, status, vendor_data, webhook_type } = body;
+      const diditWebhookSchema = z.object({
+        session_id: z.string(),
+        status: z.string(),
+        vendor_data: z.string(),
+        webhook_type: z.string(),
+        decision: z.object({
+          id_verification: z.object({
+            first_name: z.string().optional(),
+            last_name: z.string().optional(),
+          }).optional(),
+        }).optional(),
+      });
+
+      const parseResult = diditWebhookSchema.safeParse(JSON.parse(rawBody));
+      if (!parseResult.success) {
+        return c.json(actionFailure("Invalid webhook payload"), 400);
+      }
+
+      const { session_id, status, vendor_data, webhook_type, decision } = parseResult.data;
 
       if (webhook_type !== "status.updated") {
         return c.json(actionSuccess({ message: "Webhook type not processed" }), 200);
-      }
-
-      if (!vendor_data) {
-        return c.json(actionFailure("Missing vendor_data"), 400);
-      }
-
-      if (!session_id) {
-        return c.json(actionFailure("Missing session_id"), 400);
       }
 
       const companyVerificationLogRecord = await getCompanyVerificationLog(vendor_data);
@@ -79,12 +89,10 @@ server.post(
 
       if (
         status === "Approved" &&
-        "decision" in body &&
-        "id_verification" in body.decision &&
-        "first_name" in body.decision.id_verification &&
-        "last_name" in body.decision.id_verification) {
-        const diditFirstName = body.decision.id_verification.first_name;
-        const diditLastName = body.decision.id_verification.last_name;
+        decision?.id_verification?.first_name &&
+        decision?.id_verification?.last_name) {
+        const diditFirstName = decision.id_verification.first_name;
+        const diditLastName = decision.id_verification.last_name;
         const storedFirstName = companyVerificationLogRecord.firstName;
         const storedLastName = companyVerificationLogRecord.lastName;
 
