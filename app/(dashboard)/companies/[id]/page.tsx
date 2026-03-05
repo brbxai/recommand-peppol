@@ -3,7 +3,7 @@ import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import type { Subscription } from "@peppol/api/subscription";
 import type { GetTeamExtension } from "@peppol/api/teams/get-team-extension";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
@@ -38,8 +38,11 @@ export default function CompanyDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationRequirements, setVerificationRequirements] = useState<"strict" | "trusted" | "lax" | null>(null);
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
+  const verificationPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isVerificationRequired = verificationRequirements !== null && (verificationRequirements === "strict" || verificationRequirements === "lax") && !(isVerified ?? company?.isVerified);
 
   useEffect(() => {
     if (id && activeTeam?.id) {
@@ -48,6 +51,24 @@ export default function CompanyDetailPage() {
       fetchTeamExtension();
     }
   }, [id, activeTeam?.id]);
+
+  useEffect(() => {
+    if (isVerificationRequired) {
+      verificationPollRef.current = setInterval(pollVerificationStatus, 1000);
+    } else {
+      if (verificationPollRef.current) {
+        clearInterval(verificationPollRef.current);
+        verificationPollRef.current = null;
+      }
+    }
+
+    return () => {
+      if (verificationPollRef.current) {
+        clearInterval(verificationPollRef.current);
+        verificationPollRef.current = null;
+      }
+    };
+  }, [isVerificationRequired]);
 
   const fetchCompany = async () => {
     if (!id || !activeTeam?.id) return;
@@ -71,12 +92,31 @@ export default function CompanyDetailPage() {
       const companyData = json.company as Company;
       setCompany(companyData);
       setFormData(companyData);
+      setIsVerified(companyData.isVerified);
     } catch (error) {
       console.error("Error fetching company:", error);
       toast.error("Failed to load company");
       navigate("/companies");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const pollVerificationStatus = async () => {
+    if (!id || !activeTeam?.id) return;
+
+    try {
+      const response = await client[":teamId"]["companies"][":companyId"].$get({
+        param: {
+          teamId: activeTeam.id,
+          companyId: id,
+        },
+      });
+      const json = await response.json();
+      if (json.success) {
+        setIsVerified((json.company as Company).isVerified);
+      }
+    } catch {
     }
   };
 
@@ -151,6 +191,7 @@ export default function CompanyDetailPage() {
       const companyData = json.company as Company;
       setCompany(companyData);
       setFormData(companyData);
+      setIsVerified(companyData.isVerified);
       toast.success("Company updated successfully");
     } catch (error) {
       console.error(error);
@@ -278,7 +319,7 @@ export default function CompanyDetailPage() {
         />,
       ]}
     >
-      {verificationRequirements && (verificationRequirements === "strict" || verificationRequirements === "lax") && !company.isVerified && (
+      {isVerificationRequired && (
         <Card className="mb-6 border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
           <CardHeader>
             <CardTitle>Company Verification Required</CardTitle>
