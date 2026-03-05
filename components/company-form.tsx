@@ -105,6 +105,7 @@ export function CompanyForm({ company, onChange, onSubmit, onCancel, isEditing =
                     onChange={(e) => onChange({ ...company, vatNumber: e.target.value || null })}
                 />
                 {company.country === "BE" && <p className="text-xs text-pretty text-muted-foreground">For Belgian businesses, the VAT number will be used to infer the enterprise number.</p>}
+                {company.country === "NL" && <p className="text-xs text-pretty text-muted-foreground">For Dutch businesses, the VAT number format is NL + 9 digits + B + 2 digits (e.g. NL123456789B01).</p>}
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
