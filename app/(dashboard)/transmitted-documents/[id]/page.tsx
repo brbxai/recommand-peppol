@@ -542,7 +542,7 @@ export default function TransmittedDocumentDetailPage() {
                         )}
 
                         {hasEmbedded && isCsv && decodedText !== null && (
-                          <div className="h-[800px] overflow-auto w-full rounded bg-white">
+                          <div className="h-[800px] overflow-auto w-full rounded bg-card">
                             <CsvAttachmentTable csv={decodedText} />
                           </div>
                         )}
@@ -551,7 +551,7 @@ export default function TransmittedDocumentDetailPage() {
                           !isCsv &&
                           isTextLike &&
                           decodedText !== null && (
-                            <div className="h-[800px] overflow-auto w-full rounded border bg-white">
+                            <div className="h-[800px] overflow-auto w-full rounded border bg-card">
                               <SyntaxHighlighter
                                 code={decodedText}
                                 language="text"
@@ -618,10 +618,10 @@ export default function TransmittedDocumentDetailPage() {
 
           <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
             {doc.validation && doc.validation.result !== "valid" && (
-              <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
+              <Card className="border-destructive/30 bg-destructive/5 dark:border-destructive/50 dark:bg-destructive/10">
                 <CardHeader>
                   <CardTitle>Document Validation Issues</CardTitle>
-                  <CardDescription className="text-orange-700 dark:text-orange-300">
+                  <CardDescription className="text-foreground">
                     This document has validation errors that need attention.
                   </CardDescription>
                 </CardHeader>
@@ -922,7 +922,7 @@ export default function TransmittedDocumentDetailPage() {
                   <TabsContent value="json">
                     {hasStructuredData && (
                       <div className="space-y-2">
-                        <div className="h-[320px] overflow-auto w-full rounded-md border bg-white">
+                        <div className="h-[320px] overflow-auto w-full rounded-md border bg-card">
                           <SyntaxHighlighter
                             code={JSON.stringify(parsed, null, 2)}
                             language="json"
@@ -948,7 +948,7 @@ export default function TransmittedDocumentDetailPage() {
                   </TabsContent>
                   <TabsContent value="xml">
                     <div className="space-y-2">
-                      <div className="h-[320px] overflow-auto w-full rounded-md border bg-white">
+                      <div className="h-[320px] overflow-auto w-full rounded-md border bg-card">
                         <SyntaxHighlighter
                           code={doc.xml ?? ""}
                           language="xml"

@@ -3,11 +3,11 @@ import { Label } from "@core/components/ui/label";
 import { Button } from "@core/components/ui/button";
 import type { Label as LabelType } from "../types/label";
 import { AsyncButton } from "@core/components/async-button";
-import { FOLDER, ERROR, DATA, PROGRESS, CONST } from "@core/lib/config/colors";
+import { FOLDER, WARNING, DATA, PROGRESS, CONST } from "@core/lib/config/colors";
 
 const COLOR_PRESETS = [
   { name: "Green", value: FOLDER },
-  { name: "Orange", value: ERROR },
+  { name: "Orange", value: WARNING },
   { name: "Yellow", value: DATA },
   { name: "Blue", value: PROGRESS },
   { name: "Purple", value: CONST },
