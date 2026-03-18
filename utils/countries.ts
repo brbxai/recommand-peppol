@@ -94,6 +94,13 @@ export const COUNTRIES: CountryInfo[] = [
         defaultDocumentTypes: DEFAULT_DOCUMENT_TYPES,
     },
     {
+        code: "HU",
+        name: "Hungary",
+        flag: "🇭🇺",
+        defaultVatScheme: "9910",
+        defaultDocumentTypes: DEFAULT_DOCUMENT_TYPES,
+    },
+    {
         code: "IS",
         name: "Iceland",
         flag: "🇮🇸",
