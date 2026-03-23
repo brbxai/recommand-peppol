@@ -31,7 +31,7 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
     .where(
       and(
         gt(subscriptionBillingEvents.amountDue, "0"),
-        inArray(subscriptionBillingEvents.paymentStatus, ["canceled", "expired", "failed"]),
+        inArray(subscriptionBillingEvents.paymentStatus, ["none", "canceled", "expired", "failed"]),
         teamIds && teamIds.length > 0 ? inArray(subscriptionBillingEvents.teamId, teamIds) : undefined,
         eq(billingProfiles.isManuallyBilled, false),
       )
@@ -51,6 +51,19 @@ export async function retryFailedPayments(teamIds?: string[], dryRun: boolean = 
           )
         )
         .limit(1);
+
+      if (recentReminder.length > 0) {
+        results.push({
+          status: "skipped",
+          billingEventId: billingEvent.id,
+          invoiceReference: billingEvent.invoiceReference,
+          teamId: billingEvent.teamId,
+          companyName: billingProfile.companyName,
+          amountDue: billingEvent.amountDue,
+          errorMessage: "Skipped: payment retry already attempted within the last 7 days",
+        });
+        continue;
+      }
 
       if (!billingProfile.mollieCustomerId) {
         throw new Error("Billing profile has no Mollie customer ID");
