@@ -62,6 +62,7 @@ export const COUNTRIES: CountryInfo[] = [
         code: "EE",
         name: "Estonia",
         flag: "🇪🇪",
+        defaultEnterpriseNumberScheme: "0191",
         defaultVatScheme: "9931",
         defaultDocumentTypes: DEFAULT_DOCUMENT_TYPES,
     },
