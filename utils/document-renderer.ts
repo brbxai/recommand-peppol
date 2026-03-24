@@ -4,6 +4,7 @@ import { MESSAGE_LEVEL_RESPONSE_TEMPLATE } from "@peppol/templates/message-level
 import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
 import { getUnitCodeName } from "@peppol/utils/unit-codes";
 import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
+import { Decimal } from "decimal.js";
 
 type ParsedBillingDocument =
   | import("@peppol/utils/parsing/invoice/schemas").Invoice
@@ -196,7 +197,14 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
       quantity: String(line.quantity ?? ""),
       unitCode,
       unitCodeName: getUnitCodeName(unitCode),
-      netPriceAmount: String(line.netPriceAmount ?? ""),
+      netPriceAmount: (() => {
+        const price = line.netPriceAmount ?? "0";
+        const baseQty = line.baseQuantity ?? "1";
+        if (new Decimal(baseQty).greaterThan(1)) {
+          return `${price}\u00A0/\u00A0${baseQty}\u00A0${getUnitCodeName(unitCode)}`;
+        }
+        return String(price);
+      })(),
       vatPercentage: line.vat?.percentage
         ? String(line.vat.percentage)
         : "",

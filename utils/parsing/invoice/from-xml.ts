@@ -149,6 +149,7 @@ export function parseInvoiceFromXML(xml: string): Invoice & SelfBillingInvoice {
     unitCode: getTextContent(line.InvoicedQuantity?.["@_unitCode"]),
     netAmount: getNumberContent(line.LineExtensionAmount),
     netPriceAmount: getNumberContent(line.Price?.PriceAmount),
+    baseQuantity: getNullableNumberContent(line.Price?.BaseQuantity) || "1",
     vat: {
       category: getTextContent(line.Item?.ClassifiedTaxCategory?.ID),
       percentage: getPercentage(line.Item?.ClassifiedTaxCategory?.Percent),

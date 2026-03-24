@@ -153,6 +153,7 @@ export function parseCreditNoteFromXML(xml: string): CreditNote {
     unitCode: getTextContent(line.CreditedQuantity?.["@_unitCode"]),
     netAmount: getNumberContent(line.LineExtensionAmount),
     netPriceAmount: getNumberContent(line.Price?.PriceAmount),
+    baseQuantity: getNullableNumberContent(line.Price?.BaseQuantity) || "1",
     vat: {
       category: getTextContent(line.Item?.ClassifiedTaxCategory?.ID),
       percentage: getPercentage(line.Item?.ClassifiedTaxCategory?.Percent),

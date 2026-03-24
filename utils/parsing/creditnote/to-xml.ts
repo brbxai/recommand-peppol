@@ -458,6 +458,12 @@ export function prebuildCreditNoteUBL({creditNote, supplierAddress, customerAddr
             "@_currencyID": creditNote.currency,
             "#text": item.netPriceAmount,
           },
+          ...(item.baseQuantity && item.baseQuantity !== "1" && {
+            "cbc:BaseQuantity": {
+              "@_unitCode": item.unitCode,
+              "#text": item.baseQuantity,
+            },
+          }),
         },
       })),
     },

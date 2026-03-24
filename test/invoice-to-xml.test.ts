@@ -414,6 +414,7 @@ describe("invoiceToUBL", () => {
             quantity: "2",
             unitCode: "C62",
             netPriceAmount: "75.00",
+            baseQuantity: "1",
             netAmount: null,
             vat: { category: "S", percentage: "6.00" },
             discounts: [
@@ -743,6 +744,7 @@ describe("invoiceToUBL", () => {
             quantity: "2",
             unitCode: "C62",
             netPriceAmount: "50.00",
+            baseQuantity: "1",
             netAmount: null,
             vat: { category: "S", percentage: "21.00" },
             surcharges: [
@@ -780,6 +782,7 @@ describe("invoiceToUBL", () => {
             quantity: "1",
             unitCode: "C62",
             netPriceAmount: "100.00",
+            baseQuantity: "1",
             netAmount: null,
             vat: { category: "S", percentage: "21.00" },
             discounts: [
@@ -849,6 +852,7 @@ describe("invoiceToUBL", () => {
           quantity: "3",
           unitCode: "C62",
           netPriceAmount: "50.00",
+          baseQuantity: "1",
           netAmount: null,
           vat: { category: "S" as const, percentage: "6.00" },
           buyersId: null,
@@ -875,6 +879,7 @@ describe("invoiceToUBL", () => {
           quantity: "4",
           unitCode: "C62",
           netPriceAmount: "75.00",
+          baseQuantity: "1",
           netAmount: null,
           vat: { category: "AE" as const, percentage: "0.00" },
           buyersId: null,
@@ -987,6 +992,7 @@ describe("invoiceToUBL", () => {
             quantity: "10",
             unitCode: "C62",
             netPriceAmount: "235.20",
+            baseQuantity: "1",
             netAmount: null,
             vat: { category: "S", percentage: "21.00" },
             buyersId: null,
@@ -1102,6 +1108,7 @@ describe("invoiceToUBL", () => {
             quantity: "1",
             unitCode: "C62",
             netPriceAmount: "100.00",
+            baseQuantity: "1",
             netAmount: null,
             vat: { category: "S", percentage: "21.00" },
             buyersId: null,
@@ -1170,6 +1177,7 @@ describe("invoiceToUBL", () => {
             quantity: "1",
             unitCode: "C62",
             netPriceAmount: "100.00",
+            baseQuantity: "1",
             netAmount: null,
             vat: { category: "S", percentage: "21.00" },
             buyersId: null,
@@ -1239,6 +1247,7 @@ describe("invoiceToUBL", () => {
             quantity: "1",
             unitCode: "C62",
             netPriceAmount: "100.00",
+            baseQuantity: "1",
             netAmount: null,
             vat: { category: "S", percentage: "21.00" },
             buyersId: null,
@@ -1289,6 +1298,7 @@ describe("invoiceToUBL", () => {
             quantity: "1",
             unitCode: "C62",
             netPriceAmount: "100.00",
+            baseQuantity: "1",
             netAmount: null,
             vat: {
               category: "O",
@@ -1335,6 +1345,127 @@ describe("invoiceToUBL", () => {
       expect(parsed.totals?.taxExclusiveAmount).toBe("100.00");
       expect(parsed.totals?.taxInclusiveAmount).toBe("100.00");
       expect(parsed.totals?.payableAmount).toBe("100.00");
+
+      await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
+    });
+  });
+
+  describe("baseQuantity", () => {
+    it("should include BaseQuantity in XML when greater than 1", async () => {
+      const invoice = createBaseInvoice({
+        lines: [
+          {
+            name: "Houtschr.HAP VD-TØ3,5x35(200)",
+            quantity: "1",
+            unitCode: "C62",
+            netPriceAmount: "51.98",
+            baseQuantity: "10",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: "911051",
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({ invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false });
+
+      expect(xml).toContain("BaseQuantity");
+      expect(xml).toContain("51.98");
+
+      const parsed = parseInvoiceFromXML(xml);
+
+      expect(parsed.lines[0].netPriceAmount).toBe("51.98");
+      expect(parsed.lines[0].baseQuantity).toBe("10");
+    });
+
+    it("should not include BaseQuantity in XML when equal to 1", async () => {
+      const invoice = createBaseInvoice({
+        lines: [
+          {
+            name: "Regular item",
+            quantity: "5",
+            unitCode: "C62",
+            netPriceAmount: "10.00",
+            baseQuantity: "1",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({ invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false });
+
+      expect(xml).not.toContain("BaseQuantity");
+
+      const parsed = parseInvoiceFromXML(xml);
+
+      expect(parsed.lines[0].netPriceAmount).toBe("10");
+      expect(parsed.lines[0].baseQuantity).toBe("1");
+    });
+
+    it("should preserve baseQuantity through round-trip conversion", async () => {
+      const invoice = createBaseInvoice({
+        lines: [
+          {
+            name: "Raamplug mfr 10-135 sb ssks",
+            quantity: "2",
+            unitCode: "C62",
+            netPriceAmount: "73.47",
+            baseQuantity: "10",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: "993044",
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+          {
+            name: "Normal item",
+            quantity: "3",
+            unitCode: "C62",
+            netPriceAmount: "25.00",
+            baseQuantity: "1",
+            netAmount: null,
+            vat: { category: "S", percentage: "21.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({ invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false });
+
+      await validateXml(xml, "baseQuantity round-trip");
+
+      const parsed = parseInvoiceFromXML(xml);
+
+      expect(parsed.lines[0].netPriceAmount).toBe("73.47");
+      expect(parsed.lines[0].baseQuantity).toBe("10");
+      // PEPPOL-EN16931-R120: LineExtensionAmount = quantity * (netPriceAmount / baseQuantity)
+      expect(parsed.lines[0].netAmount).toBe("14.69"); // 2 * (73.47 / 10) = 14.694 → 14.69
+
+      expect(parsed.lines[1].netPriceAmount).toBe("25");
+      expect(parsed.lines[1].baseQuantity).toBe("1");
+      expect(parsed.lines[1].netAmount).toBe("75.00"); // 3 * (25 / 1) = 75.00
 
       await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });

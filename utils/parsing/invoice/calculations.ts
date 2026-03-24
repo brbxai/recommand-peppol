@@ -8,7 +8,8 @@ import { UserFacingError } from "@peppol/utils/util";
 // Vat is always rounded to 2 decimal places per invoice line, discount or surcharge, otherwise we can't guarantee the totals will be correct.
 
 export function calculateLineAmount(line: DocumentLine | DocumentLine) {
-  const beforeDiscountsAndSurcharges = new Decimal(line.quantity).mul(line.netPriceAmount).toNearest(0.01);
+  const unitPrice = new Decimal(line.netPriceAmount).div(new Decimal(line.baseQuantity ?? "1"));
+  const beforeDiscountsAndSurcharges = new Decimal(line.quantity).mul(unitPrice).toNearest(0.01);
 
   // Discount totals
   const discountTotalsExcl = line.discounts?.reduce(

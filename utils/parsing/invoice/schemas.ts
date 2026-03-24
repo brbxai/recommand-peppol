@@ -340,6 +340,11 @@ export const lineSchema = z
         "Recommended unit codes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/UNECERec20/).",
     }),
     netPriceAmount: unlimitedDecimalSchema,
+    baseQuantity: unlimitedDecimalSchema.nullish().openapi({
+      example: "1",
+      description:
+        "The number of units to which the price refers. When greater than 1, the price is for a batch/pack of this size. The actual unit price is netPriceAmount / baseQuantity.",
+    }),
     discounts: z
       .array(lineDiscountSchema)
       .nullish()
