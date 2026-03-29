@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
+import { Textarea } from "@core/components/ui/textarea";
 import { Label } from "@core/components/ui/label";
 import {
   Select,
@@ -126,12 +127,13 @@ export function LineItemsEditor({
 
               <div>
                 <Label>Description</Label>
-                <Input
+                <Textarea
                   value={line.description || ""}
                   onChange={(e) =>
                     updateLine(index, "description", e.target.value)
                   }
                   placeholder="Optional description"
+                  rows={3}
                 />
               </div>
 
