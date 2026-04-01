@@ -31,7 +31,7 @@ export const VerificationForwardingEmail = ({
     <Text className="mb-4">
       As an authorised representative of this company, you need to verify your
       identity to activate <strong>{companyName}</strong> for electronic
-      invoicing through Peppol.
+      document exchange through Peppol.
     </Text>
     <Section className="my-6 text-center">
       <Button variant="primary" href={verificationLink}>

@@ -9,8 +9,13 @@ import { Alert, AlertDescription } from "@core/components/ui/alert";
 import { Loader2, AlertCircle, Mail, CheckCircle2, ChevronDown } from "lucide-react";
 
 const client = rc<Companies>("v1");
+const peppolClient = rc<Companies>("peppol");
 
-export function ForwardSection({ companyVerificationLogId }: { companyVerificationLogId: string }) {
+type ForwardSectionProps =
+    | { companyVerificationLogId: string; teamId?: never; companyId?: never }
+    | { companyVerificationLogId: null; teamId: string; companyId: string };
+
+export function ForwardSection({ companyVerificationLogId, teamId, companyId }: ForwardSectionProps) {
     const [open, setOpen] = useState(false);
     const [email, setEmail] = useState("");
     const [requesterName, setRequesterName] = useState("");
@@ -25,8 +30,28 @@ export function ForwardSection({ companyVerificationLogId }: { companyVerificati
         try {
             setIsForwarding(true);
             setError(null);
+
+            let logId = companyVerificationLogId;
+
+            if (logId === null) {
+                const res = await peppolClient[":teamId"]["companies"][":companyId"]["verify"].$post({
+                    param: { teamId: teamId!, companyId: companyId! },
+                });
+                const json = await res.json();
+                if (!json.success) {
+                    setError(stringifyActionFailure(json.errors));
+                    return;
+                }
+                const match = json.verificationUrl.match(/\/company-verification\/([^/]+)\/verify/);
+                if (!match) {
+                    setError("Could not create verification session");
+                    return;
+                }
+                logId = match[1];
+            }
+
             const response = await client["companies"]["verification"][":companyVerificationLogId"]["forward"].$post({
-                param: { companyVerificationLogId },
+                param: { companyVerificationLogId: logId },
                 json: { email, requesterName, requesterEmail },
             });
             const json = await response.json();

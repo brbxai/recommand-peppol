@@ -31,9 +31,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@core/components/ui/dialog";
-import { CompanyForm } from "../../../components/company-form";
-import type { Company, CompanyFormData } from "../../../types/company";
-import { defaultCompanyFormData } from "../../../types/company";
+import { CreateCompanyWizard } from "../../../components/create-company-wizard";
+import type { Company } from "../../../types/company";
 import { DataTableToolbar } from "@core/components/data-table/toolbar";
 import { DataTablePagination } from "@core/components/data-table/pagination";
 import { Link } from "react-router-dom";
@@ -86,11 +85,7 @@ export default function Page() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [formData, setFormData] = useState<CompanyFormData>(
-    defaultCompanyFormData
-  );
-  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [companyCreatedInSession, setCompanyCreatedInSession] = useState(false);
   const [deletingCompanyId, setDeletingCompanyId] = useState<string | null>(null);
   const [verificationRequirements, setVerificationRequirements] = useState<"strict" | "trusted" | "lax" | null>(null);
   const activeTeam = useActiveTeam();
@@ -152,56 +147,18 @@ export default function Page() {
     }
   };
 
-  const handleCompanySubmit = async () => {
-    if (!activeTeam?.id) {
-      toast.error("No active team selected");
-      return;
-    }
+  const handleWizardComplete = (company: Company) => {
+    setCompanies((prev) => [...prev, company]);
+    setCompanyCreatedInSession(true);
+    setIsDialogOpen(false);
+    toast.success("Company created successfully");
+  };
 
-    try {
-      console.log("dialogMode", dialogMode);
-      if (dialogMode === "create") {
-        const response = await client[":teamId"]["companies"].$post({
-          param: { teamId: activeTeam.id },
-          json: formData,
-        });
-
-        const json = await handleApiResponse(
-          response,
-          "Company created successfully"
-        );
-        setCompanies((prev) => [...prev, json.company]);
-      } else if (editingCompany) {
-        console.log("editingCompany", editingCompany);
-        const response = await client[":teamId"]["companies"][
-          ":companyId"
-        ].$put({
-          param: {
-            teamId: activeTeam.id,
-            companyId: editingCompany.id,
-          },
-          json: {
-            ...formData,
-            vatNumber: formData.vatNumber || undefined,
-          },
-        });
-
-        const json = await handleApiResponse(
-          response,
-          "Company updated successfully"
-        );
-        setCompanies((prev) =>
-          prev.map((company) =>
-            company.id === editingCompany.id ? json.company : company
-          )
-        );
-      }
-
-      setFormData(defaultCompanyFormData);
-      setEditingCompany(null);
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Error submitting company:", error);
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open && companyCreatedInSession) {
+      setCompanyCreatedInSession(false);
+      fetchCompanies();
     }
   };
 
@@ -357,34 +314,25 @@ export default function Page() {
         <Dialog
           key="create-company-dialog"
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={handleDialogOpenChange}
         >
           <DialogTrigger asChild>
-            <Button
-              onClick={() => {
-                setDialogMode("create");
-                setFormData(defaultCompanyFormData);
-                setEditingCompany(null);
-              }}
-            >
+            <Button>
               Create Company
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px]">
             <DialogHeader>
-              <DialogTitle>
-                {dialogMode === "create"
-                  ? "Create New Company"
-                  : "Edit Company"}
-              </DialogTitle>
+              <DialogTitle>Create New Company</DialogTitle>
             </DialogHeader>
-            <CompanyForm
-              company={formData}
-              onChange={(data) => setFormData(data as CompanyFormData)}
-              onSubmit={async () => await handleCompanySubmit()}
-              onCancel={() => setIsDialogOpen(false)}
-              isEditing={dialogMode === "edit"}
-            />
+            {activeTeam && (
+              <CreateCompanyWizard
+                teamId={activeTeam.id}
+                verificationRequirements={verificationRequirements}
+                onComplete={handleWizardComplete}
+                onCancel={() => setIsDialogOpen(false)}
+              />
+            )}
           </DialogContent>
         </Dialog>,
       ]}

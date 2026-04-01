@@ -1,6 +1,10 @@
 import { UserFacingError } from "@peppol/utils/util";
 
 type IdentifierValidator = (identifier: string) => void;
+type CountryIdentifierValidators = {
+  vatNumber?: IdentifierValidator;
+  enterpriseNumber?: IdentifierValidator;
+};
 
 function validateBelgianEnterpriseNumber(identifier: string): void {
   const digits = identifier.replace(/[\.\-\s]/g, "");
@@ -99,6 +103,17 @@ const schemeValidators: Record<string, IdentifierValidator> = {
   "9944": validateDutchVatNumber,
 };
 
+const countryValidators: Record<string, CountryIdentifierValidators> = {
+  "BE": {
+    vatNumber: validateBelgianVatNumber,
+    enterpriseNumber: validateBelgianEnterpriseNumber,
+  },
+  "NL": {
+    vatNumber: validateDutchVatNumber,
+    enterpriseNumber: validateDutchEnterpriseNumber,
+  },
+};
+
 export function validateIdentifier(
   scheme: string,
   identifier: string,
@@ -108,4 +123,23 @@ export function validateIdentifier(
     return;
   }
   validator(identifier);
+}
+
+export function validateCountryIdentifier(
+  country: string,
+  identifiers: {
+    vatNumber?: string | null;
+    enterpriseNumber?: string | null;
+  },
+): void {
+  const validator = countryValidators[country];
+  if (!validator) {
+    return;
+  }
+  if (identifiers.vatNumber && validator.vatNumber) {
+    validator.vatNumber(identifiers.vatNumber);
+  }
+  if (identifiers.enterpriseNumber && validator.enterpriseNumber) {
+    validator.enterpriseNumber(identifiers.enterpriseNumber);
+  }
 }

@@ -14,6 +14,7 @@ import { useMenuItemActions } from "@core/lib/menu-store";
 import { useOnboardingActions } from "@core/lib/onboarding-store";
 import BillingOnboarding from "@peppol/components/onboarding/billing";
 import SubscriptionOnboarding from "@peppol/components/onboarding/subscription";
+import CompanyOnboarding from "@peppol/components/onboarding/company";
 import AddPlayground from "./add-playground";
 import PlaygroundUI from "./playground-ui";
 
@@ -102,6 +103,16 @@ export default function Main({ children }: { children: React.ReactNode }) {
       description: "A billing profile is required to get started.",
       render: ({ onComplete }) => {
         return <BillingOnboarding onComplete={onComplete} />;
+      },
+    });
+
+    registerOnboardingStep({
+      id: "peppol.company",
+      scope: "team",
+      title: "Set up your first company",
+      description: "Companies are the legal entities you send or receive Peppol documents for.",
+      render: ({ onComplete }) => {
+        return <CompanyOnboarding onComplete={onComplete} />;
       },
     });
   }, [registerMenuItem]);

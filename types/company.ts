@@ -30,6 +30,6 @@ export const defaultCompanyFormData: CompanyFormData = {
   vatNumber: null,
   email: null,
   phone: null,
-  isSmpRecipient: true,
+  isSmpRecipient: false,
   isVerified: false,
 }; 
