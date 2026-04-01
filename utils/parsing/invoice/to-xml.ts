@@ -454,6 +454,12 @@ export function prebuildInvoiceUBL({ invoice, supplierAddress, customerAddress, 
             "@_currencyID": invoice.currency,
             "#text": item.netPriceAmount,
           },
+          ...(item.baseQuantity && item.baseQuantity !== "1" && {
+            "cbc:BaseQuantity": {
+              "@_unitCode": item.unitCode,
+              "#text": item.baseQuantity,
+            },
+          }),
         },
       })),
     },

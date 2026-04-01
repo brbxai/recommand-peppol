@@ -6,7 +6,7 @@ export type UnknownDocumentType = "unknown";
 export type DocumentType = BillingDocumentType | TransactionDocumentType | UnknownDocumentType;
 export type SupportedDocumentType = BillingDocumentType | "messageLevelResponse" | UnknownDocumentType;
 
-type DocumentTypeInfo = {
+export type DocumentTypeInfo = {
     type: BillingDocumentType | TransactionDocumentType;
     title: string;
     docTypeId: string;
@@ -42,6 +42,20 @@ export const SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
     processId: "urn:fdc:peppol.eu:2017:poacc:selfbilling:01:1.0"
 };
 
+export const SI_UBL_INVOICE_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
+    type: "invoice",
+    title: "SI-UBL 2.0 Invoice",
+    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:nen.nl:nlcius:v1.0::2.1",
+    processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
+};
+
+export const SI_UBL_CREDIT_NOTE_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
+    type: "creditNote",
+    title: "SI-UBL 2.0 Credit Note",
+    docTypeId: "urn:oasis:names:specification:ubl:schema:xsd:CreditNote-2::CreditNote##urn:cen.eu:en16931:2017#compliant#urn:fdc:nen.nl:nlcius:v1.0::2.1",
+    processId: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0"
+};
+
 export const INVOICE_RESPONSE_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
     type: "invoiceResponse",
     title: "Invoice Response",
@@ -59,6 +73,8 @@ export const MESSAGE_LEVEL_RESPONSE_DOCUMENT_TYPE_INFO: DocumentTypeInfo = {
 export const DOCUMENT_TYPE_PRESETS: DocumentTypeInfo[] = [
     INVOICE_DOCUMENT_TYPE_INFO,
     CREDIT_NOTE_DOCUMENT_TYPE_INFO,
+    SI_UBL_INVOICE_DOCUMENT_TYPE_INFO,
+    SI_UBL_CREDIT_NOTE_DOCUMENT_TYPE_INFO,
     SELF_BILLING_INVOICE_DOCUMENT_TYPE_INFO,
     SELF_BILLING_CREDIT_NOTE_DOCUMENT_TYPE_INFO,
     INVOICE_RESPONSE_DOCUMENT_TYPE_INFO,

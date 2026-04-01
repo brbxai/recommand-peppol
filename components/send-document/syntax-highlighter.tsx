@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import { codeToHtml } from "shiki";
 
 interface SyntaxHighlighterProps {
@@ -22,13 +23,14 @@ export function SyntaxHighlighter({
   className,
 }: SyntaxHighlighterProps) {
   const [highlightedCode, setHighlightedCode] = useState<string>("");
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     const highlightCode = async () => {
       try {
         const html = await codeToHtml(code, {
           lang: language,
-          theme: "github-light",
+          theme: resolvedTheme === "dark" ? "github-dark" : "github-light",
         });
         setHighlightedCode(html);
       } catch (error) {
@@ -38,11 +40,11 @@ export function SyntaxHighlighter({
     };
 
     highlightCode();
-  }, [code, language]);
+  }, [code, language, resolvedTheme]);
 
   return (
     <div
-      className={className}
+      className={`[&_.shiki]:[background:transparent!important] [&_.shiki]:[background-color:transparent!important] ${className ?? ""}`}
       dangerouslySetInnerHTML={{ __html: highlightedCode }}
       style={{
         fontSize: "12px",

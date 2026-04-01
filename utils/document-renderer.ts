@@ -4,6 +4,7 @@ import { MESSAGE_LEVEL_RESPONSE_TEMPLATE } from "@peppol/templates/message-level
 import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
 import { getUnitCodeName } from "@peppol/utils/unit-codes";
 import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
+import { Decimal } from "decimal.js";
 
 type ParsedBillingDocument =
   | import("@peppol/utils/parsing/invoice/schemas").Invoice
@@ -117,6 +118,18 @@ function reverseAmountSign(value: string): string {
   return `-${trimmedValue}`;
 }
 
+function forcePositiveAmountSign(value: string): string {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return trimmedValue;
+  if (trimmedValue.startsWith("-")) {
+    return `+${trimmedValue.slice(1)}`;
+  }
+  if (trimmedValue.startsWith("+")) {
+    return trimmedValue;
+  }
+  return `+${trimmedValue}`;
+}
+
 function getDocumentTypeLabel(type: TransmittedDocument["type"]): string {
   switch (type) {
     case "invoice":
@@ -184,7 +197,14 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
       quantity: String(line.quantity ?? ""),
       unitCode,
       unitCodeName: getUnitCodeName(unitCode),
-      netPriceAmount: String(line.netPriceAmount ?? ""),
+      netPriceAmount: (() => {
+        const price = line.netPriceAmount ?? "0";
+        const baseQty = line.baseQuantity ?? "1";
+        if (new Decimal(baseQty).greaterThan(1)) {
+          return `${price}\u00A0/\u00A0${baseQty}\u00A0${getUnitCodeName(unitCode)}`;
+        }
+        return String(price);
+      })(),
       vatPercentage: line.vat?.percentage
         ? String(line.vat.percentage)
         : "",
@@ -196,7 +216,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
         : undefined,
       surcharges: Array.isArray(line.surcharges) && line.surcharges.length > 0
         ? line.surcharges.map((surcharge: any) => ({
-            amount: reverseAmountSign(String(surcharge.amount ?? "")),
+            amount: forcePositiveAmountSign(String(surcharge.amount ?? "")),
           }))
         : undefined,
       // Mustache doesn't support @index, so we synthesise index+1 when building data
@@ -246,7 +266,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
               : null,
           surchargeAmount:
             totalsRaw.surchargeAmount != null
-              ? reverseAmountSign(String(totalsRaw.surchargeAmount))
+              ? forcePositiveAmountSign(String(totalsRaw.surchargeAmount))
               : null,
           payableAmount,
           paidAmount:

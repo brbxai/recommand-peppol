@@ -165,26 +165,19 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
  */
 async function setupCompanyDefaults({ company, isPlayground, useTestNetwork, verificationRequirements }: { company: Company, isPlayground: boolean, useTestNetwork: boolean, verificationRequirements?: string }): Promise<void> {
   const skipSmpRegistration = !shouldRegisterWithSmp({ isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements });
-  await createCompanyDocumentType({
-    companyDocumentType: {
-      companyId: company.id,
-      docTypeId: INVOICE_DOCUMENT_TYPE_INFO.docTypeId,
-      processId: INVOICE_DOCUMENT_TYPE_INFO.processId,
-    },
-    skipSmpRegistration,
-    useTestNetwork,
-  });
-  await createCompanyDocumentType({
-    companyDocumentType: {
-      companyId: company.id,
-      docTypeId: CREDIT_NOTE_DOCUMENT_TYPE_INFO.docTypeId,
-      processId: CREDIT_NOTE_DOCUMENT_TYPE_INFO.processId,
-    },
-    skipSmpRegistration,
-    useTestNetwork,
-  });
-
   const countryInfo = COUNTRIES.find((country) => country.code === company.country);
+
+  for (const documentType of countryInfo?.defaultDocumentTypes ?? []) {
+    await createCompanyDocumentType({
+      companyDocumentType: {
+        companyId: company.id,
+        docTypeId: documentType.docTypeId,
+        processId: documentType.processId,
+      },
+      skipSmpRegistration,
+      useTestNetwork,
+    });
+  }
   const cleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
   if (countryInfo?.defaultEnterpriseNumberScheme && cleanedEnterpriseNumber) {
     try {

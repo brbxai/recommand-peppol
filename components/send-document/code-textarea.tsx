@@ -31,7 +31,7 @@ export function CodeTextarea({
     <div
       className={cn(
         "relative w-full rounded-md bg-transparent dark:bg-input/30",
-        heightClassName
+        heightClassName,
       )}
     >
       <div
@@ -40,7 +40,7 @@ export function CodeTextarea({
           "absolute inset-0 overflow-auto pointer-events-none",
           "font-mono text-xs leading-[1.4]",
           "[&_.shiki]:[background:transparent!important] [&_.shiki]:[background-color:transparent!important] [&_.shiki]:m-0 [&_.shiki]:min-h-full",
-          "[&_.shiki]:px-3 [&_.shiki]:py-2 [&_.shiki]:overflow-visible"
+          "[&_.shiki]:px-3 [&_.shiki]:py-2 [&_.shiki]:overflow-visible",
         )}
       >
         <SyntaxHighlighter
@@ -71,7 +71,7 @@ export function CodeTextarea({
           "font-mono !text-xs leading-[1.4]",
           "text-transparent caret-foreground",
           "selection:bg-primary/20 selection:text-transparent",
-          className
+          className,
         )}
       />
     </div>

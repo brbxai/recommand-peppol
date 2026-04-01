@@ -1,5 +1,6 @@
 import { Hr, Text } from "@react-email/components";
 import { EmailLayout, EmailHeading, InfoSection } from "@core/emails/components/shared";
+import { SHADOW } from "@core/lib/config/colors";
 
 interface InvoiceEmailProps {
   companyName: string;
@@ -53,7 +54,7 @@ export const InvoiceEmail = ({
           {totalVatAmount.toFixed(2)}
         </Text>
       )}
-      <Hr className="my-3 border-[#BFBDAE]" />
+      <Hr className={`my-3 border-[${SHADOW}]`} />
       <Text className="my-1 text-sm font-bold">
         <strong>Total (incl. VAT):</strong> € {totalAmountIncl.toFixed(2)}
       </Text>
