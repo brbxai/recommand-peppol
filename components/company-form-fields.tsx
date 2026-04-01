@@ -2,8 +2,8 @@ import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@core/components/ui/select";
 import { Combobox } from "@core/components/ui/combobox";
-import { Alert, AlertDescription, AlertTitle } from "@core/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { StatusMessage } from "@recommand/components/status-feedback";
 import { COUNTRIES } from "@peppol/utils/countries";
 import { ISO_ICD_SCHEME_IDENTIFIERS } from "@peppol/utils/iso-icd-scheme-identifiers";
 import type { CompanyFormData } from "@peppol/types/company";
@@ -123,13 +123,12 @@ export function CompanyIdentityFields({
                         />
                     </div>
                     {showDutchEnterpriseNumberSchemeAlert && country === "NL" && enterpriseNumberScheme !== "0106" && enterpriseNumberScheme !== "0190" && enterpriseNumber.trim() && (
-                        <Alert variant="destructive">
-                            <AlertTriangle />
-                            <AlertTitle>Enterprise number scheme 0106 or 0190 required</AlertTitle>
-                            <AlertDescription>
-                                For Dutch sellers, the scheme identifier is required to be able to send invoices and credit notes.
-                            </AlertDescription>
-                        </Alert>
+                        <StatusMessage
+                            tone="warning"
+                            icon={AlertTriangle}
+                            title="Enterprise number scheme 0106 or 0190 required"
+                            description="For Dutch sellers, the scheme identifier is required to be able to send invoices and credit notes."
+                        />
                     )}
                 </div>
             )}

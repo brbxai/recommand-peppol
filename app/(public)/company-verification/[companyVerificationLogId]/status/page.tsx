@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { Button } from "@core/components/ui/button";
 import { Card, CardContent } from "@core/components/ui/card";
-import { Alert, AlertDescription } from "@core/components/ui/alert";
+import { StatusHero, StatusMessage } from "@recommand/components/status-feedback";
 import { Loader2, AlertCircle, ShieldCheck, XCircle, RefreshCw } from "lucide-react";
 
 const client = rc<Companies>("v1");
@@ -125,17 +125,13 @@ export default function Page() {
     if (loadError || !statusData) {
         return (
             <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4">
-                <div className="w-full max-w-md text-center space-y-6">
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="space-y-4">
-                                <AlertCircle className="h-10 w-10 mx-auto text-destructive" />
-                                <p className="text-sm text-muted-foreground">
-                                    {loadError || "Verification status could not be loaded."}
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="w-full max-w-md">
+                    <StatusHero
+                        tone="error"
+                        icon={AlertCircle}
+                        title="Status unavailable"
+                        description={loadError || "Verification status could not be loaded."}
+                    />
                 </div>
             </div>
         );
@@ -145,15 +141,13 @@ export default function Page() {
         return (
             <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
                 <div className="w-full max-w-lg space-y-8">
-                    <div className="text-center space-y-2">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
-                            <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                        </div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Verification in Progress</h1>
-                        <p className="text-sm text-muted-foreground max-w-sm mx-auto text-balance">
-                            Your identity verification for <span className="font-medium text-foreground">{statusData.companyName}</span> is being processed. This page will update automatically.
-                        </p>
-                    </div>
+                    <StatusHero
+                        tone="info"
+                        icon={Loader2}
+                        iconClassName="animate-spin"
+                        title="Verification in Progress"
+                        description={<>Your identity verification for <span className="font-medium text-foreground">{statusData.companyName}</span> is being processed. This page will update automatically.</>}
+                    />
 
                     <Card>
                         <CardContent className="pt-6">
@@ -168,10 +162,7 @@ export default function Page() {
                     </Card>
 
                     {restartError && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>{restartError}</AlertDescription>
-                        </Alert>
+                        <StatusMessage tone="error" icon={AlertCircle} description={restartError} />
                     )}
 
                     <div className="text-center space-y-2">
@@ -204,22 +195,18 @@ export default function Page() {
         return (
             <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
                 <div className="w-full max-w-lg space-y-8">
-                    <div className="text-center space-y-2">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 mb-2">
-                            <ShieldCheck className="h-6 w-6 text-green-600" />
-                        </div>
-                        <h1 className="text-2xl font-semibold tracking-tight">Verification Successful</h1>
-                        <p className="text-sm text-muted-foreground max-w-sm mx-auto text-balance">
-                            <span className="font-medium text-foreground">{statusData.companyName}</span> has been successfully verified and is now active on the Peppol network.
-                        </p>
-                    </div>
+                    <StatusHero
+                        tone="success"
+                        icon={ShieldCheck}
+                        title="Verification Successful"
+                        description={<><span className="font-medium text-foreground">{statusData.companyName}</span> has been successfully verified and is now active on the Peppol network.</>}
+                    />
 
-                    <Alert className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
-                        <ShieldCheck className="h-4 w-4 !text-green-800" />
-                        <AlertDescription className="text-green-800 dark:text-green-200">
-                            Identity verification completed successfully. You can close this page.
-                        </AlertDescription>
-                    </Alert>
+                    <StatusMessage
+                        tone="success"
+                        icon={ShieldCheck}
+                        description="Identity verification completed successfully. You can close this page."
+                    />
                 </div>
             </div>
         );
@@ -228,24 +215,18 @@ export default function Page() {
     return (
         <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
             <div className="w-full max-w-lg space-y-8">
-                <div className="text-center space-y-2">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mb-2">
-                        <XCircle className="h-6 w-6 text-destructive" />
-                    </div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Verification Rejected</h1>
-                    <p className="text-sm text-muted-foreground max-w-sm mx-auto text-balance">
-                        The identity verification for <span className="font-medium text-foreground">{statusData.companyName}</span> was not successful.
-                    </p>
-                </div>
+                <StatusHero
+                    tone="error"
+                    icon={XCircle}
+                    title="Verification Rejected"
+                    description={<>The identity verification for <span className="font-medium text-foreground">{statusData.companyName}</span> was not successful.</>}
+                />
 
-                <Alert variant="destructive">
-                    <XCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        <div>
-                            Your identity could not be verified. Please contact <a href={`mailto:support@recommand.eu?subject=Company Verification Assistance for ${statusData.companyId}`} className="underline underline-offset-4 hover:text-primary/80">support@recommand.eu</a> for assistance.
-                        </div>
-                    </AlertDescription>
-                </Alert>
+                <StatusMessage tone="error" icon={XCircle}>
+                    <div className="text-sm text-pretty text-muted-foreground">
+                        Your identity could not be verified. Please contact <a href={`mailto:support@recommand.eu?subject=Company Verification Assistance for ${statusData.companyId}`} className="underline underline-offset-4 hover:text-primary/80">support@recommand.eu</a> for assistance.
+                    </div>
+                </StatusMessage>
             </div>
         </div>
     );

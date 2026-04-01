@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@core/components/ui/button";
+import { StatusMessage } from "@recommand/components/status-feedback";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import type { Company, CompanyFormData } from "@peppol/types/company";
@@ -59,13 +60,12 @@ export function Step4Create({ teamId, data, onNext, onBack }: Step4Props) {
     if (error) {
         return (
             <div className="space-y-4">
-                <div className="flex items-start gap-3 p-4 rounded-lg border border-destructive/50 bg-destructive/5">
-                    <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
-                    <div>
-                        <p className="font-medium text-sm text-destructive">Failed to create company</p>
-                        <p className="text-sm text-muted-foreground mt-1">{error}</p>
-                    </div>
-                </div>
+                <StatusMessage
+                    tone="error"
+                    icon={AlertCircle}
+                    title="Failed to create company"
+                    description={error}
+                />
                 <div className="flex justify-between gap-2">
                     <Button type="button" variant="outline" onClick={onBack}>
                         Back

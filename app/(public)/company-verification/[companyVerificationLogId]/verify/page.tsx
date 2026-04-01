@@ -9,7 +9,7 @@ import { Label } from "@core/components/ui/label";
 import { Checkbox } from "@core/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@core/components/ui/radio-group";
-import { Alert, AlertDescription } from "@core/components/ui/alert";
+import { StatusHero, StatusMessage } from "@recommand/components/status-feedback";
 import { Loader2, AlertCircle, ShieldCheck } from "lucide-react";
 import { ForwardSection } from "./forward-section";
 
@@ -162,17 +162,13 @@ export default function Page() {
     if (loadError || !context) {
         return (
             <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4">
-                <div className="w-full max-w-md text-center space-y-6">
-                    <Card>
-                        <CardContent className="pt-6">
-                            <div className="space-y-4">
-                                <AlertCircle className="h-10 w-10 mx-auto text-destructive" />
-                                <p className="text-sm text-muted-foreground">
-                                    {loadError || "Verification data could not be loaded."}
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="w-full max-w-md">
+                    <StatusHero
+                        tone="error"
+                        icon={AlertCircle}
+                        title="Verification unavailable"
+                        description={loadError || "Verification data could not be loaded."}
+                    />
                 </div>
             </div>
         );
@@ -204,10 +200,7 @@ export default function Page() {
                         </Card>
 
                         {submitError && (
-                            <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>{submitError}</AlertDescription>
-                            </Alert>
+                            <StatusMessage tone="error" icon={AlertCircle} description={submitError} />
                         )}
 
                         <Button
@@ -233,20 +226,21 @@ export default function Page() {
                 ) : (
                     <>
                         {representativeSelectionError ? (
-                            <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                    {context.company.enterpriseNumber ? (
-                                    <div className="text-pretty">
+                            <StatusMessage
+                                tone="error"
+                                icon={AlertCircle}
+                                title="Representative details could not be matched"
+                            >
+                                {context.company.enterpriseNumber ? (
+                                    <div className="text-sm text-pretty text-muted-foreground">
                                             No registered representatives could be found for your company with enterprise number {context.company.enterpriseNumber}. Please contact <a href={`mailto:support@recommand.eu?subject=Company Verification Assistance for ${context.company.id}`} className="underline underline-offset-4 hover:text-primary/80">support@recommand.eu</a> for assistance.
-                                        </div>
-                                    ) : (
-                                        <div className="text-pretty">
-                                            No registered representatives could be found for your company. Please ensure your enterprise number is set correctly and try again.
-                                        </div>
-                                    )}
-                                </AlertDescription>
-                            </Alert>
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-pretty text-muted-foreground">
+                                        No registered representatives could be found for your company. Please ensure your enterprise number is set correctly and try again.
+                                    </div>
+                                )}
+                            </StatusMessage>
                         ) : (
                             <Card>
                                 <CardHeader>
@@ -338,10 +332,7 @@ export default function Page() {
                         </Card>
 
                         {submitError && (
-                            <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>{submitError}</AlertDescription>
-                            </Alert>
+                            <StatusMessage tone="error" icon={AlertCircle} description={submitError} />
                         )}
 
                         <Button

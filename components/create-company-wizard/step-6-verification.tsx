@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { AsyncButton } from "@core/components/async-button";
-import { Alert, AlertDescription } from "@core/components/ui/alert";
 import { ShieldCheck, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { StatusMessage } from "@recommand/components/status-feedback";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import type { Company } from "@peppol/types/company";
@@ -53,12 +53,12 @@ export function Step6Verification({ teamId, company, onComplete }: Step6Props) {
             </p>
             {verificationLogId ? (
                 <div className="space-y-4">
-                    <Alert>
-                        <CheckCircle2 className="h-4 w-4" />
-                        <AlertDescription className="text-pretty">
-                            Verification session opened in a new tab. Complete the verification there, then come back here.
-                        </AlertDescription>
-                    </Alert>
+                    <StatusMessage
+                        tone="success"
+                        icon={CheckCircle2}
+                        title="Verification session opened"
+                        description="Complete the verification in the new tab, then come back here to finish."
+                    />
                     <ForwardSection companyVerificationLogId={verificationLogId} />
                     <div className="flex justify-end">
                         <Button type="button" onClick={() => onComplete(company)}>
@@ -82,10 +82,7 @@ export function Step6Verification({ teamId, company, onComplete }: Step6Props) {
                         )}
                     </AsyncButton>
                     {verifyError && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>{verifyError}</AlertDescription>
-                        </Alert>
+                        <StatusMessage tone="error" icon={AlertCircle} description={verifyError} />
                     )}
                     <ForwardSection companyVerificationLogId={null} teamId={teamId} companyId={company.id} />
                     <div className="text-center">

@@ -5,7 +5,7 @@ import { stringifyActionFailure } from "@recommand/lib/utils";
 import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
-import { Alert, AlertDescription } from "@core/components/ui/alert";
+import { StatusMessage } from "@recommand/components/status-feedback";
 import { Loader2, AlertCircle, Mail, CheckCircle2, ChevronDown } from "lucide-react";
 
 const client = rc<Companies>("v1");
@@ -84,10 +84,12 @@ export function ForwardSection({ companyVerificationLogId, teamId, companyId }: 
                 </Button>
             </div>
             {open && (success ? (
-                <div className="flex items-center justify-center gap-2 text-sm text-green-600">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Verification link sent successfully. You can close this page.</span>
-                </div>
+                <StatusMessage
+                    tone="success"
+                    icon={CheckCircle2}
+                    title="Verification link sent"
+                    description="The request was forwarded successfully. You can close this page."
+                />
             ) : (
                 <div className="space-y-3">
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -138,10 +140,7 @@ export function ForwardSection({ companyVerificationLogId, teamId, companyId }: 
                         </Button>
                     </div>
                     {error && (
-                        <Alert variant="destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription>{error}</AlertDescription>
-                        </Alert>
+                        <StatusMessage tone="error" icon={AlertCircle} description={error} />
                     )}
                 </div>
             ))}

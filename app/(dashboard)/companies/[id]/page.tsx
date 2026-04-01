@@ -23,6 +23,7 @@ import { canUseIntegrations } from "@peppol/utils/plan-validation";
 import { BUILT_IN_INTEGRATIONS } from "@peppol/utils/integrations";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
+import { StatusMessage } from "@recommand/components/status-feedback";
 
 const client = rc<Companies>("peppol");
 const subscriptionClient = rc<Subscription>("v1");
@@ -320,14 +321,14 @@ export default function CompanyDetailPage() {
       ]}
     >
       {isVerificationRequired && (
-        <Card className="mb-6 border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
-          <CardHeader>
-            <CardTitle>Company Verification Required</CardTitle>
-            <CardDescription>
-              {verificationRequirements === "strict" ? "This company needs to be verified before it can be used." : "This company needs to be verified. Without verification, it will soon be deactivated."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <StatusMessage
+          tone="warning"
+          icon={ShieldCheck}
+          title="Company Verification Required"
+          description={verificationRequirements === "strict" ? "This company needs to be verified before it can be used." : "This company needs to be verified. Without verification, it will soon be deactivated."}
+          className="mb-6"
+        >
+          <div className="pt-1">
             <Button
               onClick={handleVerifyCompany}
               disabled={isVerifying}
@@ -344,8 +345,8 @@ export default function CompanyDetailPage() {
                 </>
               )}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </StatusMessage>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Company Form */}
