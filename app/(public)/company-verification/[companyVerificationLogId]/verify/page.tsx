@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core
 import { RadioGroup, RadioGroupItem } from "@core/components/ui/radio-group";
 import { Alert, AlertDescription } from "@core/components/ui/alert";
 import { Loader2, AlertCircle, ShieldCheck } from "lucide-react";
+import { ForwardSection } from "./forward-section";
 
 const client = rc<Companies>("v1");
 
@@ -229,6 +230,7 @@ export default function Page() {
                                 </>
                             )}
                         </Button>
+                        <ForwardSection companyVerificationLogId={companyVerificationLogId!} />
                     </>
                 ) : (
                     <>
@@ -366,6 +368,7 @@ export default function Page() {
                         <p className="text-xs text-center text-muted-foreground">
                             You will be redirected to our verification partner to complete the identity check.
                         </p>
+                        <ForwardSection companyVerificationLogId={companyVerificationLogId!} />
                     </>
                 )}
             </div>
