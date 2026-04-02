@@ -122,7 +122,7 @@ server.post(
         try {
           const teamExtension = await getTeamExtension(company.teamId);
           const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-          if (shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
+          if (shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
             await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
           }
         } catch (error) {
