@@ -1348,6 +1348,83 @@ describe("invoiceToUBL", () => {
 
       await sendDocumentViaAPI(invoice, "invoice", recipientAddress);
     });
+
+    it("should not include VAT rate on document-level allowance or charge with VAT category O (BR-O-06, BR-O-07)", async () => {
+      const invoice = createBaseInvoice({
+        seller: {
+          name: "Test Seller",
+          street: "Seller Street 1",
+          city: "Seller City",
+          postalZone: "1000",
+          country: "BE",
+          vatNumber: null,
+          enterpriseNumber: "1234567894",
+          street2: null,
+        },
+        buyer: {
+          name: "Test Buyer",
+          street: "Buyer Street 1",
+          city: "Buyer City",
+          postalZone: "2000",
+          country: "BE",
+          vatNumber: null,
+          enterpriseNumber: "9876543210",
+          street2: null,
+        },
+        lines: [
+          {
+            name: "Item not subject to VAT",
+            quantity: "1",
+            unitCode: "C62",
+            netPriceAmount: "1892.00",
+            netAmount: null,
+            vat: { category: "O", percentage: "00.00" },
+            buyersId: null,
+            sellersId: null,
+            standardId: null,
+            description: null,
+            originCountry: null,
+          },
+        ],
+        discounts: [
+          {
+            reason: "Voorschotfactuur 202601615",
+            amount: "580.80",
+            vat: { category: "O", percentage: "00.00" },
+          },
+        ],
+        vat: {
+          totalVatAmount: "0.00",
+          subtotals: [
+            {
+              category: "O",
+              percentage: "0.00",
+              taxableAmount: "1311.20",
+              vatAmount: "0.00",
+              exemptionReason: "Niet BTW-plichtige VZW",
+            },
+          ],
+        },
+        totals: {
+          paidAmount: "0.00",
+          linesAmount: null,
+          payableAmount: "1311.20",
+          discountAmount: "580.80",
+          surchargeAmount: null,
+          taxExclusiveAmount: "1311.20",
+          taxInclusiveAmount: "1311.20",
+        },
+      });
+
+      const senderAddress = "0208:0428643097";
+      const recipientAddress = "0208:0598726857";
+      const xml = invoiceToUBL({ invoice, senderAddress, recipientAddress, isDocumentValidationEnforced: false });
+
+      // BR-O-06: allowance with category O must not have a Percent element
+      // BR-O-07: charge with category O must not have a Percent element
+      // We can verify by ensuring validation passes (both rules are fatal)
+      await validateXml(xml, "VAT category O document-level allowance BR-O-06");
+    });
   });
 
   describe("baseQuantity", () => {

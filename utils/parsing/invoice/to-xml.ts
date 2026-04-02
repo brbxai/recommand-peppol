@@ -268,7 +268,8 @@ export function prebuildInvoiceUBL({ invoice, supplierAddress, customerAddress, 
             },
             "cac:TaxCategory": {
               "cbc:ID": discount.vat.category,
-              "cbc:Percent": discount.vat.percentage,
+              // BR-O-06: A Document level allowance (BG-20) where VAT category code (BT-95) is "Not subject to VAT" shall not contain a Document level allowance VAT rate (BT-96).
+              ...(discount.vat.category !== "O" && { "cbc:Percent": discount.vat.percentage }),
               "cac:TaxScheme": {
                 "cbc:ID": "VAT",
               },
@@ -284,7 +285,8 @@ export function prebuildInvoiceUBL({ invoice, supplierAddress, customerAddress, 
             },
             "cac:TaxCategory": {
               "cbc:ID": surcharge.vat.category,
-              "cbc:Percent": surcharge.vat.percentage,
+              // BR-O-07: A Document level charge (BG-21) where the VAT category code (BT-102) is "Not subject to VAT" shall not contain a Document level charge VAT rate (BT-103).
+              ...(surcharge.vat.category !== "O" && { "cbc:Percent": surcharge.vat.percentage }),
               "cac:TaxScheme": {
                 "cbc:ID": "VAT",
               },
