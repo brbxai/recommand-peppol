@@ -519,6 +519,13 @@
       "when": 1775115778525,
       "tag": "20260402074258_spicy_cable",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1775115879509,
+      "tag": "20260402074439_brave_gauntlet",
+      "breakpoints": true
     }
   ]
 }

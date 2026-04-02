@@ -513,6 +513,7 @@ export const teamExtensions = pgTable("peppol_team_extensions", {
   isPlayground: boolean("is_playground").notNull().default(false),
   useTestNetwork: boolean("use_test_network").notNull().default(false),
   verificationRequirements: verificationRequirementsEnum("verification_requirements").notNull().default("lax"),
+  supportEmailAddress: text("support_email_address"),
 });
 
 export const labels = pgTable(
