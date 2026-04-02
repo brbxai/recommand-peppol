@@ -29,7 +29,6 @@ server.post(
 
     try {
       const rawBody = await c.req.raw.clone().text();
-      console.log("Raw body:", rawBody);
       const signature = c.req.header("X-Signature");
       const timestamp = c.req.header("X-Timestamp");
 
@@ -66,6 +65,9 @@ server.post(
             first_name: z.string().optional().nullable(),
             last_name: z.string().optional().nullable(),
           }).optional(),
+          reviews: z.array(z.object({
+            new_status: z.string().nullable(),
+          })).optional(),
         }).optional(),
       });
 
@@ -86,15 +88,15 @@ server.post(
         return c.json(actionFailure("Company verification log not found"), 404);
       }
 
-      let isVerified = false;
       const verificationProofReference = session_id;
+      const lastManualReview = decision?.reviews?.find(r => r.new_status !== null);
 
-      if (
-        status === "Approved" &&
-        decision?.id_verification?.first_name &&
-        decision?.id_verification?.last_name) {
-        const diditFirstName = decision.id_verification.first_name;
-        const diditLastName = decision.id_verification.last_name;
+      let isVerified = false;
+      if (lastManualReview) {
+        isVerified = lastManualReview.new_status === "Approved";
+      } else if (status === "Approved") {
+        const diditFirstName = decision?.id_verification?.first_name;
+        const diditLastName = decision?.id_verification?.last_name;
         const storedFirstName = companyVerificationLogRecord.firstName;
         const storedLastName = companyVerificationLogRecord.lastName;
 
@@ -103,24 +105,19 @@ server.post(
         }
       }
 
-      // Update company SMP registrations if verification succeeded
       const company = await getCompanyById(companyVerificationLogRecord.companyId);
 
-      // If the company is already verified and this webhook says rejected, ignore it,
-      // it may be a delayed retry of an older, superseded verification attempt.
-      if (!isVerified && company?.isVerified) {
-        console.log(`Ignoring rejected Didit webhook for already-verified company ${companyVerificationLogRecord.companyId}`);
+      if (!isVerified && !lastManualReview && company?.isVerified) {
+        console.log(`Ignoring automated rejection for already-verified company ${companyVerificationLogRecord.companyId}`);
         return c.json(actionSuccess({ message: "Verification status not changed (already verified)" }), 200);
       }
 
       // Open transaction
       await db.transaction(async (tx) => {
         await tx.update(companyVerificationLog).set({ status: isVerified ? "verified" : "rejected", verificationProofReference }).where(eq(companyVerificationLog.id, companyVerificationLogRecord.id));
-        if (isVerified) {
-          // Only update the company if the verification is approved
-          await tx.update(companies).set({ isVerified, verificationProofReference }).where(eq(companies.id, companyVerificationLogRecord.companyId));
-        }
+        await tx.update(companies).set({ isVerified, verificationProofReference }).where(eq(companies.id, companyVerificationLogRecord.companyId));
       });
+
       if (isVerified && company) {
         try {
           const teamExtension = await getTeamExtension(company.teamId);
