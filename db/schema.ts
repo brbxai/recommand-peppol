@@ -12,6 +12,7 @@ import {
   index,
   primaryKey,
   serial,
+  date,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { isNotNull, SQL, sql } from "drizzle-orm";
@@ -31,6 +32,7 @@ import type {
 import { validationResponse, validationResult } from "@peppol/types/validation";
 import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
+import type { Representative } from "@peppol/data/cbe-public-search/types";
 
 export const paymentStatusEnum = pgEnum("peppol_payment_status", [
   "none",
@@ -58,6 +60,9 @@ export const validCountryCodes = pgEnum(
   zodValidCountryCodes.options
 );
 
+
+export const zodVerificationRequirements = z.enum(["strict", "trusted", "lax"]);
+export const verificationRequirementsEnum = pgEnum("verification_requirements", zodVerificationRequirements.options);
 
 export const validIsoIcdSchemeIdentifiers = pgEnum(
   "peppol_valid_iso_icd_scheme_identifiers",
@@ -253,11 +258,68 @@ export const companies = pgTable("peppol_companies", {
   email: text("email"),
   phone: text("phone"),
   isSmpRecipient: boolean("is_smp_recipient").notNull().default(true),
+  isVerified: boolean("is_verified").notNull().default(false),
+  verificationProofReference: text("verification_proof_reference"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
   updatedAt: autoUpdateTimestamp(),
 });
+
+export const verificationStatusEnum = pgEnum("verification_status", ["opened", "idVerificationRequested", "verified", "rejected", "error"]);
+
+export const companyVerificationLog = pgTable(
+  "company_verification_log",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "cvl_" + ulid()),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    status: verificationStatusEnum("status").notNull().default("opened"),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    companyName: text("company_name"),
+    enterpriseNumber: text("enterprise_number"),
+    verificationProofReference: text("verification_proof_reference"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+);
+
+export const enterpriseDataCache = pgTable(
+  "enterprise_data_cache",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "edc_" + ulid()),
+    enterpriseNumber: text("enterprise_number").notNull(),
+    country: validCountryCodes("country").notNull(),
+    name: text("name"),
+    beginDate: date("begin_date"),
+    street: text("street"),
+    number: text("number"),
+    postalCode: text("postal_code"),
+    city: text("city"),
+    juridicalFormCode: text("juridical_form_code"),
+    juridicalFormDescription: text("juridical_form_description"),
+    juridicalFormBeginDate: date("juridical_form_begin_date"),
+    denominationCode: text("denomination_code"),
+    denominationDescription: text("denomination_description"),
+    denominationBeginDate: date("denomination_begin_date"),
+    representatives: jsonb("representatives").$type<Representative[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("enterprise_data_cache_unique").on(table.enterpriseNumber, table.country),
+  ]
+);
 
 export const companyIdentifiers = pgTable(
   "peppol_company_identifiers",
@@ -451,6 +513,8 @@ export const teamExtensions = pgTable("peppol_team_extensions", {
     .references(() => teams.id, { onDelete: "cascade" }),
   isPlayground: boolean("is_playground").notNull().default(false),
   useTestNetwork: boolean("use_test_network").notNull().default(false),
+  verificationRequirements: verificationRequirementsEnum("verification_requirements").notNull().default("lax"),
+  supportEmailAddress: text("support_email_address"),
 });
 
 export const labels = pgTable(

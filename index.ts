@@ -10,6 +10,7 @@ import sendDocumentServer from "./api/send-document";
 import documentDefaultsServer from "./api/document-defaults";
 import previewDocumentServer from "./api/preview-document";
 import receiveDocumentServer from "./api/internal/receive-document";
+import diditWebhookServer from "./api/internal/didit-webhook";
 import transmittedDocumentsServer from "./api/documents";
 import {
   generateSpecs,
@@ -21,9 +22,12 @@ import integrationsServer from "./api/integrations";
 import recipientServer from "./api/recipients";
 import playgroundsServer from "./api/playgrounds";
 import suppliersServer from "./api/suppliers";
+import teamsServer from "./api/teams/get-team-extension";
 import customersServer from "./api/customers";
 import { initializeIntegrationCronJobs } from "./data/integrations/cron";
 import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
+import { onTeamCreated } from "./lib/backend-events";
+import { addBackendEventListener, CORE_BACKEND_EVENTS } from "@core/lib/backend-events";
 
 export let logger: Logger;
 
@@ -32,6 +36,8 @@ const server = new Server();
 export async function init(app: RecommandApp, server: Server) {
   logger = new Logger(app);
   logger.info("Initializing peppol app");
+
+  addBackendEventListener(CORE_BACKEND_EVENTS.TEAM_CREATED, onTeamCreated);
 
   initializeIntegrationCronJobs(logger);
 
@@ -176,6 +182,7 @@ for (const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, transmittedDocumentsServer);
   server.route(prefix, recipientServer);
   server.route(prefix + "internal/", receiveDocumentServer);
+  server.route(prefix + "internal/", diditWebhookServer);
 
   server.route(prefix, webhooksServer);
   server.route(prefix, integrationsServer);
@@ -185,9 +192,10 @@ for (const prefix of ["/peppol/", "/v1/"]) {
   server.route(prefix, customersServer);
   server.route(prefix, labelsServer);
 
-  server.route(prefix, billingProfileServer);
-  server.route(prefix, billingServer);
+  server.route(prefix, billingProfileServer); 
+  server.route(prefix, billingServer); 
   server.route(prefix, subscriptionServer);
+  server.route(prefix, teamsServer);
 }
 
 export default server;

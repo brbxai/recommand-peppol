@@ -2,7 +2,7 @@ import { transmittedDocumentLabels, transmittedDocuments, labels } from "@peppol
 import { db } from "@recommand/db";
 import { eq, and } from "drizzle-orm";
 import { UserFacingError } from "@peppol/utils/util";
-import { getWebhooksByCompany, callWebhook } from "@peppol/data/webhooks";
+import { callWebhooks } from "@peppol/data/webhooks";
 import { getLabelsForSuppliers } from "./suppliers";
 
 export async function assignLabelToDocument(
@@ -50,22 +50,12 @@ export async function assignLabelToDocument(
     labelId: labelId,
   });
 
-  try {
-    const webhooks = await getWebhooksByCompany(teamId, document.companyId);
-    for (const webhook of webhooks) {
-      try {
-        await callWebhook(webhook, {
-          id: documentId,
-          teamId: teamId,
-          companyId: document.companyId,
-        }, "document.label.assigned", { labelId });
-      } catch (error) {
-        console.error("Failed to call webhook:", error);
-      }
-    }
-  } catch (error) {
-    console.error("Failed to call webhooks:", error);
-  }
+  await callWebhooks(teamId, document.companyId, "document.label.assigned", {
+    documentId,
+    teamId,
+    companyId: document.companyId,
+    labelId,
+  });
 }
 
 export async function unassignLabelFromDocument(
@@ -102,22 +92,12 @@ export async function unassignLabelFromDocument(
       )
     );
 
-  try {
-    const webhooks = await getWebhooksByCompany(teamId, document.companyId);
-    for (const webhook of webhooks) {
-      try {
-        await callWebhook(webhook, {
-          id: documentId,
-          teamId: teamId,
-          companyId: document.companyId,
-        }, "document.label.unassigned", { labelId });
-      } catch (error) {
-        console.error("Failed to call webhook:", error);
-      }
-    }
-  } catch (error) {
-    console.error("Failed to call webhooks:", error);
-  }
+  await callWebhooks(teamId, document.companyId, "document.label.unassigned", {
+    documentId,
+    teamId,
+    companyId: document.companyId,
+    labelId,
+  });
 }
 
 export async function getDocumentLabels(

@@ -1,5 +1,6 @@
 import { companies, companyIdentifiers, teamExtensions } from "@peppol/db/schema";
-import { UserFacingError } from "@peppol/utils/util";
+import { validateIdentifier } from "@peppol/utils/identifier-validation";
+import { UserFacingError, cleanEnterpriseNumber, cleanVatNumber } from "@peppol/utils/util";
 import { db } from "@recommand/db";
 import { eq, and, asc, ne, or, isNull } from "drizzle-orm";
 import { unregisterCompanyIdentifier, upsertCompanyRegistration } from "./phoss-smp";
@@ -81,6 +82,47 @@ export async function getSendingCompanyIdentifier(companyId: string): Promise<Co
   return identifiers[0];
 }
 
+async function validateProtectedIdentifier({
+  scheme,
+  identifier,
+  companyId,
+}: {
+  scheme: string;
+  identifier: string;
+  companyId: string;
+}): Promise<void> {
+  const teamInfo = await getTeamExtensionAndCompanyByCompanyId(companyId);
+  if (!teamInfo) {
+    throw new Error("Company is not associated with a team");
+  }
+
+  const cleanedScheme = cleanScheme(scheme);
+
+  if (cleanedScheme === "0208") {
+    const cleanedIdentifier = cleanEnterpriseNumber(identifier);
+    const cleanedEnterpriseNumber = cleanEnterpriseNumber(teamInfo.company.enterpriseNumber);
+    
+    if (!cleanedEnterpriseNumber) {
+      throw new UserFacingError("Company identifier with scheme 0208 requires a company enterprise number to be set.");
+    }
+
+    if (cleanedIdentifier !== cleanedEnterpriseNumber) {
+      throw new UserFacingError(`Company identifier with scheme 0208 must match the company enterprise number. Expected: ${cleanedEnterpriseNumber}, got: ${cleanedIdentifier}`);
+    }
+  } else if (cleanedScheme === "9925") {
+    const cleanedIdentifier = cleanVatNumber(identifier);
+    const cleanedVatNumber = cleanVatNumber(teamInfo.company.vatNumber);
+    
+    if (!cleanedVatNumber) {
+      throw new UserFacingError("Company identifier with scheme 9925 requires a company VAT number to be set.");
+    }
+
+    if (cleanedIdentifier !== cleanedVatNumber) {
+      throw new UserFacingError(`Company identifier with scheme 9925 must match the company VAT number. Expected: ${cleanedVatNumber}, got: ${cleanedIdentifier}`);
+    }
+  }
+}
+
 export async function createCompanyIdentifier({
   companyIdentifier,
   skipSmpRegistration,
@@ -90,6 +132,17 @@ export async function createCompanyIdentifier({
   skipSmpRegistration: boolean;
   useTestNetwork: boolean;
 }): Promise<CompanyIdentifier> {
+  const cleanedScheme = cleanScheme(companyIdentifier.scheme);
+  const cleanedIdentifierValue = cleanIdentifier(companyIdentifier.identifier);
+
+  validateIdentifier(cleanedScheme, cleanedIdentifierValue);
+
+  await validateProtectedIdentifier({
+    scheme: companyIdentifier.scheme,
+    identifier: companyIdentifier.identifier,
+    companyId: companyIdentifier.companyId,
+  });
+
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, undefined, companyIdentifier.companyId);
   if(!canUpsert){
     throw new UserFacingError(
@@ -105,8 +158,8 @@ export async function createCompanyIdentifier({
     .insert(companyIdentifiers)
     .values({
       companyId: companyIdentifier.companyId,
-      scheme: cleanScheme(companyIdentifier.scheme),
-      identifier: cleanIdentifier(companyIdentifier.identifier),
+      scheme: cleanedScheme,
+      identifier: cleanedIdentifierValue,
     })
     .returning()
     .then((rows) => rows[0]);
@@ -132,6 +185,17 @@ export async function updateCompanyIdentifier({
     throw new UserFacingError("Company identifier not found");
   }
 
+  const cleanedScheme = cleanScheme(companyIdentifier.scheme);
+  const cleanedIdentifierValue = cleanIdentifier(companyIdentifier.identifier);
+
+  validateIdentifier(cleanedScheme, cleanedIdentifierValue);
+
+  await validateProtectedIdentifier({
+    scheme: companyIdentifier.scheme,
+    identifier: companyIdentifier.identifier,
+    companyId: companyIdentifier.companyId,
+  });
+
   // Check if the company identifier can be upserted
   const canUpsert = await canUpsertCompanyIdentifier(companyIdentifier.scheme, companyIdentifier.identifier, companyIdentifier.id, companyIdentifier.companyId);
   if (!canUpsert) {
@@ -141,7 +205,7 @@ export async function updateCompanyIdentifier({
   }
 
   // Return if there is no change (taking lowercase into account)
-  if(oldIdentifier.scheme === cleanScheme(companyIdentifier.scheme) && oldIdentifier.identifier === cleanIdentifier(companyIdentifier.identifier)){
+  if(oldIdentifier.scheme === cleanedScheme && oldIdentifier.identifier === cleanedIdentifierValue){
     return oldIdentifier;
   }
 
@@ -153,8 +217,8 @@ export async function updateCompanyIdentifier({
   const updatedIdentifier = await db
     .update(companyIdentifiers)
     .set({
-      scheme: cleanScheme(companyIdentifier.scheme),
-      identifier: cleanIdentifier(companyIdentifier.identifier),
+      scheme: cleanedScheme,
+      identifier: cleanedIdentifierValue,
     })
     .where(
       and(

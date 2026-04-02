@@ -2,12 +2,13 @@ import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import type { Subscription } from "@peppol/api/subscription";
-import { useEffect, useState } from "react";
+import type { GetTeamExtension } from "@peppol/api/teams/get-team-extension";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
 import { stringifyActionFailure } from "@recommand/lib/utils";
 import { useActiveTeam } from "@core/hooks/user";
-import { Loader2, Trash2, ArrowRight, Plug } from "lucide-react";
+import { Loader2, Trash2, ArrowRight, Plug, ShieldCheck } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CompanyForm } from "../../../../components/company-form";
 import { CompanyIdentifiersManager } from "../../../../components/company-identifiers-manager";
@@ -22,9 +23,11 @@ import { canUseIntegrations } from "@peppol/utils/plan-validation";
 import { BUILT_IN_INTEGRATIONS } from "@peppol/utils/integrations";
 import type { Subscription as SubscriptionType } from "@peppol/data/subscriptions";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
+import { StatusMessage } from "@recommand/components/status-feedback";
 
 const client = rc<Companies>("peppol");
 const subscriptionClient = rc<Subscription>("v1");
+const teamsClient = rc<GetTeamExtension>("v1");
 
 export default function CompanyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,15 +37,39 @@ export default function CompanyDetailPage() {
   const [formData, setFormData] = useState<CompanyFormData>(defaultCompanyFormData);
   const [subscription, setSubscription] = useState<SubscriptionType | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationRequirements, setVerificationRequirements] = useState<"strict" | "trusted" | "lax" | null>(null);
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
   const activeTeam = useActiveTeam();
   const isPlayground = useIsPlayground();
+  const verificationPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isVerificationRequired = verificationRequirements !== null && (verificationRequirements === "strict" || verificationRequirements === "lax") && !(isVerified ?? company?.isVerified);
 
   useEffect(() => {
     if (id && activeTeam?.id) {
       fetchCompany();
       fetchSubscription();
+      fetchTeamExtension();
     }
   }, [id, activeTeam?.id]);
+
+  useEffect(() => {
+    if (isVerificationRequired) {
+      verificationPollRef.current = setInterval(pollVerificationStatus, 1000);
+    } else {
+      if (verificationPollRef.current) {
+        clearInterval(verificationPollRef.current);
+        verificationPollRef.current = null;
+      }
+    }
+
+    return () => {
+      if (verificationPollRef.current) {
+        clearInterval(verificationPollRef.current);
+        verificationPollRef.current = null;
+      }
+    };
+  }, [isVerificationRequired]);
 
   const fetchCompany = async () => {
     if (!id || !activeTeam?.id) return;
@@ -66,12 +93,31 @@ export default function CompanyDetailPage() {
       const companyData = json.company as Company;
       setCompany(companyData);
       setFormData(companyData);
+      setIsVerified(companyData.isVerified);
     } catch (error) {
       console.error("Error fetching company:", error);
       toast.error("Failed to load company");
       navigate("/companies");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const pollVerificationStatus = async () => {
+    if (!id || !activeTeam?.id) return;
+
+    try {
+      const response = await client[":teamId"]["companies"][":companyId"].$get({
+        param: {
+          teamId: activeTeam.id,
+          companyId: id,
+        },
+      });
+      const json = await response.json();
+      if (json.success) {
+        setIsVerified((json.company as Company).isVerified);
+      }
+    } catch {
     }
   };
 
@@ -106,6 +152,23 @@ export default function CompanyDetailPage() {
     }
   };
 
+  const fetchTeamExtension = async () => {
+    if (!activeTeam?.id) return;
+
+    try {
+      const response = await teamsClient[":teamId"]["team-extension"].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setVerificationRequirements(data.verificationRequirements);
+      }
+    } catch (error) {
+      console.error("Error fetching team extension:", error);
+    }
+  };
+
   const handleCompanyUpdate = async () => {
     if (!activeTeam?.id || !company) return;
 
@@ -129,10 +192,11 @@ export default function CompanyDetailPage() {
       const companyData = json.company as Company;
       setCompany(companyData);
       setFormData(companyData);
+      setIsVerified(companyData.isVerified);
       toast.success("Company updated successfully");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update company. (" + error + ")");
+      toast.error("Failed to update company. (" + (error instanceof Error ? error.message : String(error)) + ")");
     }
   };
 
@@ -159,6 +223,32 @@ export default function CompanyDetailPage() {
       toast.error("Failed to delete company: " + error);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleVerifyCompany = async () => {
+    if (!activeTeam?.id || !company) return;
+
+    try {
+      setIsVerifying(true);
+      const response = await client[":teamId"]["companies"][":companyId"]["verify"].$post({
+        param: {
+          teamId: activeTeam.id,
+          companyId: company.id,
+        },
+      });
+
+      const json = await response.json();
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+
+      window.open(json.verificationUrl, "_blank");
+      toast.success("Verification session opened in a new tab");
+    } catch (error) {
+      toast.error("Failed to create verification session: " + error);
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -230,6 +320,34 @@ export default function CompanyDetailPage() {
         />,
       ]}
     >
+      {isVerificationRequired && (
+        <StatusMessage
+          tone="warning"
+          icon={ShieldCheck}
+          title="Company Verification Required"
+          description={verificationRequirements === "strict" ? "This company needs to be verified before it can be used." : "This company needs to be verified. Without verification, it will soon be deactivated."}
+          className="mb-6"
+        >
+          <div className="pt-1">
+            <Button
+              onClick={handleVerifyCompany}
+              disabled={isVerifying}
+            >
+              {isVerifying ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Verify Company
+                </>
+              )}
+            </Button>
+          </div>
+        </StatusMessage>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         {/* Company Form */}
         <Card>

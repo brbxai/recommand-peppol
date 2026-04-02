@@ -1,10 +1,13 @@
 import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
+import type { GetTeamExtension } from "@peppol/api/teams/get-team-extension";
 import { useEffect, useState, useCallback } from "react";
 import { DataTable } from "@core/components/data-table";
 import {
   type ColumnDef,
+  type Column,
+  type Row,
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
@@ -20,6 +23,7 @@ import { useActiveTeam } from "@core/hooks/user";
 import { useNavigate } from "react-router-dom";
 import { Trash2, Loader2, Pencil, Copy } from "lucide-react";
 import { ColumnHeader } from "@core/components/data-table/column-header";
+import { VerificationStatusIcon } from "../../../components/verification-status-icon";
 import {
   Dialog,
   DialogContent,
@@ -27,15 +31,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@core/components/ui/dialog";
-import { CompanyForm } from "../../../components/company-form";
-import type { Company, CompanyFormData } from "../../../types/company";
-import { defaultCompanyFormData } from "../../../types/company";
+import { CreateCompanyWizard } from "../../../components/create-company-wizard";
+import type { Company } from "../../../types/company";
 import { DataTableToolbar } from "@core/components/data-table/toolbar";
 import { DataTablePagination } from "@core/components/data-table/pagination";
 import { Link } from "react-router-dom";
 import { ConfirmDialog } from "@core/components/confirm-dialog";
 
 const client = rc<Companies>("peppol");
+const teamsClient = rc<GetTeamExtension>("v1");
 
 // Utility function to handle API responses
 const handleApiResponse = async (
@@ -81,12 +85,9 @@ export default function Page() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
-  const [formData, setFormData] = useState<CompanyFormData>(
-    defaultCompanyFormData
-  );
-  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [companyCreatedInSession, setCompanyCreatedInSession] = useState(false);
   const [deletingCompanyId, setDeletingCompanyId] = useState<string | null>(null);
+  const [verificationRequirements, setVerificationRequirements] = useState<"strict" | "trusted" | "lax" | null>(null);
   const activeTeam = useActiveTeam();
 
   const fetchCompanies = useCallback(async () => {
@@ -123,56 +124,41 @@ export default function Page() {
     fetchCompanies();
   }, [fetchCompanies]);
 
-  const handleCompanySubmit = async () => {
-    if (!activeTeam?.id) {
-      toast.error("No active team selected");
-      return;
+  useEffect(() => {
+    if (activeTeam?.id) {
+      fetchTeamExtension();
     }
+  }, [activeTeam?.id]);
+
+  const fetchTeamExtension = async () => {
+    if (!activeTeam?.id) return;
 
     try {
-      console.log("dialogMode", dialogMode);
-      if (dialogMode === "create") {
-        const response = await client[":teamId"]["companies"].$post({
-          param: { teamId: activeTeam.id },
-          json: formData,
-        });
+      const response = await teamsClient[":teamId"]["team-extension"].$get({
+        param: { teamId: activeTeam.id },
+      });
+      const data = await response.json();
 
-        const json = await handleApiResponse(
-          response,
-          "Company created successfully"
-        );
-        setCompanies((prev) => [...prev, json.company]);
-      } else if (editingCompany) {
-        console.log("editingCompany", editingCompany);
-        const response = await client[":teamId"]["companies"][
-          ":companyId"
-        ].$put({
-          param: {
-            teamId: activeTeam.id,
-            companyId: editingCompany.id,
-          },
-          json: {
-            ...formData,
-            vatNumber: formData.vatNumber || undefined,
-          },
-        });
-
-        const json = await handleApiResponse(
-          response,
-          "Company updated successfully"
-        );
-        setCompanies((prev) =>
-          prev.map((company) =>
-            company.id === editingCompany.id ? json.company : company
-          )
-        );
+      if (data.success) {
+        setVerificationRequirements(data.verificationRequirements);
       }
-
-      setFormData(defaultCompanyFormData);
-      setEditingCompany(null);
-      setIsDialogOpen(false);
     } catch (error) {
-      console.error("Error submitting company:", error);
+      console.error("Error fetching team extension:", error);
+    }
+  };
+
+  const handleWizardComplete = (company: Company) => {
+    setCompanies((prev) => [...prev, company]);
+    setCompanyCreatedInSession(true);
+    setIsDialogOpen(false);
+    toast.success("Company created successfully");
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open && companyCreatedInSession) {
+      setCompanyCreatedInSession(false);
+      fetchCompanies();
     }
   };
 
@@ -247,6 +233,19 @@ export default function Page() {
     createColumn("enterpriseNumber", "Enterprise Number"),
     createColumn("city", "City"),
     createColumn("country", "Country"),
+    ...(verificationRequirements && (verificationRequirements === "strict" || verificationRequirements === "lax")
+      ? [
+          {
+            accessorKey: "isVerified",
+            header: ({ column }: { column: Column<Company> }) => <ColumnHeader column={column} title="Verification" />,
+            cell: ({ row }: { row: Row<Company> }) => {
+              const isVerified = row.getValue("isVerified") as boolean;
+              return <VerificationStatusIcon isVerified={isVerified} />;
+            },
+            enableGlobalFilter: false,
+          } as ColumnDef<Company>,
+        ]
+      : []),
     {
       id: "actions",
       header: "",
@@ -315,34 +314,25 @@ export default function Page() {
         <Dialog
           key="create-company-dialog"
           open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
+          onOpenChange={handleDialogOpenChange}
         >
           <DialogTrigger asChild>
-            <Button
-              onClick={() => {
-                setDialogMode("create");
-                setFormData(defaultCompanyFormData);
-                setEditingCompany(null);
-              }}
-            >
+            <Button>
               Create Company
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px]">
             <DialogHeader>
-              <DialogTitle>
-                {dialogMode === "create"
-                  ? "Create New Company"
-                  : "Edit Company"}
-              </DialogTitle>
+              <DialogTitle>Create New Company</DialogTitle>
             </DialogHeader>
-            <CompanyForm
-              company={formData}
-              onChange={(data) => setFormData(data as CompanyFormData)}
-              onSubmit={async () => await handleCompanySubmit()}
-              onCancel={() => setIsDialogOpen(false)}
-              isEditing={dialogMode === "edit"}
-            />
+            {activeTeam && (
+              <CreateCompanyWizard
+                teamId={activeTeam.id}
+                verificationRequirements={verificationRequirements}
+                onComplete={handleWizardComplete}
+                onCancel={() => setIsDialogOpen(false)}
+              />
+            )}
           </DialogContent>
         </Dialog>,
       ]}

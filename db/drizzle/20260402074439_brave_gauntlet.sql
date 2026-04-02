@@ -1,0 +1,1 @@
+ALTER TABLE "peppol_team_extensions" ADD COLUMN "support_email_address" text;

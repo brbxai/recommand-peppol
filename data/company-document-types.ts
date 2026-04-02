@@ -1,7 +1,7 @@
 import { companyDocumentTypes } from "@peppol/db/schema";
 import { UserFacingError } from "@peppol/utils/util";
 import { db } from "@recommand/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { unregisterCompanyDocumentType, upsertCompanyRegistrations } from "./phoss-smp";
 
 export type CompanyDocumentType = typeof companyDocumentTypes.$inferSelect;
@@ -11,7 +11,8 @@ export async function getCompanyDocumentTypes(companyId: string): Promise<Compan
   return await db
     .select()
     .from(companyDocumentTypes)
-    .where(eq(companyDocumentTypes.companyId, companyId));
+    .where(eq(companyDocumentTypes.companyId, companyId))
+    .orderBy(asc(companyDocumentTypes.docTypeId));
 }
 
 export async function getCompanyDocumentType(

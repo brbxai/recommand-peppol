@@ -1,4 +1,4 @@
-export function shouldInteractWithPeppolNetwork({
+function shouldInteractWithPeppolNetwork({
     isPlayground,
     useTestNetwork,
 }: {
@@ -16,4 +16,22 @@ export function shouldInteractWithPeppolNetwork({
     }else{
         return true;
     }
+}
+
+export function shouldRegisterWithSmp({
+    isPlayground,
+    useTestNetwork,
+    isSmpRecipient,
+    isVerified,
+    verificationRequirements,
+}: {
+    isPlayground?: boolean;
+    useTestNetwork?: boolean;
+    isSmpRecipient: boolean;
+    isVerified: boolean;
+    verificationRequirements?: string;
+}): boolean {
+    // Only allow registration with the SMP if the company is an SMP recipient and is verified
+    const requiresVerification = verificationRequirements === "strict";
+    return shouldInteractWithPeppolNetwork({ isPlayground, useTestNetwork }) && isSmpRecipient && (!requiresVerification || isVerified);
 }

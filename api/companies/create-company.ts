@@ -1,7 +1,9 @@
 import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import {
     createCompany,
+    deleteCompany,
 } from "@peppol/data/companies";
+import { createCompanyVerificationLog, getBaseUrlOrThrow } from "@peppol/data/company-verification";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -23,7 +25,7 @@ const createCompanyRouteDescription = describeRoute({
     summary: "Create Company",
     tags: ["Companies"],
     responses: {
-        ...describeSuccessResponseWithZod("Successfully created company", z.object({ company: companyResponse })),
+        ...describeSuccessResponseWithZod("Successfully created company", z.object({ company: companyResponse, verificationUrl: z.string() })),
         ...describeErrorResponse(400, "Invalid request data"),
         ...describeErrorResponse(500, "Failed to create company"),
     },
@@ -82,13 +84,34 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
     }
 
     try {
+        getBaseUrlOrThrow();
+
         const company = await createCompany({
             ...c.req.valid("json"),
             teamId: c.var.team.id,
             enterpriseNumber,
             enterpriseNumberScheme,
         });
-        return c.json(actionSuccess({ company }));
+
+        try {
+            const { log, verificationUrl } = await createCompanyVerificationLog({
+                teamId: c.var.team.id,
+                companyId: company.id,
+            });
+
+            return c.json(actionSuccess({ company, verificationUrl, verificationLogId: log.id }));
+        } catch (error) {
+            try {
+                await deleteCompany({
+                    teamId: c.var.team.id,
+                    companyId: company.id,
+                });
+            } catch (rollbackError) {
+                console.error(`Failed to rollback company ${company.id} after verification setup failed:`, rollbackError);
+            }
+
+            throw error;
+        }
     } catch (error) {
         console.error(error);
         if (error instanceof UserFacingError) {

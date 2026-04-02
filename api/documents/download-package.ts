@@ -100,7 +100,7 @@ async function _downloadPackageImplementation(c: DownloadPackageContext) {
 
         // If there are attachments, add them to the zip
         let hasPdfAttachment = false;
-        if (document.parsed?.attachments) {
+        if (document.parsed && "attachments" in document.parsed && document.parsed.attachments) {
             for (const attachment of document.parsed.attachments) {
                 const base64 = attachment.embeddedDocument;
                 const mimeCode = attachment.mimeCode;

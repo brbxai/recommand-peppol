@@ -8,12 +8,14 @@ import {
   UserFacingError,
 } from "@peppol/utils/util";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
-import { getTeamExtension } from "./teams";
+import { getTeamExtension, type TeamExtension } from "./teams";
 import { createCompanyDocumentType } from "./company-document-types";
 import { canUpsertCompanyIdentifier, createCompanyIdentifier, getCompanyIdentifiers } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
-import { shouldInteractWithPeppolNetwork } from "@peppol/utils/playground";
-
+import { shouldRegisterWithSmp } from "@peppol/utils/playground";
+import { createVerificationSession } from "./didit/client";
+import { getCompanyVerificationLog } from "./company-verification";
+import { validateCountryIdentifier } from "@peppol/utils/identifier-validation";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -117,7 +119,40 @@ export async function getCompanyByPeppolId({
   return results[0].peppol_companies;
 }
 
+function validateCompanyCountryIdentifiers({
+  country,
+  vatNumber,
+  enterpriseNumber,
+}: {
+  country?: string | null;
+  vatNumber?: string | null;
+  enterpriseNumber?: string | null;
+}): void {
+  if (vatNumber && !/^[A-Z]{2}/.test(vatNumber)) {
+    throw new UserFacingError("VAT number must start with a country code (e.g. BE, NL, DE)");
+  }
+  if (vatNumber && country && vatNumber.substring(0, 2).toUpperCase() !== country.toUpperCase()) {
+    throw new UserFacingError(`VAT number country code (${vatNumber.substring(0, 2)}) does not match the selected country (${country})`);
+  }
+  if (!country) {
+    return;
+  }
+  validateCountryIdentifier(country, {
+    vatNumber,
+    enterpriseNumber,
+  });
+}
+
 export async function createCompany(company: InsertCompany & { skipDefaultCompanySetup: boolean }): Promise<Company> {
+  const cleanedVat = cleanVatNumber(company.vatNumber);
+  const cleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
+
+  validateCompanyCountryIdentifiers({
+    country: company.country,
+    vatNumber: cleanedVat,
+    enterpriseNumber: cleanedEnterpriseNumber,
+  });
+
   const teamExtension = await getTeamExtension(company.teamId);
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
@@ -134,7 +169,7 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
       `Company ${createdCompany.name} has been created. It is ${createdCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
     );
     if (!company.skipDefaultCompanySetup) {
-      await setupCompanyDefaults({ company: createdCompany, isPlayground: isPlaygroundTeam, useTestNetwork });
+      await setupCompanyDefaults({ company: createdCompany, isPlayground: isPlaygroundTeam, useTestNetwork, verificationRequirements: teamExtension?.verificationRequirements ?? undefined });
     }
   } catch (error) {
     sendSystemAlert(
@@ -153,8 +188,8 @@ export async function createCompany(company: InsertCompany & { skipDefaultCompan
  * @param company The company to setup defaults for
  * @param isPlayground Whether the company is in a playground team, if so we don't register the company in the SMP
  */
-async function setupCompanyDefaults({ company, isPlayground, useTestNetwork }: { company: Company, isPlayground: boolean, useTestNetwork: boolean }): Promise<void> {
-  const skipSmpRegistration = !shouldInteractWithPeppolNetwork({ isPlayground, useTestNetwork }) || !company.isSmpRecipient;
+async function setupCompanyDefaults({ company, isPlayground, useTestNetwork, verificationRequirements }: { company: Company, isPlayground: boolean, useTestNetwork: boolean, verificationRequirements?: string }): Promise<void> {
+  const skipSmpRegistration = !shouldRegisterWithSmp({ isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements });
   const countryInfo = COUNTRIES.find((country) => country.code === company.country);
 
   for (const documentType of countryInfo?.defaultDocumentTypes ?? []) {
@@ -203,17 +238,42 @@ async function setupCompanyDefaults({ company, isPlayground, useTestNetwork }: {
 }
 
 export async function updateCompany(company: Partial<InsertCompany> & { id: string; teamId: string }): Promise<Company> {
+  const newCleanedVatNumber = cleanVatNumber(company.vatNumber);
+  const newCleanedEnterpriseNumber = cleanEnterpriseNumber(company.enterpriseNumber);
+
   const oldCompany = await getCompany(company.teamId, company.id);
   if (!oldCompany) {
     throw new UserFacingError("Company not found");
   }
 
+  const effectiveCountry = company.country ?? oldCompany.country;
+  const effectiveVat = newCleanedVatNumber ?? cleanVatNumber(oldCompany.vatNumber);
+  const effectiveEnterpriseNumber = newCleanedEnterpriseNumber ?? cleanEnterpriseNumber(oldCompany.enterpriseNumber);
+
+  validateCompanyCountryIdentifiers({
+    country: effectiveCountry,
+    vatNumber: effectiveVat,
+    enterpriseNumber: effectiveEnterpriseNumber,
+  });
+
   const teamExtension = await getTeamExtension(company.teamId);
 
   // Merge with existing company data, only updating provided fields
-  const updatedFields = Object.fromEntries(
+  const updatedFields: Partial<InsertCompany> = Object.fromEntries(
     Object.entries(company).filter(([_, value]) => value !== undefined)
   );
+  
+  // Check if cleaned vat number or enterprise number changed, and reset verification if so
+  const oldCleanedEnterpriseNumber = cleanEnterpriseNumber(oldCompany.enterpriseNumber);
+  const oldCleanedVatNumber = cleanVatNumber(oldCompany.vatNumber);
+  
+  const enterpriseNumberChanged = company.enterpriseNumber !== undefined && oldCleanedEnterpriseNumber !== newCleanedEnterpriseNumber;
+  const vatNumberChanged = company.vatNumber !== undefined && oldCleanedVatNumber !== newCleanedVatNumber;
+  
+  if ((enterpriseNumberChanged || vatNumberChanged) && oldCompany.isVerified) {
+    updatedFields.isVerified = false;
+    updatedFields.verificationProofReference = null;
+  }
 
   const updatedCompany = await db
     .update(companies)
@@ -226,37 +286,39 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
 
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
-  if (shouldInteractWithPeppolNetwork({ isPlayground: isPlaygroundTeam, useTestNetwork }) && oldCompany.isSmpRecipient !== updatedCompany.isSmpRecipient) {
-    if (updatedCompany.isSmpRecipient) {
-      try {
-        await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-      } catch (error) {
-        // If registration fails, unregister any company registrations that might have been registered
-        try {
-          await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-        } catch (error) {
-          // If this fails, we can't do much about it, we at least want to rollback the update of the company
-          console.error(`Failed to unregister company registrations for company ${updatedCompany.id} after registration failed: ${error}`);
-        }
-        // Also rollback the update of the company
-        await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
-        throw error;
-      }
-    } else {
+  const verificationRequirements = teamExtension?.verificationRequirements ?? undefined;
+  const wasRegistered = shouldRegisterWithSmp({ isPlayground: isPlaygroundTeam, useTestNetwork, isSmpRecipient: oldCompany.isSmpRecipient, isVerified: oldCompany.isVerified, verificationRequirements });
+  const shouldBeRegistered = shouldRegisterWithSmp({ isPlayground: isPlaygroundTeam, useTestNetwork, isSmpRecipient: updatedCompany.isSmpRecipient, isVerified: updatedCompany.isVerified, verificationRequirements });
+
+  if (!wasRegistered && shouldBeRegistered) {
+    try {
+      await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+    } catch (error) {
+      // If registration fails, unregister any company registrations that might have been registered
       try {
         await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-      } catch (error) {
-        // If unregistration fails, register all company registrations that might have been unregistered
-        try {
-          await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
-        } catch (error) {
-          // If this fails, we can't do much about it, we at least want to rollback the update of the company
-          console.error(`Failed to register company registrations for company ${updatedCompany.id} after unregistration failed: ${error}`);
-        }
-        // Also rollback the update of the company
-        await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
-        throw error;
+      } catch (rollbackError) {
+        // If this fails, we can't do much about it, we at least want to rollback the update of the company
+        console.error(`Failed to unregister company registrations for company ${updatedCompany.id} after registration failed: ${rollbackError}`);
       }
+      // Also rollback the update of the company
+      await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
+      throw error;
+    }
+  } else if (wasRegistered && !shouldBeRegistered) {
+    try {
+      await unregisterCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+    } catch (error) {
+      // If unregistration fails, register all company registrations that might have been unregistered
+      try {
+        await upsertCompanyRegistrations({ companyId: updatedCompany.id, useTestNetwork });
+      } catch (rollbackError) {
+        // If this fails, we can't do much about it, we at least want to rollback the update of the company
+        console.error(`Failed to register company registrations for company ${updatedCompany.id} after unregistration failed: ${rollbackError}`);
+      }
+      // Also rollback the update of the company
+      await db.update(companies).set(oldCompany).where(eq(companies.id, company.id));
+      throw error;
     }
   } else {
     try {
@@ -304,10 +366,46 @@ export async function deleteCompany({
   const teamExtension = await getTeamExtension(teamId);
   const isPlaygroundTeam = teamExtension?.isPlayground ?? false;
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-  if (shouldInteractWithPeppolNetwork({ isPlayground: isPlaygroundTeam, useTestNetwork }) && company.isSmpRecipient) {
+  if (shouldRegisterWithSmp({ isPlayground: isPlaygroundTeam, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
     await unregisterCompanyRegistrations({ companyId, useTestNetwork });
   }
   await db
     .delete(companies)
     .where(and(eq(companies.teamId, teamId), eq(companies.id, companyId)));
+}
+
+export async function verifyCompany({
+  companyVerificationLogId,
+  callback,
+}: {
+  companyVerificationLogId: string;
+  callback?: string;
+}): Promise<string> {
+  const companyVerificationLog = await getCompanyVerificationLog(companyVerificationLogId);
+  if (!companyVerificationLog) {
+    throw new UserFacingError("Company verification log not found");
+  }
+
+  const apiKey = process.env.DIDIT_API_KEY;
+  if (!apiKey) {
+    throw new Error("DIDIT_API_KEY environment variable is not set");
+  }
+
+  const workflowId = process.env.DIDIT_WORKFLOW_ID;
+  if (!workflowId) {
+    throw new Error("DIDIT_WORKFLOW_ID environment variable is not set");
+  }
+
+  const session = await createVerificationSession({
+    apiKey,
+    workflowId,
+    vendorData: companyVerificationLog.id,
+    callback,
+  });
+
+  if (!session || !session.url) {
+    throw new UserFacingError("Failed to create verification session");
+  }
+
+  return session.url;
 }

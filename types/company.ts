@@ -14,6 +14,7 @@ export type Company = {
   email: string | null;
   phone: string | null;
   isSmpRecipient: boolean;
+  isVerified: boolean;
 };
 
 export type CompanyFormData = Omit<Company, 'id'>;
@@ -29,5 +30,6 @@ export const defaultCompanyFormData: CompanyFormData = {
   vatNumber: null,
   email: null,
   phone: null,
-  isSmpRecipient: true,
+  isSmpRecipient: false,
+  isVerified: false,
 }; 
