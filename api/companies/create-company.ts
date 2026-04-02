@@ -2,6 +2,7 @@ import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUse
 import {
     createCompany,
 } from "@peppol/data/companies";
+import { createCompanyVerificationLog } from "@peppol/data/company-verification";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -23,7 +24,7 @@ const createCompanyRouteDescription = describeRoute({
     summary: "Create Company",
     tags: ["Companies"],
     responses: {
-        ...describeSuccessResponseWithZod("Successfully created company", z.object({ company: companyResponse })),
+        ...describeSuccessResponseWithZod("Successfully created company", z.object({ company: companyResponse, verificationUrl: z.string() })),
         ...describeErrorResponse(400, "Invalid request data"),
         ...describeErrorResponse(500, "Failed to create company"),
     },
@@ -88,7 +89,13 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
             enterpriseNumber,
             enterpriseNumberScheme,
         });
-        return c.json(actionSuccess({ company }));
+
+        const { verificationUrl } = await createCompanyVerificationLog({
+            teamId: c.var.team.id,
+            companyId: company.id,
+        });
+
+        return c.json(actionSuccess({ company, verificationUrl }));
     } catch (error) {
         console.error(error);
         if (error instanceof UserFacingError) {

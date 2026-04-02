@@ -56,18 +56,11 @@ const _verifyCompany = server.post(
 async function _verifyCompanyImplementation(c: VerifyCompanyContext) {
     try {
         const companyId = c.req.valid("param").companyId;
-        const baseUrl = process.env.BASE_URL;
-        if (!baseUrl) {
-            throw new Error("BASE_URL environment variable is not set");
-        }
 
-        // Create a company verification log
-        const companyVerificationLog = await createCompanyVerificationLog({
+        const { verificationUrl } = await createCompanyVerificationLog({
             teamId: c.var.team.id,
             companyId,
         });
-
-        const verificationUrl = `${baseUrl}/company-verification/${companyVerificationLog.id}/verify`;
         
         return c.json(actionSuccess({ verificationUrl }));
     } catch (error) {

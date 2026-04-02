@@ -36,13 +36,18 @@ export async function createCompanyVerificationLog({
 }: {
   teamId: string;
   companyId: string;
-}): Promise<CompanyVerificationLog> {
+}): Promise<{ log: CompanyVerificationLog; verificationUrl: string }> {
+  const baseUrl = process.env.BASE_URL;
+  if (!baseUrl) {
+    throw new Error("BASE_URL environment variable is not set");
+  }
+
   const company = await getCompany(teamId, companyId);
   if (!company) {
     throw new UserFacingError("Company not found");
   }
 
-  return await db
+  const log = await db
     .insert(companyVerificationLog)
     .values({
       companyId,
@@ -51,6 +56,9 @@ export async function createCompanyVerificationLog({
     })
     .returning()
     .then((rows) => rows[0]);
+
+  const verificationUrl = `${baseUrl}/company-verification/${log.id}/verify`;
+  return { log, verificationUrl };
 }
 
 export async function submitIdentityForm(
