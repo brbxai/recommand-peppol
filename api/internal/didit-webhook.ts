@@ -103,6 +103,8 @@ server.post(
         if (diditFirstName && diditLastName && storedFirstName && storedLastName && normalizeName(diditFirstName) === normalizeName(storedFirstName) && normalizeName(diditLastName) === normalizeName(storedLastName)) {
           isVerified = true;
         }
+      } else if (status === "Not Started") {
+        return c.json(actionSuccess({ message: "Verification status not changed (not started)" }), 200);
       }
 
       const company = await getCompanyById(companyVerificationLogRecord.companyId);

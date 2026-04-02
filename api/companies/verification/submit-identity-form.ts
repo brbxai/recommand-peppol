@@ -1,5 +1,5 @@
 import { getCompanyById } from "@peppol/data/companies";
-import { getCompanyVerificationLog, requestIdVerification, submitIdentityForm } from "@peppol/data/company-verification";
+import { getCompanyVerificationLog, submitIdentityForm } from "@peppol/data/company-verification";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -44,9 +44,7 @@ async function _submitIdentityFormImplementation(c: SubmitIdentityFormContext) {
             return c.json(actionFailure("Company not found"), 404);
         }
 
-        const updatedLog = await submitIdentityForm(companyVerificationLogId, verificationLog, company, firstName, lastName);
-
-        const verificationUrl = await requestIdVerification(companyVerificationLogId, updatedLog);
+        const verificationUrl = await submitIdentityForm(companyVerificationLogId, verificationLog, company, firstName, lastName);
         return c.json(actionSuccess({ verificationUrl }));
     } catch (error) {
         console.error(error);

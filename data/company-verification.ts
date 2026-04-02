@@ -73,7 +73,7 @@ export async function submitIdentityForm(
   company: Company,
   firstName: string,
   lastName: string
-): Promise<CompanyVerificationLog> {
+): Promise<string> {
   if (log.status !== "opened") {
     throw new UserFacingError("This verification has already been submitted.");
   }
@@ -96,16 +96,20 @@ export async function submitIdentityForm(
     }
   }
 
-  return await db
+  const verificationUrl = await createIdVerificationUrl(companyVerificationLogId);
+
+  await db
     .update(companyVerificationLog)
     .set({
       firstName,
       lastName,
-      status: "formSubmitted",
+      status: "idVerificationRequested",
     })
     .where(eq(companyVerificationLog.id, companyVerificationLogId))
     .returning()
     .then((rows) => rows[0]);
+
+  return verificationUrl;
 }
 
 export async function submitPlaygroundVerification(
@@ -157,12 +161,25 @@ export async function requestIdVerification(
   companyVerificationLogId: string,
   log: CompanyVerificationLog
 ): Promise<string> {
-  if (log.status !== "formSubmitted" && log.status !== "idVerificationRequested") {
+  if (log.status !== "idVerificationRequested") {
     throw new UserFacingError("Verification is not in a state that allows identity verification.");
   }
 
-  const baseUrl = getBaseUrlOrThrow();
+  const verificationUrl = await createIdVerificationUrl(companyVerificationLogId);
+
+  await db
+    .update(companyVerificationLog)
+    .set({ status: "idVerificationRequested" })
+    .where(eq(companyVerificationLog.id, companyVerificationLogId))
+    .returning()
+    .then((rows) => rows[0]);
   
+  return verificationUrl;
+}
+
+async function createIdVerificationUrl(companyVerificationLogId: string): Promise<string> {
+  const baseUrl = getBaseUrlOrThrow();
+
   const callbackUrl = `${baseUrl}/company-verification/${companyVerificationLogId}/status`;
   const verificationUrl = await verifyCompany({
     companyVerificationLogId,
@@ -172,12 +189,5 @@ export async function requestIdVerification(
     throw new UserFacingError("Failed to create verification session");
   }
 
-  await db
-    .update(companyVerificationLog)
-    .set({ status: "idVerificationRequested" })
-    .where(eq(companyVerificationLog.id, companyVerificationLogId))
-    .returning()
-    .then((rows) => rows[0]);
-  
   return verificationUrl;
 }

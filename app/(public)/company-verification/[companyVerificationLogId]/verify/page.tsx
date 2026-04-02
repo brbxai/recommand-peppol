@@ -10,10 +10,11 @@ import { Checkbox } from "@core/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@core/components/ui/radio-group";
 import { StatusHero, StatusMessage } from "@recommand/components/status-feedback";
-import { Loader2, AlertCircle, ShieldCheck } from "lucide-react";
+import { Loader2, AlertCircle, ShieldCheck, RefreshCw } from "lucide-react";
 import { ForwardSection } from "./forward-section";
 
 const client = rc<Companies>("v1");
+const VERIFICATION_ALREADY_SUBMITTED_ERROR = "This verification has already been submitted.";
 
 type Representative = {
     firstName: string;
@@ -21,10 +22,12 @@ type Representative = {
     function: string;
 };
 
+type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected";
+
 type VerificationContext = {
     verificationLog: {
         id: string;
-        status: string;
+        status: VerificationStatus;
         companyName: string | null;
     };
     company: {
@@ -52,6 +55,8 @@ export default function Page() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const [isRestarting, setIsRestarting] = useState(false);
+    const [restartError, setRestartError] = useState<string | null>(null);
 
     const showRepresentativeSelection = context?.isRepresentativeSelectionRequired && context.representatives.length > 0;
     const representativeSelectionError = context?.isRepresentativeSelectionRequired && context.representatives.length === 0;
@@ -70,6 +75,8 @@ export default function Page() {
         effectiveLastName.trim() !== "" &&
         acceptTerms &&
         confirmPermission;
+
+    const statusPageUrl = companyVerificationLogId ? `/company-verification/${companyVerificationLogId}/status` : null;
 
     useEffect(() => {
         if (!companyVerificationLogId) return;
@@ -135,7 +142,12 @@ export default function Page() {
             });
             const json = await response.json();
             if (!json.success) {
-                setSubmitError(stringifyActionFailure(json.errors));
+                const errorMessage = stringifyActionFailure(json.errors);
+                if (errorMessage === VERIFICATION_ALREADY_SUBMITTED_ERROR && statusPageUrl) {
+                    window.location.href = statusPageUrl;
+                    return;
+                }
+                setSubmitError(errorMessage);
                 return;
             }
             if ("verificationUrl" in json) {
@@ -145,6 +157,30 @@ export default function Page() {
             setSubmitError("An unexpected error occurred. Please try again.");
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleRestart = async () => {
+        if (!companyVerificationLogId) return;
+
+        try {
+            setIsRestarting(true);
+            setRestartError(null);
+            const response = await client["companies"]["verification"][":companyVerificationLogId"]["restart-id-verification"].$post({
+                param: { companyVerificationLogId },
+            });
+            const json = await response.json();
+            if (!json.success) {
+                setRestartError(stringifyActionFailure(json.errors));
+                return;
+            }
+            if ("verificationUrl" in json) {
+                window.location.href = json.verificationUrl as string;
+            }
+        } catch {
+            setRestartError("An unexpected error occurred. Please try again.");
+        } finally {
+            setIsRestarting(false);
         }
     };
 
@@ -175,6 +211,88 @@ export default function Page() {
     }
 
     const companyName = context.company.name;
+
+    if (context.verificationLog.status === "idVerificationRequested") {
+        return (
+            <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
+                <div className="w-full max-w-lg space-y-8">
+                    <StatusHero
+                        tone="info"
+                        icon={Loader2}
+                        iconClassName="animate-spin"
+                        title="Verification Already in Progress"
+                        description={<>A verification session has already been started for <span className="font-medium text-foreground">{companyName}</span>. If the previous link expired or was closed, you can request a new one below.</>}
+                    />
+
+                    {restartError && (
+                        <StatusMessage tone="error" icon={AlertCircle} description={restartError} />
+                    )}
+
+                    <div className="space-y-3">
+                        <Button
+                            onClick={handleRestart}
+                            disabled={isRestarting}
+                            className="w-full"
+                            size="lg"
+                        >
+                            {isRestarting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Restarting...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="h-4 w-4" />
+                                    Restart Identity Verification
+                                </>
+                            )}
+                        </Button>
+
+                        {statusPageUrl && (
+                            <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => {
+                                    window.location.href = statusPageUrl;
+                                }}
+                            >
+                                View Verification Status
+                            </Button>
+                        )}
+                    </div>
+
+                    <ForwardSection companyVerificationLogId={companyVerificationLogId!} />
+                </div>
+            </div>
+        );
+    }
+
+    if (context.verificationLog.status === "verified" || context.verificationLog.status === "rejected") {
+        return (
+            <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
+                <div className="w-full max-w-lg space-y-8">
+                    <StatusHero
+                        tone="info"
+                        icon={ShieldCheck}
+                        title="Verification Already Completed"
+                        description={<>This verification for <span className="font-medium text-foreground">{companyName}</span> has already reached a final state.</>}
+                    />
+
+                    {statusPageUrl && (
+                        <Button
+                            className="w-full"
+                            size="lg"
+                            onClick={() => {
+                                window.location.href = statusPageUrl;
+                            }}
+                        >
+                            View Verification Status
+                        </Button>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">

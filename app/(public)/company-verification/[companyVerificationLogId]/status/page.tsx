@@ -14,7 +14,7 @@ const FINAL_STATUSES = ["verified", "rejected"] as const;
 const POLLING_STATUSES = ["idVerificationRequested"] as const;
 const POLL_INTERVAL = 5000;
 
-type VerificationStatus = "opened" | "formSubmitted" | "idVerificationRequested" | "verified" | "rejected";
+type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected";
 
 type StatusData = {
     status: VerificationStatus;
