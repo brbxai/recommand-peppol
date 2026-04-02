@@ -6,7 +6,7 @@ import { Button } from "@core/components/ui/button";
 import { Input } from "@core/components/ui/input";
 import { Label } from "@core/components/ui/label";
 import { StatusMessage } from "@recommand/components/status-feedback";
-import { Loader2, AlertCircle, Mail, CheckCircle2, ChevronDown } from "lucide-react";
+import { Loader2, AlertCircle, Mail, CheckCircle2, ChevronDown, Copy, Check } from "lucide-react";
 
 const client = rc<Companies>("v1");
 const peppolClient = rc<Companies>("peppol");
@@ -21,6 +21,8 @@ export function ForwardSection({ companyVerificationLogId, teamId, companyId }: 
     const [requesterName, setRequesterName] = useState("");
     const [requesterEmail, setRequesterEmail] = useState("");
     const [isForwarding, setIsForwarding] = useState(false);
+    const [isCopying, setIsCopying] = useState(false);
+    const [copied, setCopied] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
@@ -63,20 +65,67 @@ export function ForwardSection({ companyVerificationLogId, teamId, companyId }: 
         }
     };
 
+    const handleCopyUrl = async () => {
+        try {
+            setIsCopying(true);
+
+            let logId = companyVerificationLogId;
+
+            if (logId === null) {
+                const res = await peppolClient[":teamId"]["companies"][":companyId"]["verify"].$post({
+                    param: { teamId: teamId!, companyId: companyId! },
+                });
+                const json = await res.json();
+                if (!json.success) {
+                    setError(stringifyActionFailure(json.errors));
+                    return;
+                }
+                logId = json.verificationLogId;
+            }
+
+            const url = `${window.location.origin}/company-verification/${logId}/verify`;
+            await navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {
+            setError("Failed to copy URL. Please try again.");
+        } finally {
+            setIsCopying(false);
+        }
+    };
+
     return (
         <div className="border-t pt-6 space-y-4">
             <div className="flex flex-col items-center gap-2">
                 <p className="text-sm text-muted-foreground">Not the right person to complete this?</p>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setOpen((v) => !v)}
-                >
-                    <Mail className="h-4 w-4" />
-                    Forward to someone else
-                    <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setOpen((v) => !v)}
+                    >
+                        <Mail className="h-4 w-4" />
+                        Forward to someone else
+                        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyUrl}
+                        disabled={isCopying}
+                    >
+                        {isCopying ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : copied ? (
+                            <Check className="h-4 w-4" />
+                        ) : (
+                            <Copy className="h-4 w-4" />
+                        )}
+                        {copied ? "Copied!" : "Copy verification URL"}
+                    </Button>
+                </div>
             </div>
             {open && (success ? (
                 <StatusMessage
