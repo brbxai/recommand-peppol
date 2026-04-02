@@ -10,7 +10,7 @@ import { db } from "@recommand/db";
 import { getCompanyVerificationLog, normalizeName } from "@peppol/data/company-verification";
 import { getCompanyById } from "@peppol/data/companies";
 import { getTeamExtension } from "@peppol/data/teams";
-import { upsertCompanyRegistrations } from "@peppol/data/phoss-smp";
+import { upsertCompanyRegistrations, unregisterCompanyRegistrations } from "@peppol/data/phoss-smp";
 import { shouldRegisterWithSmp } from "@peppol/utils/playground";
 import { callWebhooks } from "@peppol/data/webhooks";
 
@@ -127,6 +127,18 @@ server.post(
           }
         } catch (error) {
           console.error(`Failed to register company ${companyVerificationLogRecord.companyId} with SMP after verification:`, error);
+        }
+      } else if (!isVerified && company) {
+        try {
+          const teamExtension = await getTeamExtension(company.teamId);
+          const useTestNetwork = teamExtension?.useTestNetwork ?? false;
+          const wasRegistered = shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined });
+          const shouldBeRegistered = shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: false, verificationRequirements: teamExtension?.verificationRequirements ?? undefined });
+          if (wasRegistered && !shouldBeRegistered) {
+            await unregisterCompanyRegistrations({ companyId: company.id, useTestNetwork });
+          }
+        } catch (error) {
+          console.error(`Failed to unregister company ${companyVerificationLogRecord.companyId} from SMP after verification declined:`, error);
         }
       }
 
