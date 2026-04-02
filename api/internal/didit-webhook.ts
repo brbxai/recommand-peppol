@@ -29,6 +29,7 @@ server.post(
 
     try {
       const rawBody = await c.req.raw.clone().text();
+      console.log("Raw body:", rawBody);
       const signature = c.req.header("X-Signature");
       const timestamp = c.req.header("X-Timestamp");
 
@@ -62,15 +63,16 @@ server.post(
         webhook_type: z.string(),
         decision: z.object({
           id_verification: z.object({
-            first_name: z.string().optional(),
-            last_name: z.string().optional(),
+            first_name: z.string().optional().nullable(),
+            last_name: z.string().optional().nullable(),
           }).optional(),
         }).optional(),
       });
 
       const parseResult = diditWebhookSchema.safeParse(JSON.parse(rawBody));
       if (!parseResult.success) {
-        return c.json(actionFailure("Invalid webhook payload"), 400);
+        console.error("Invalid webhook payload:", parseResult.error);
+        return c.json(actionFailure("Invalid webhook payload: " + parseResult.error.message), 400);
       }
 
       const { session_id, status, vendor_data, webhook_type, decision } = parseResult.data;
