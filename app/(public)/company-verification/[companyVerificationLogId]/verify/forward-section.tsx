@@ -42,12 +42,7 @@ export function ForwardSection({ companyVerificationLogId, teamId, companyId }: 
                     setError(stringifyActionFailure(json.errors));
                     return;
                 }
-                const match = json.verificationUrl.match(/\/company-verification\/([^/]+)\/verify/);
-                if (!match) {
-                    setError("Could not create verification session");
-                    return;
-                }
-                logId = match[1];
+                logId = json.verificationLogId;
             }
 
             const response = await client["companies"]["verification"][":companyVerificationLogId"]["forward"].$post({

@@ -12,7 +12,7 @@ const client = rc<Companies>("peppol");
 type Step4Props = {
     teamId: string;
     data: CompanyFormData;
-    onNext: (company: Company) => void;
+    onNext: (company: Company, verificationUrl: string, verificationLogId: string) => void;
     onBack: () => void;
 };
 
@@ -40,7 +40,7 @@ export function Step4Create({ teamId, data, onNext, onBack }: Step4Props) {
                 setError(stringifyActionFailure(json.errors));
                 return;
             }
-            onNext(json.company as Company);
+            onNext(json.company as Company, json.verificationUrl, json.verificationLogId);
         } catch (err) {
             setError(err instanceof Error ? err.message : "An unexpected error occurred");
         } finally {

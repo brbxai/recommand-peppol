@@ -57,12 +57,12 @@ async function _verifyCompanyImplementation(c: VerifyCompanyContext) {
     try {
         const companyId = c.req.valid("param").companyId;
 
-        const { verificationUrl } = await createCompanyVerificationLog({
+        const { log, verificationUrl } = await createCompanyVerificationLog({
             teamId: c.var.team.id,
             companyId,
         });
-        
-        return c.json(actionSuccess({ verificationUrl }));
+
+        return c.json(actionSuccess({ verificationUrl, verificationLogId: log.id }));
     } catch (error) {
         console.error(error);
         if (error instanceof UserFacingError) {

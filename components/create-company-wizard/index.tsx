@@ -32,6 +32,8 @@ export function CreateCompanyWizard({ teamId, verificationRequirements, initialD
         ...initialData,
     });
     const [createdCompany, setCreatedCompany] = useState<Company | null>(null);
+    const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
+    const [verificationLogId, setVerificationLogId] = useState<string | null>(null);
 
     const verificationRequired = verificationRequirements === "strict" || verificationRequirements === "lax";
 
@@ -103,8 +105,10 @@ export function CreateCompanyWizard({ teamId, verificationRequirements, initialD
                 <Step4Create
                     teamId={teamId}
                     data={formData}
-                    onNext={(company) => {
+                    onNext={(company, url, logId) => {
                         setCreatedCompany(company);
+                        setVerificationUrl(url);
+                        setVerificationLogId(logId);
                         setStep(5);
                     }}
                     onBack={() => setStep(3)}
@@ -117,10 +121,12 @@ export function CreateCompanyWizard({ teamId, verificationRequirements, initialD
                     onNext={afterIdentifiers}
                 />
             )}
-            {step === 6 && createdCompany && (
+            {step === 6 && createdCompany && verificationUrl && verificationLogId && (
                 <Step6Verification
                     teamId={teamId}
                     company={createdCompany}
+                    verificationUrl={verificationUrl}
+                    verificationLogId={verificationLogId}
                     onComplete={onComplete}
                 />
             )}

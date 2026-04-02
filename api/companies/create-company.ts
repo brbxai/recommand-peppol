@@ -90,12 +90,12 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
             enterpriseNumberScheme,
         });
 
-        const { verificationUrl } = await createCompanyVerificationLog({
+        const { log, verificationUrl } = await createCompanyVerificationLog({
             teamId: c.var.team.id,
             companyId: company.id,
         });
 
-        return c.json(actionSuccess({ company, verificationUrl }));
+        return c.json(actionSuccess({ company, verificationUrl, verificationLogId: log.id }));
     } catch (error) {
         console.error(error);
         if (error instanceof UserFacingError) {
