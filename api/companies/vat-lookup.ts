@@ -45,13 +45,15 @@ async function _vatLookupImplementation(c: VatLookupContext) {
 
         const enterpriseData = await getEnterpriseData(enterpriseNumber, country);
 
-        const address = `${enterpriseData.address.street} ${enterpriseData.address.number}`.trim();
+        const address = enterpriseData.address
+            ? `${enterpriseData.address.street ?? ""} ${enterpriseData.address.number ?? ""}`.trim() || null
+            : null;
 
         return c.json(actionSuccess({
-            name: enterpriseData.companyType.denomination.description || null,
-            address: address || null,
-            postalCode: enterpriseData.address.postalCode || null,
-            city: enterpriseData.address.city || null,
+            name: enterpriseData.companyType?.denomination?.description || null,
+            address,
+            postalCode: enterpriseData.address?.postalCode || null,
+            city: enterpriseData.address?.city || null,
             country: "BE",
         }));
     } catch (error) {

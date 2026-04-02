@@ -79,6 +79,7 @@ export async function submitIdentityForm(
     const enterpriseData = await getEnterpriseData(company.enterpriseNumber, company.country);
     const isRepresentative = enterpriseData.representatives.some(
       (rep) =>
+        rep.firstName && rep.lastName &&
         normalizeName(rep.firstName) === normalizeName(firstName) &&
         normalizeName(rep.lastName) === normalizeName(lastName)
     );

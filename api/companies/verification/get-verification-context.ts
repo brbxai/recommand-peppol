@@ -49,11 +49,13 @@ async function _getVerificationContextImplementation(c: GetVerificationContextCo
             }
             try {
                 const enterpriseData = await getEnterpriseData(company.enterpriseNumber, company.country);
-                representatives = enterpriseData.representatives.map((rep) => ({
-                    firstName: rep.firstName,
-                    lastName: rep.lastName,
-                    function: rep.function,
-                }));
+                representatives = enterpriseData.representatives
+                    .filter((rep) => rep.firstName && rep.lastName)
+                    .map((rep) => ({
+                        firstName: rep.firstName!,
+                        lastName: rep.lastName!,
+                        function: rep.function ?? "",
+                    }));
             } catch (error) {
                 console.error("Failed to fetch enterprise data:", error);
             }

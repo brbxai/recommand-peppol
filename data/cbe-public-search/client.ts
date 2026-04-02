@@ -129,8 +129,8 @@ export async function getEnterpriseData(enterpriseNumber: string, country: strin
   }
 
   const representatives: Representative[] = [];
-  let address: CompanyAddress | undefined;
-  let companyType: CompanyType | undefined;
+  let address: CompanyAddress | null = null;
+  let companyType: CompanyType | null = null;
 
   const functions = enterprise.Function || [];
   const today = new Date();
@@ -166,45 +166,47 @@ export async function getEnterpriseData(enterpriseNumber: string, country: strin
     }
 
     representatives.push({
-      firstName: person.GivenName || "",
-      lastName: person.Surname || "",
-      function: func.Description?.Value || func.Code || "",
+      firstName: person.GivenName ?? null,
+      lastName: person.Surname ?? null,
+      function: func.Description?.Value || func.Code || null,
       beginDate,
-      endDate,
+      endDate: endDate ?? null,
     });
   }
 
   const addr = enterprise.Address;
-  const streetDesc = addr.Street?.Description;
-  const municipalityDesc = addr.Municipality?.Description;
+  if (addr) {
+    const streetDesc = addr.Street?.Description;
+    const municipalityDesc = addr.Municipality?.Description;
+    address = {
+      street: streetDesc?.Value || addr.Street?.Code || null,
+      number: addr.HouseNumber ?? null,
+      postalCode: addr.Zipcode ?? null,
+      city: municipalityDesc?.Value || addr.Municipality?.Code || null,
+      country: "BE",
+    };
+  }
 
-  address = {
-    street: streetDesc?.Value || addr.Street?.Code || "",
-    number: addr.HouseNumber || "",
-    postalCode: addr.Zipcode || "",
-    city: municipalityDesc?.Value || addr.Municipality?.Code || "",
-    country: "BE",
-  };
-
-  const juridicalFormDesc = enterprise.JuridicalForm?.Description;
-  const denominationDesc = enterprise.Denomination?.Description;
-
-  companyType = {
-    juridicalForm: {
-      code: enterprise.JuridicalForm?.Code || "",
-      description: juridicalFormDesc?.Value || "",
-      beginDate: enterprise.JuridicalForm?.ValidityPeriod?.Begin,
-    },
-    denomination: {
-      code: enterprise.Denomination?.Code || "",
-      description: denominationDesc?.Value || "",
-      beginDate: enterprise.Denomination?.ValidityPeriod?.Begin,
-    },
-  };
+  if (enterprise.JuridicalForm || enterprise.Denomination) {
+    const juridicalFormDesc = enterprise.JuridicalForm?.Description;
+    const denominationDesc = enterprise.Denomination?.Description;
+    companyType = {
+      juridicalForm: enterprise.JuridicalForm ? {
+        code: enterprise.JuridicalForm.Code ?? null,
+        description: juridicalFormDesc?.Value ?? null,
+        beginDate: enterprise.JuridicalForm.ValidityPeriod?.Begin ?? null,
+      } : null,
+      denomination: enterprise.Denomination ? {
+        code: enterprise.Denomination.Code ?? null,
+        description: denominationDesc?.Value ?? null,
+        beginDate: enterprise.Denomination.ValidityPeriod?.Begin ?? null,
+      } : null,
+    };
+  }
 
   const enterpriseData: EnterpriseData = {
     enterpriseNumber,
-    beginDate: enterprise.Period?.Begin || "",
+    beginDate: enterprise.Period?.Begin ?? null,
     representatives,
     address,
     companyType,
@@ -229,53 +231,57 @@ export async function getEnterpriseDataFromCache(enterpriseNumber: string, count
   if (!cache) {
     return null;
   }
+  const hasAddress = cache.street || cache.number || cache.postalCode || cache.city;
+  const hasCompanyType = cache.juridicalFormCode || cache.denominationCode;
+
   return {
     enterpriseData: {
       enterpriseNumber: cache.enterpriseNumber,
       beginDate: cache.beginDate,
-      address: {
+      address: hasAddress ? {
         street: cache.street,
         number: cache.number,
         postalCode: cache.postalCode,
         city: cache.city,
         country: cache.country,
-      },
-      companyType: {
-        juridicalForm: {
+      } : null,
+      companyType: hasCompanyType ? {
+        juridicalForm: cache.juridicalFormCode ? {
           code: cache.juridicalFormCode,
           description: cache.juridicalFormDescription,
           beginDate: cache.juridicalFormBeginDate,
-        },
-        denomination: {
+        } : null,
+        denomination: cache.denominationCode ? {
           code: cache.denominationCode,
           description: cache.denominationDescription,
           beginDate: cache.denominationBeginDate,
-        },
-      },
-      representatives: cache.representatives,
+        } : null,
+      } : null,
+      representatives: cache.representatives || [],
     },
     updatedAt: cache.updatedAt,
   };
 }
 
 export async function upsertEnterpriseDataInCache(data: EnterpriseData) {
+  const country = (data.address?.country || "BE") as typeof enterpriseDataCache.$inferInsert.country;
   await db.transaction(async (tx) => {
-    await tx.delete(enterpriseDataCache).where(and(eq(enterpriseDataCache.enterpriseNumber, data.enterpriseNumber), eq(enterpriseDataCache.country, data.address.country)));
+    await tx.delete(enterpriseDataCache).where(and(eq(enterpriseDataCache.enterpriseNumber, data.enterpriseNumber), eq(enterpriseDataCache.country, country)));
     await tx.insert(enterpriseDataCache).values({
       enterpriseNumber: data.enterpriseNumber,
-      country: data.address.country as typeof enterpriseDataCache.$inferInsert.country,
+      country,
       beginDate: data.beginDate,
-      name: data.companyType.denomination.description,
-      street: data.address.street,
-      number: data.address.number,
-      postalCode: data.address.postalCode,
-      city: data.address.city,
-      juridicalFormCode: data.companyType.juridicalForm.code,
-      juridicalFormDescription: data.companyType.juridicalForm.description,
-      juridicalFormBeginDate: data.companyType.juridicalForm.beginDate,
-      denominationCode: data.companyType.denomination.code,
-      denominationDescription: data.companyType.denomination.description,
-      denominationBeginDate: data.companyType.denomination.beginDate,
+      name: data.companyType?.denomination?.description,
+      street: data.address?.street,
+      number: data.address?.number,
+      postalCode: data.address?.postalCode,
+      city: data.address?.city,
+      juridicalFormCode: data.companyType?.juridicalForm?.code,
+      juridicalFormDescription: data.companyType?.juridicalForm?.description,
+      juridicalFormBeginDate: data.companyType?.juridicalForm?.beginDate,
+      denominationCode: data.companyType?.denomination?.code,
+      denominationDescription: data.companyType?.denomination?.description,
+      denominationBeginDate: data.companyType?.denomination?.beginDate,
       representatives: data.representatives,
     });
   });

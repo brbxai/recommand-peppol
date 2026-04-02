@@ -9,7 +9,7 @@ export function cleanEnterpriseNumber(enterpriseNumber: string | undefined | nul
   if (enterpriseNumber === undefined) return undefined;
   if (enterpriseNumber === null) return null;
   // Replace every non-alphanumeric character with an empty string
-  return enterpriseNumber.replace(/[^a-zA-Z0-9]/g, "");
+  return enterpriseNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 }
 
 export class UserFacingError extends Error {
