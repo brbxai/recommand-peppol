@@ -6,15 +6,15 @@ import { stringifyActionFailure } from "@recommand/lib/utils";
 import { Button } from "@core/components/ui/button";
 import { Card, CardContent } from "@core/components/ui/card";
 import { StatusHero, StatusMessage } from "@recommand/components/status-feedback";
-import { Loader2, AlertCircle, ShieldCheck, XCircle, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, ShieldCheck, XCircle, RefreshCw, Clock } from "lucide-react";
 
 const client = rc<Companies>("v1");
 
 const FINAL_STATUSES = ["verified", "rejected", "error"] as const;
-const POLLING_STATUSES = ["idVerificationRequested"] as const;
+const POLLING_STATUSES = ["idVerificationRequested", "inReview"] as const;
 const POLL_INTERVAL = 5000;
 
-type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected" | "error";
+type VerificationStatus = "opened" | "idVerificationRequested" | "inReview" | "verified" | "rejected" | "error";
 
 type StatusData = {
     status: VerificationStatus;
@@ -189,6 +189,33 @@ export default function Page() {
                             )}
                         </Button>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (statusData.status === "inReview") {
+        return (
+            <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
+                <div className="w-full max-w-lg space-y-8">
+                    <StatusHero
+                        tone="info"
+                        icon={Clock}
+                        title="Verification Under Review"
+                        description={<>Your identity verification for <span className="font-medium text-foreground">{statusData.companyName}</span> is being reviewed manually. This page will update automatically once the review is complete.</>}
+                    />
+
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-3">
+                                <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
+                                <div>
+                                    <p className="text-sm font-medium">Manual review in progress</p>
+                                    <p className="text-xs text-muted-foreground">This may take some time. You can safely close this page and check back later.</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         );

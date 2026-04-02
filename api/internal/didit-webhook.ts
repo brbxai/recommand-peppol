@@ -3,6 +3,9 @@ import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { describeRoute } from "hono-openapi";
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
+import { db } from "@recommand/db";
+import { companyVerificationLog } from "@peppol/db/schema";
 import { UserFacingError } from "@peppol/utils/util";
 import { finalizeCompanyVerification, getCompanyVerificationLog, normalizeName } from "@peppol/data/company-verification";
 import { getCompanyById } from "@peppol/data/companies";
@@ -96,6 +99,12 @@ server.post(
         if (diditFirstName && diditLastName && storedFirstName && storedLastName && normalizeName(diditFirstName) === normalizeName(storedFirstName) && normalizeName(diditLastName) === normalizeName(storedLastName)) {
           isVerified = true;
         }
+      } else if (status === "In Review") {
+        await db
+          .update(companyVerificationLog)
+          .set({ status: "inReview" })
+          .where(eq(companyVerificationLog.id, companyVerificationLogRecord.id));
+        return c.json(actionSuccess({ message: "Verification status updated to in review" }), 200);
       } else if (status === "Not Started" || status === "In Progress") {
         return c.json(actionSuccess({ message: "Verification status not changed (not started)" }), 200);
       }

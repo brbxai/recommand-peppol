@@ -266,7 +266,7 @@ export const companies = pgTable("peppol_companies", {
   updatedAt: autoUpdateTimestamp(),
 });
 
-export const verificationStatusEnum = pgEnum("verification_status", ["opened", "idVerificationRequested", "verified", "rejected", "error"]);
+export const verificationStatusEnum = pgEnum("verification_status", ["opened", "idVerificationRequested", "inReview", "verified", "rejected", "error"]);
 
 export const companyVerificationLog = pgTable(
   "company_verification_log",
