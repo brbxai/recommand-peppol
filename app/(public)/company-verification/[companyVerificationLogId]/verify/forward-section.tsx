@@ -12,10 +12,10 @@ const client = rc<Companies>("v1");
 const peppolClient = rc<Companies>("peppol");
 
 type ForwardSectionProps =
-    | { companyVerificationLogId: string; teamId?: never; companyId?: never }
-    | { companyVerificationLogId: null; teamId: string; companyId: string };
+    | { companyVerificationLogId: string; teamId?: never; companyId?: never; onAction?: () => void }
+    | { companyVerificationLogId: null; teamId: string; companyId: string; onAction?: () => void };
 
-export function ForwardSection({ companyVerificationLogId, teamId, companyId }: ForwardSectionProps) {
+export function ForwardSection({ companyVerificationLogId, teamId, companyId, onAction }: ForwardSectionProps) {
     const [open, setOpen] = useState(false);
     const [email, setEmail] = useState("");
     const [requesterName, setRequesterName] = useState("");
@@ -58,6 +58,7 @@ export function ForwardSection({ companyVerificationLogId, teamId, companyId }: 
             }
             setSuccess(true);
             setEmail("");
+            onAction?.();
         } catch {
             setError("An unexpected error occurred. Please try again.");
         } finally {
@@ -86,6 +87,7 @@ export function ForwardSection({ companyVerificationLogId, teamId, companyId }: 
             const url = `${window.location.origin}/company-verification/${logId}/verify`;
             await navigator.clipboard.writeText(url);
             setCopied(true);
+            onAction?.();
             setTimeout(() => setCopied(false), 2000);
         } catch {
             setError("Failed to copy URL. Please try again.");

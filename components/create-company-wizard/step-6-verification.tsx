@@ -14,11 +14,11 @@ type Step6Props = {
 };
 
 export function Step6Verification({ company, verificationUrl, verificationLogId, onComplete }: Step6Props) {
-    const [opened, setOpened] = useState(false);
+    const [action, setAction] = useState<"verified" | "forwarded" | null>(null);
 
     const handleVerify = () => {
         window.open(verificationUrl, "_blank");
-        setOpened(true);
+        setAction("verified");
     };
 
     return (
@@ -26,28 +26,27 @@ export function Step6Verification({ company, verificationUrl, verificationLogId,
             <p className="text-sm text-muted-foreground">
                 To send or receive documents on behalf of <strong>{company.name}</strong>, you must verify your identity to confirm you are authorized to act for this company.
             </p>
-            {opened ? (
-                <div className="space-y-4">
+            <div className="space-y-3">
+                <Button onClick={handleVerify} className="w-full">
+                    <ShieldCheck className="h-4 w-4 mr-2" />
+                    Start Verification
+                </Button>
+                {action === "verified" && (
                     <StatusMessage
                         tone="success"
                         icon={CheckCircle2}
                         title="Verification session opened"
                         description="Complete the verification in the new tab, then come back here to finish."
                     />
-                    <ForwardSection companyVerificationLogId={verificationLogId} />
+                )}
+                <ForwardSection companyVerificationLogId={verificationLogId} onAction={() => setAction("forwarded")} />
+                {action !== null ? (
                     <div className="flex justify-end">
                         <Button type="button" onClick={() => onComplete(company)}>
                             Done
                         </Button>
                     </div>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    <Button onClick={handleVerify} className="w-full">
-                        <ShieldCheck className="h-4 w-4 mr-2" />
-                        Start Verification
-                    </Button>
-                    <ForwardSection companyVerificationLogId={verificationLogId} />
+                ) : (
                     <div className="text-center">
                         <button
                             type="button"
@@ -57,8 +56,8 @@ export function Step6Verification({ company, verificationUrl, verificationLogId,
                             Skip for now
                         </button>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
