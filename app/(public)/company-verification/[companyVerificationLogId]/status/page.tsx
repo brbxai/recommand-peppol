@@ -1,8 +1,9 @@
 import { rc } from "@recommand/lib/client";
 import type { Companies } from "@peppol/api/companies";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { stringifyActionFailure } from "@recommand/lib/utils";
+import { useUser } from "@core/hooks/user";
 import { Button } from "@core/components/ui/button";
 import { Card, CardContent } from "@core/components/ui/card";
 import { StatusHero, StatusMessage } from "@recommand/components/status-feedback";
@@ -22,6 +23,16 @@ type StatusData = {
     companyName: string;
     companyId: string;
 };
+
+function DashboardLink() {
+    const user = useUser();
+    if (!user) return null;
+    return (
+        <Button variant="outline" className="w-full" asChild>
+            <Link to="/companies">Go to Companies</Link>
+        </Button>
+    );
+}
 
 export default function Page() {
     const { companyVerificationLogId } = useParams<{ companyVerificationLogId: string }>();
@@ -189,6 +200,8 @@ export default function Page() {
                             )}
                         </Button>
                     </div>
+
+                    <DashboardLink />
                 </div>
             </div>
         );
@@ -216,6 +229,8 @@ export default function Page() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <DashboardLink />
                 </div>
             </div>
         );
@@ -237,6 +252,8 @@ export default function Page() {
                         icon={ShieldCheck}
                         description="Identity verification completed successfully. You can close this page."
                     />
+
+                    <DashboardLink />
                 </div>
             </div>
         );
@@ -258,6 +275,8 @@ export default function Page() {
                             {statusData.errorMessage || "Identity verification may have succeeded, but we could not activate this company on the Peppol network. Please contact support@recommand.eu for assistance."}
                         </div>
                     </StatusMessage>
+
+                    <DashboardLink />
                 </div>
             </div>
         );
@@ -278,6 +297,8 @@ export default function Page() {
                         Your identity could not be verified. Please contact <a href={`mailto:support@recommand.eu?subject=Company Verification Assistance for ${statusData.companyId}`} className="underline underline-offset-4 hover:text-primary/80">support@recommand.eu</a> for assistance.
                     </div>
                 </StatusMessage>
+
+                <DashboardLink />
             </div>
         </div>
     );
