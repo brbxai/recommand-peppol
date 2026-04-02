@@ -66,6 +66,7 @@ async function _getVerificationContextImplementation(c: GetVerificationContextCo
                 id: verificationLog.id,
                 status: verificationLog.status,
                 companyName: verificationLog.companyName,
+                errorMessage: verificationLog.errorMessage,
             },
             company: {
                 id: company.id,

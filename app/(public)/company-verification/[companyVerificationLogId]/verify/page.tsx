@@ -22,13 +22,14 @@ type Representative = {
     function: string;
 };
 
-type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected";
+type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected" | "error";
 
 type VerificationContext = {
     verificationLog: {
         id: string;
         status: VerificationStatus;
         companyName: string | null;
+        errorMessage: string | null;
     };
     company: {
         id: string;
@@ -267,14 +268,14 @@ export default function Page() {
         );
     }
 
-    if (context.verificationLog.status === "verified" || context.verificationLog.status === "rejected") {
+    if (context.verificationLog.status === "verified" || context.verificationLog.status === "rejected" || context.verificationLog.status === "error") {
         return (
             <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
                 <div className="w-full max-w-lg space-y-8">
                     <StatusHero
                         tone="info"
                         icon={ShieldCheck}
-                        title="Verification Already Completed"
+                        title="Verification Already Finalized"
                         description={<>This verification for <span className="font-medium text-foreground">{companyName}</span> has already reached a final state.</>}
                     />
 

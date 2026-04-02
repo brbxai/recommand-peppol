@@ -41,7 +41,7 @@ async function _forwardVerificationImplementation(c: ForwardVerificationContext)
             return c.json(actionFailure("Company verification log not found"), 404);
         }
 
-        if (verificationLog.status === "verified" || verificationLog.status === "rejected") {
+        if (verificationLog.status === "verified" || verificationLog.status === "rejected" || verificationLog.status === "error") {
             return c.json(actionFailure("This verification has already been completed."), 400);
         }
 

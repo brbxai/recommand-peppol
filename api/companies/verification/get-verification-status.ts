@@ -39,6 +39,7 @@ async function _getVerificationStatusImplementation(c: GetVerificationStatusCont
 
         return c.json(actionSuccess({
             status: verificationLog.status,
+            errorMessage: verificationLog.errorMessage,
             companyName: company.name,
             companyId: company.id,
         }));

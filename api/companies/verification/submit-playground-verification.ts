@@ -43,9 +43,9 @@ async function _submitPlaygroundVerificationImplementation(c: SubmitPlaygroundVe
             return c.json(actionFailure("This endpoint is only available for playground teams"), 403);
         }
 
-        await submitPlaygroundVerification(companyVerificationLogId, verificationLog, company);
+        const result = await submitPlaygroundVerification(companyVerificationLogId, verificationLog, company);
 
-        return c.json(actionSuccess({ verified: true }));
+        return c.json(actionSuccess({ verified: result.status === "verified", status: result.status, errorMessage: result.errorMessage }));
     } catch (error) {
         console.error(error);
         if (error instanceof UserFacingError) {

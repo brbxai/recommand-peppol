@@ -4,15 +4,8 @@ import { describeRoute } from "hono-openapi";
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { UserFacingError } from "@peppol/utils/util";
-import { companies, companyVerificationLog } from "@peppol/db/schema";
-import { eq } from "drizzle-orm";
-import { db } from "@recommand/db";
-import { getCompanyVerificationLog, normalizeName } from "@peppol/data/company-verification";
+import { finalizeCompanyVerification, getCompanyVerificationLog, normalizeName } from "@peppol/data/company-verification";
 import { getCompanyById } from "@peppol/data/companies";
-import { getTeamExtension } from "@peppol/data/teams";
-import { upsertCompanyRegistrations, unregisterCompanyRegistrations } from "@peppol/data/phoss-smp";
-import { shouldRegisterWithSmp } from "@peppol/utils/playground";
-import { callWebhooks } from "@peppol/data/webhooks";
 
 const server = new Server();
 
@@ -103,56 +96,28 @@ server.post(
         if (diditFirstName && diditLastName && storedFirstName && storedLastName && normalizeName(diditFirstName) === normalizeName(storedFirstName) && normalizeName(diditLastName) === normalizeName(storedLastName)) {
           isVerified = true;
         }
-      } else if (status === "Not Started") {
+      } else if (status === "Not Started" || status === "In Progress") {
         return c.json(actionSuccess({ message: "Verification status not changed (not started)" }), 200);
       }
 
       const company = await getCompanyById(companyVerificationLogRecord.companyId);
+      if (!company) {
+        return c.json(actionFailure("Company not found"), 404);
+      }
 
-      if (!isVerified && !lastManualReview && company?.isVerified) {
+      if (!isVerified && !lastManualReview && company.isVerified) {
         console.log(`Ignoring automated rejection for already-verified company ${companyVerificationLogRecord.companyId}`);
         return c.json(actionSuccess({ message: "Verification status not changed (already verified)" }), 200);
       }
 
-      // Open transaction
-      await db.transaction(async (tx) => {
-        await tx.update(companyVerificationLog).set({ status: isVerified ? "verified" : "rejected", verificationProofReference }).where(eq(companyVerificationLog.id, companyVerificationLogRecord.id));
-        await tx.update(companies).set({ isVerified, verificationProofReference }).where(eq(companies.id, companyVerificationLogRecord.companyId));
+      const result = await finalizeCompanyVerification({
+        companyVerificationLogId: companyVerificationLogRecord.id,
+        company,
+        status: isVerified ? "verified" : "rejected",
+        verificationProofReference,
       });
 
-      if (isVerified && company) {
-        try {
-          const teamExtension = await getTeamExtension(company.teamId);
-          const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-          if (shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
-            await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
-          }
-        } catch (error) {
-          console.error(`Failed to register company ${companyVerificationLogRecord.companyId} with SMP after verification:`, error);
-        }
-      } else if (!isVerified && company) {
-        try {
-          const teamExtension = await getTeamExtension(company.teamId);
-          const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-          const wasRegistered = shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined });
-          const shouldBeRegistered = shouldRegisterWithSmp({ isPlayground: teamExtension?.isPlayground, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: false, verificationRequirements: teamExtension?.verificationRequirements ?? undefined });
-          if (wasRegistered && !shouldBeRegistered) {
-            await unregisterCompanyRegistrations({ companyId: company.id, useTestNetwork });
-          }
-        } catch (error) {
-          console.error(`Failed to unregister company ${companyVerificationLogRecord.companyId} from SMP after verification declined:`, error);
-        }
-      }
-
-      if (company) {
-        await callWebhooks(company.teamId, company.id, "company.verification", {
-          companyId: company.id,
-          teamId: company.teamId,
-          status: isVerified ? "verified" : "rejected",
-        });
-      }
-
-      return c.json(actionSuccess({ message: "Verification status updated" }), 200);
+      return c.json(actionSuccess({ message: result.status === "error" ? "Verification completed with activation error" : "Verification status updated" }), 200);
     } catch (error) {
       console.error("Error processing Didit webhook:", error);
       if (error instanceof UserFacingError) {
@@ -164,4 +129,3 @@ server.post(
 );
 
 export default server;
-

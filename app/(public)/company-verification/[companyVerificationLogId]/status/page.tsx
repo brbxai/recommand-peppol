@@ -10,14 +10,15 @@ import { Loader2, AlertCircle, ShieldCheck, XCircle, RefreshCw } from "lucide-re
 
 const client = rc<Companies>("v1");
 
-const FINAL_STATUSES = ["verified", "rejected"] as const;
+const FINAL_STATUSES = ["verified", "rejected", "error"] as const;
 const POLLING_STATUSES = ["idVerificationRequested"] as const;
 const POLL_INTERVAL = 5000;
 
-type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected";
+type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected" | "error";
 
 type StatusData = {
     status: VerificationStatus;
+    errorMessage: string | null;
     companyName: string;
     companyId: string;
 };
@@ -43,12 +44,14 @@ export default function Page() {
             const json = await response.json();
             if (!json.success) {
                 setLoadError(stringifyActionFailure(json.errors));
+                setIsLoading(false);
                 return;
             }
 
             const data = json as unknown as {
                 success: true;
                 status: VerificationStatus;
+                errorMessage: string | null;
                 companyName: string;
                 companyId: string;
             };
@@ -60,7 +63,7 @@ export default function Page() {
                 return;
             }
 
-            setStatusData({ status, companyName: data.companyName, companyId: data.companyId });
+            setStatusData({ status, errorMessage: data.errorMessage, companyName: data.companyName, companyId: data.companyId });
             setIsLoading(false);
 
             if ((FINAL_STATUSES as readonly string[]).includes(status) && intervalRef.current) {
@@ -207,6 +210,27 @@ export default function Page() {
                         icon={ShieldCheck}
                         description="Identity verification completed successfully. You can close this page."
                     />
+                </div>
+            </div>
+        );
+    }
+
+    if (statusData.status === "error") {
+        return (
+            <div className="min-h-svh flex items-center justify-center bg-muted/30 px-4 py-12">
+                <div className="w-full max-w-lg space-y-8">
+                    <StatusHero
+                        tone="error"
+                        icon={AlertCircle}
+                        title="Verification Could Not Be Completed"
+                        description={<>We could not complete the verification flow for <span className="font-medium text-foreground">{statusData.companyName}</span>.</>}
+                    />
+
+                    <StatusMessage tone="error" icon={AlertCircle}>
+                        <div className="text-sm text-pretty text-muted-foreground">
+                            {statusData.errorMessage || "Identity verification may have succeeded, but we could not activate this company on the Peppol network. Please contact support@recommand.eu for assistance."}
+                        </div>
+                    </StatusMessage>
                 </div>
             </div>
         );

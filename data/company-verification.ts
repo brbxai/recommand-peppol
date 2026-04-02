@@ -6,10 +6,17 @@ import { UserFacingError } from "@peppol/utils/util";
 import { getCompany, verifyCompany, type Company } from "./companies";
 import { getTeamExtension } from "./teams";
 import { shouldRegisterWithSmp } from "@peppol/utils/playground";
-import { upsertCompanyRegistrations } from "./phoss-smp";
+import { unregisterCompanyRegistrations, upsertCompanyRegistrations } from "./phoss-smp";
 import { callWebhooks } from "@peppol/data/webhooks";
 
 export type CompanyVerificationLog = typeof companyVerificationLog.$inferSelect;
+export type CompanyVerificationStatus = CompanyVerificationLog["status"];
+export type CompanyVerificationFinalStatus = Extract<CompanyVerificationStatus, "verified" | "rejected" | "error">;
+
+export type FinalizeCompanyVerificationResult = {
+  status: CompanyVerificationFinalStatus;
+  errorMessage: string | null;
+};
 
 export function normalizeName(name: string): string {
   return name
@@ -37,6 +44,163 @@ export function getBaseUrlOrThrow(): string {
   }
 
   return baseUrl;
+}
+
+function getCompanyVerificationErrorMessage({
+  error,
+  status,
+}: {
+  error: unknown;
+  status: "verified" | "rejected";
+}): string {
+  if (error instanceof UserFacingError) {
+    return error.message;
+  }
+
+  if (status === "verified") {
+    return "Identity verification succeeded, but we could not activate your company on the Peppol network. Please contact support@recommand.eu for assistance.";
+  }
+
+  return "We could not complete this verification because the company could not be updated on the Peppol network. Please contact support@recommand.eu for assistance.";
+}
+
+async function setCompanyVerificationError({
+  companyVerificationLogId,
+  verificationProofReference,
+  errorMessage,
+}: {
+  companyVerificationLogId: string;
+  verificationProofReference: string;
+  errorMessage: string;
+}): Promise<void> {
+  await db
+    .update(companyVerificationLog)
+    .set({
+      status: "error",
+      verificationProofReference,
+      errorMessage,
+    })
+    .where(eq(companyVerificationLog.id, companyVerificationLogId));
+}
+
+export async function finalizeCompanyVerification({
+  companyVerificationLogId,
+  company,
+  status,
+  verificationProofReference,
+}: {
+  companyVerificationLogId: string;
+  company: Company;
+  status: "verified" | "rejected";
+  verificationProofReference: string;
+}): Promise<FinalizeCompanyVerificationResult> {
+  const isVerified = status === "verified";
+  const teamExtension = await getTeamExtension(company.teamId);
+  const useTestNetwork = teamExtension?.useTestNetwork ?? false;
+  const verificationRequirements = teamExtension?.verificationRequirements ?? undefined;
+  const smpStateBase = {
+    isPlayground: teamExtension?.isPlayground,
+    useTestNetwork,
+    isSmpRecipient: company.isSmpRecipient,
+    verificationRequirements,
+  };
+  const wasRegistered = shouldRegisterWithSmp({ ...smpStateBase, isVerified: company.isVerified });
+  const shouldBeRegistered = shouldRegisterWithSmp({ ...smpStateBase, isVerified });
+  const smpTransition =
+    !wasRegistered && shouldBeRegistered
+      ? "register"
+      : wasRegistered && !shouldBeRegistered
+        ? "unregister"
+        : "none";
+
+  const rollbackSmpTransition = async (): Promise<void> => {
+    if (smpTransition === "register") {
+      try {
+        await unregisterCompanyRegistrations({ companyId: company.id, useTestNetwork });
+      } catch (rollbackError) {
+        console.error(`Failed to unregister company ${company.id} while rolling back verification finalization:`, rollbackError);
+      }
+    }
+
+    if (smpTransition === "unregister") {
+      try {
+        await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
+      } catch (rollbackError) {
+        console.error(`Failed to restore SMP registrations for company ${company.id} while rolling back verification finalization:`, rollbackError);
+      }
+    }
+  };
+
+  if (smpTransition === "register") {
+    try {
+      await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
+    } catch (error) {
+      await rollbackSmpTransition();
+      console.error(`Failed to register company ${company.id} with SMP while finalizing verification:`, error);
+      const errorMessage = getCompanyVerificationErrorMessage({ error, status });
+      await setCompanyVerificationError({
+        companyVerificationLogId,
+        verificationProofReference,
+        errorMessage,
+      });
+      await callWebhooks(company.teamId, company.id, "company.verification", {
+        companyId: company.id,
+        teamId: company.teamId,
+        status: "error",
+        errorMessage,
+      });
+      return { status: "error", errorMessage };
+    }
+  }
+
+  if (smpTransition === "unregister") {
+    try {
+      await unregisterCompanyRegistrations({ companyId: company.id, useTestNetwork });
+    } catch (error) {
+      await rollbackSmpTransition();
+      console.error(`Failed to unregister company ${company.id} from SMP while finalizing verification:`, error);
+      const errorMessage = getCompanyVerificationErrorMessage({ error, status });
+      await setCompanyVerificationError({
+        companyVerificationLogId,
+        verificationProofReference,
+        errorMessage,
+      });
+      await callWebhooks(company.teamId, company.id, "company.verification", {
+        companyId: company.id,
+        teamId: company.teamId,
+        status: "error",
+        errorMessage,
+      });
+      return { status: "error", errorMessage };
+    }
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(companyVerificationLog)
+        .set({ status, verificationProofReference, errorMessage: null })
+        .where(eq(companyVerificationLog.id, companyVerificationLogId));
+      await tx
+        .update(companies)
+        .set({
+          isVerified,
+          verificationProofReference,
+        })
+        .where(eq(companies.id, company.id));
+    });
+  } catch (error) {
+    await rollbackSmpTransition();
+    throw error;
+  }
+
+  await callWebhooks(company.teamId, company.id, "company.verification", {
+    companyId: company.id,
+    teamId: company.teamId,
+    status,
+  });
+
+  return { status, errorMessage: null };
 }
 
 export async function createCompanyVerificationLog({
@@ -116,44 +280,16 @@ export async function submitPlaygroundVerification(
   companyVerificationLogId: string,
   log: CompanyVerificationLog,
   company: Company
-): Promise<void> {
-  if (log.status === "verified" || log.status === "rejected") {
+): Promise<FinalizeCompanyVerificationResult> {
+  if (log.status === "verified" || log.status === "rejected" || log.status === "error") {
     throw new UserFacingError("This verification has already been completed.");
   }
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(companyVerificationLog)
-      .set({ status: "verified", verificationProofReference: "PLAYGROUND" })
-      .where(eq(companyVerificationLog.id, companyVerificationLogId));
-    await tx
-      .update(companies)
-      .set({ isVerified: true, verificationProofReference: "PLAYGROUND" })
-      .where(eq(companies.id, company.id));
-  });
-
-  try {
-    const teamExtension = await getTeamExtension(company.teamId);
-    const useTestNetwork = teamExtension?.useTestNetwork ?? false;
-    if (
-      shouldRegisterWithSmp({
-        isPlayground: teamExtension?.isPlayground,
-        useTestNetwork,
-        isSmpRecipient: company.isSmpRecipient,
-        isVerified: true,
-        verificationRequirements: teamExtension?.verificationRequirements ?? undefined,
-      })
-    ) {
-      await upsertCompanyRegistrations({ companyId: company.id, useTestNetwork });
-    }
-  } catch (error) {
-    console.error(`Failed to register company ${company.id} with SMP after playground verification:`, error);
-  }
-
-  await callWebhooks(company.teamId, company.id, "company.verification", {
-    companyId: company.id,
-    teamId: company.teamId,
+  return await finalizeCompanyVerification({
+    companyVerificationLogId,
+    company,
     status: "verified",
+    verificationProofReference: "PLAYGROUND",
   });
 }
 
