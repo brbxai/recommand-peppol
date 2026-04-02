@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@core/components/ui/button";
-import { ShieldCheck, CheckCircle2 } from "lucide-react";
-import { StatusMessage } from "@recommand/components/status-feedback";
+import { ShieldCheck } from "lucide-react";
 import type { Company } from "@peppol/types/company";
 import { ForwardSection } from "@peppol/app/(public)/company-verification/[companyVerificationLogId]/verify/forward-section";
 
@@ -14,11 +13,10 @@ type Step6Props = {
 };
 
 export function Step6Verification({ company, verificationUrl, verificationLogId, onComplete }: Step6Props) {
-    const [action, setAction] = useState<"verified" | "forwarded" | null>(null);
+    const [action, setAction] = useState<"forwarded" | null>(null);
 
     const handleVerify = () => {
-        window.open(verificationUrl, "_blank");
-        setAction("verified");
+        window.location.href = verificationUrl;
     };
 
     return (
@@ -31,14 +29,6 @@ export function Step6Verification({ company, verificationUrl, verificationLogId,
                     <ShieldCheck className="h-4 w-4 mr-2" />
                     Start Verification
                 </Button>
-                {action === "verified" && (
-                    <StatusMessage
-                        tone="success"
-                        icon={CheckCircle2}
-                        title="Verification session opened"
-                        description="Complete the verification in the new tab, then come back here to finish."
-                    />
-                )}
                 <ForwardSection companyVerificationLogId={verificationLogId} onAction={() => setAction("forwarded")} />
                 {action !== null ? (
                     <div className="flex justify-end">
