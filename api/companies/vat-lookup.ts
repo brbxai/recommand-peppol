@@ -52,7 +52,7 @@ async function _vatLookupImplementation(c: VatLookupContext) {
         return c.json(actionSuccess({
             name: enterpriseData.companyType?.denomination?.description || null,
             address,
-            postalCode: enterpriseData.address?.postalCode || null,
+            postalCode: enterpriseData.address?.postalCode != null ? String(enterpriseData.address.postalCode) : null,
             city: enterpriseData.address?.city || null,
             country: "BE",
         }));

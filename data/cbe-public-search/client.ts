@@ -175,14 +175,15 @@ export async function getEnterpriseData(enterpriseNumber: string, country: strin
   }
 
   const addr = enterprise.Address;
+  console.log("addr", addr);
   if (addr) {
     const streetDesc = addr.Street?.Description;
     const municipalityDesc = addr.Municipality?.Description;
     address = {
-      street: streetDesc?.Value || addr.Street?.Code || null,
-      number: addr.HouseNumber ?? null,
-      postalCode: addr.Zipcode ?? null,
-      city: municipalityDesc?.Value || addr.Municipality?.Code || null,
+      street: streetDesc?.Value || null,
+      number: addr.HouseNumber != null ? String(addr.HouseNumber) : null,
+      postalCode: addr.Zipcode != null ? String(addr.Zipcode) : null,
+      city: municipalityDesc?.Value || null,
       country: "BE",
     };
   }

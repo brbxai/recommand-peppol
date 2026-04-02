@@ -54,7 +54,7 @@ export function getCompanyCountryDefaults(country: CountryCode): CompanyIdentity
 }
 
 export function hasRequiredCompanyDetails(value: Partial<CompanyDetailsFieldsValue>) {
-    return Boolean(value.name?.trim() && value.address?.trim() && value.postalCode?.trim() && value.city?.trim());
+    return Boolean(value.name?.trim() && value.address?.trim() && String(value.postalCode ?? "").trim() && String(value.city ?? "").trim());
 }
 
 export function CompanyIdentityFields({
