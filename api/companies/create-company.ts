@@ -1,8 +1,9 @@
 import { requireTeamAccess, type AuthenticatedTeamContext, type AuthenticatedUserContext } from "@core/lib/auth-middleware";
 import {
     createCompany,
+    deleteCompany,
 } from "@peppol/data/companies";
-import { createCompanyVerificationLog } from "@peppol/data/company-verification";
+import { createCompanyVerificationLog, getBaseUrlOrThrow } from "@peppol/data/company-verification";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { z } from "zod";
@@ -83,6 +84,8 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
     }
 
     try {
+        getBaseUrlOrThrow();
+
         const company = await createCompany({
             ...c.req.valid("json"),
             teamId: c.var.team.id,
@@ -90,12 +93,25 @@ async function _createCompanyImplementation(c: CreateCompanyContext) {
             enterpriseNumberScheme,
         });
 
-        const { log, verificationUrl } = await createCompanyVerificationLog({
-            teamId: c.var.team.id,
-            companyId: company.id,
-        });
+        try {
+            const { log, verificationUrl } = await createCompanyVerificationLog({
+                teamId: c.var.team.id,
+                companyId: company.id,
+            });
 
-        return c.json(actionSuccess({ company, verificationUrl, verificationLogId: log.id }));
+            return c.json(actionSuccess({ company, verificationUrl, verificationLogId: log.id }));
+        } catch (error) {
+            try {
+                await deleteCompany({
+                    teamId: c.var.team.id,
+                    companyId: company.id,
+                });
+            } catch (rollbackError) {
+                console.error(`Failed to rollback company ${company.id} after verification setup failed:`, rollbackError);
+            }
+
+            throw error;
+        }
     } catch (error) {
         console.error(error);
         if (error instanceof UserFacingError) {

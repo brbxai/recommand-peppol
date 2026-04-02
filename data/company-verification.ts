@@ -30,6 +30,15 @@ export async function getCompanyVerificationLog(
     .then((rows) => rows[0]);
 }
 
+export function getBaseUrlOrThrow(): string {
+  const baseUrl = process.env.BASE_URL;
+  if (!baseUrl) {
+    throw new Error("BASE_URL environment variable is not set");
+  }
+
+  return baseUrl;
+}
+
 export async function createCompanyVerificationLog({
   teamId,
   companyId,
@@ -37,10 +46,7 @@ export async function createCompanyVerificationLog({
   teamId: string;
   companyId: string;
 }): Promise<{ log: CompanyVerificationLog; verificationUrl: string }> {
-  const baseUrl = process.env.BASE_URL;
-  if (!baseUrl) {
-    throw new Error("BASE_URL environment variable is not set");
-  }
+  const baseUrl = getBaseUrlOrThrow();
 
   const company = await getCompany(teamId, companyId);
   if (!company) {
@@ -155,10 +161,7 @@ export async function requestIdVerification(
     throw new UserFacingError("Verification is not in a state that allows identity verification.");
   }
 
-  const baseUrl = process.env.BASE_URL;
-  if (!baseUrl) {
-    throw new Error("BASE_URL environment variable is not set");
-  }
+  const baseUrl = getBaseUrlOrThrow();
   
   const callbackUrl = `${baseUrl}/company-verification/${companyVerificationLogId}/status`;
   const verificationUrl = await verifyCompany({
