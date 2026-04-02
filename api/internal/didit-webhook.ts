@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@recommand/db";
 import { companyVerificationLog } from "@peppol/db/schema";
 import { UserFacingError } from "@peppol/utils/util";
-import { finalizeCompanyVerification, getCompanyVerificationLog, normalizeName } from "@peppol/data/company-verification";
+import { finalizeCompanyVerification, getCompanyVerificationLog, namesMatch } from "@peppol/data/company-verification";
 import { getCompanyById } from "@peppol/data/companies";
 
 const server = new Server();
@@ -96,7 +96,7 @@ server.post(
         const storedFirstName = companyVerificationLogRecord.firstName;
         const storedLastName = companyVerificationLogRecord.lastName;
 
-        if (diditFirstName && diditLastName && storedFirstName && storedLastName && normalizeName(diditFirstName) === normalizeName(storedFirstName) && normalizeName(diditLastName) === normalizeName(storedLastName)) {
+        if (diditFirstName && diditLastName && storedFirstName && storedLastName && namesMatch(diditFirstName, storedFirstName) && namesMatch(diditLastName, storedLastName)) {
           isVerified = true;
         }
       } else if (status === "In Review") {

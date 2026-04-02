@@ -18,13 +18,11 @@ export type FinalizeCompanyVerificationResult = {
   errorMessage: string | null;
 };
 
-export function normalizeName(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z]/g, "");
+export function namesMatch(a: string, b: string): boolean {
+  const partsA = a.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const partsB = b.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const [shorter, longer] = partsA.length <= partsB.length ? [partsA, partsB] : [partsB, partsA];
+  return shorter.length > 0 && shorter.every((part) => longer.includes(part));
 }
 
 export async function getCompanyVerificationLog(
@@ -250,8 +248,8 @@ export async function submitIdentityForm(
     const isRepresentative = enterpriseData.representatives.some(
       (rep) =>
         rep.firstName && rep.lastName &&
-        normalizeName(rep.firstName) === normalizeName(firstName) &&
-        normalizeName(rep.lastName) === normalizeName(lastName)
+        namesMatch(rep.firstName, firstName) &&
+        namesMatch(rep.lastName, lastName)
     );
     if (!isRepresentative) {
       throw new UserFacingError(
