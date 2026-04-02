@@ -1,6 +1,6 @@
 {
-  "id": "6e35b18f-5ad7-48e9-84ab-b6c36bd9b217",
-  "prevId": "a1d3e65f-6ffe-4f9e-bbdb-8c983dde0030",
+  "id": "5ec56a2b-437d-4e65-8190-a6f9cf02df09",
+  "prevId": "6df2d161-8f5f-4267-8ce9-057c0394e9f0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -762,7 +762,7 @@
           "name": "verification_proof_reference",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -1103,6 +1103,59 @@
           "tableTo": "teams",
           "columnsFrom": [
             "team_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.peppol_payment_failure_reminders": {
+      "name": "peppol_payment_failure_reminders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "billing_event_id": {
+          "name": "billing_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email_addresses": {
+          "name": "email_addresses",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{}'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "peppol_payment_failure_reminders_billing_event_id_peppol_subscription_billing_events_id_fk": {
+          "name": "peppol_payment_failure_reminders_billing_event_id_peppol_subscription_billing_events_id_fk",
+          "tableFrom": "peppol_payment_failure_reminders",
+          "tableTo": "peppol_subscription_billing_events",
+          "columnsFrom": [
+            "billing_event_id"
           ],
           "columnsTo": [
             "id"
@@ -2375,6 +2428,7 @@
         "AU",
         "AT",
         "BE",
+        "BG",
         "CA",
         "HR",
         "DK",
@@ -2383,6 +2437,7 @@
         "FR",
         "DE",
         "GR",
+        "HU",
         "IS",
         "IE",
         "IT",
@@ -2666,7 +2721,8 @@
       "schema": "public",
       "values": [
         "opened",
-        "requested",
+        "formSubmitted",
+        "idVerificationRequested",
         "verified",
         "rejected"
       ]
