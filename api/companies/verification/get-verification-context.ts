@@ -48,7 +48,8 @@ async function _getVerificationContextImplementation(c: GetVerificationContextCo
                 return c.json(actionFailure("Company does not have an enterprise number. Please complete the company details first."), 400);
             }
             try {
-                const enterpriseData = await getEnterpriseData(company.enterpriseNumber, company.country);
+                const lookupNumber = company.enterpriseNumber.startsWith("BE") ? company.enterpriseNumber.slice(2) : company.enterpriseNumber;
+                const enterpriseData = await getEnterpriseData(lookupNumber, company.country);
                 representatives = enterpriseData.representatives
                     .filter((rep) => rep.firstName && rep.lastName)
                     .map((rep) => ({
