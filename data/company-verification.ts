@@ -244,7 +244,8 @@ export async function submitIdentityForm(
     if (!company.enterpriseNumber) {
       throw new UserFacingError("Company does not have an enterprise number. Please complete the company details first.");
     }
-    const enterpriseData = await getEnterpriseData(company.enterpriseNumber, company.country);
+    const lookupNumber = company.country === "BE" && company.enterpriseNumber.toUpperCase().startsWith("BE") ? company.enterpriseNumber.slice(2) : company.enterpriseNumber;
+    const enterpriseData = await getEnterpriseData(lookupNumber, company.country);
     const isRepresentative = enterpriseData.representatives.some(
       (rep) =>
         rep.firstName && rep.lastName &&
