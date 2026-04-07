@@ -444,50 +444,62 @@ export const transferEvents = pgTable("peppol_transfer_events", {
     .notNull(),
 });
 
-export const transmittedDocuments = pgTable("peppol_transmitted_documents", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => "doc_" + ulid()),
-  teamId: text("team_id")
-    .references(() => teams.id, { onDelete: "cascade" })
-    .notNull(),
-  companyId: text("company_id")
-    .references(() => companies.id, { onDelete: "cascade" })
-    .notNull(),
-  direction: transferEventDirectionEnum("direction").notNull(),
+export const transmittedDocuments = pgTable(
+  "peppol_transmitted_documents",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "doc_" + ulid()),
+    teamId: text("team_id")
+      .references(() => teams.id, { onDelete: "cascade" })
+      .notNull(),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    direction: transferEventDirectionEnum("direction").notNull(),
 
-  senderId: text("sender_id").notNull(), // e.g. 0208:1012081766
-  receiverId: text("receiver_id"), // e.g. 0208:1012081766 (can be null for email-only documents)
-  docTypeId: text("doc_type_id").notNull(), // e.g. urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1
-  processId: text("process_id").notNull(), // e.g. urn:fdc:peppol.eu:2017:poacc:billing:01:1.0
-  countryC1: text("country_c1").notNull(), // e.g. BE
-  xml: text("xml"), // XML body of the document, can be null if the body was not kept
+    senderId: text("sender_id").notNull(), // e.g. 0208:1012081766
+    receiverId: text("receiver_id"), // e.g. 0208:1012081766 (can be null for email-only documents)
+    docTypeId: text("doc_type_id").notNull(), // e.g. urn:oasis:names:specification:ubl:schema:xsd:Invoice-2::Invoice##urn:cen.eu:en16931:2017#compliant#urn:fdc:peppol.eu:2017:poacc:billing:3.0::2.1
+    processId: text("process_id").notNull(), // e.g. urn:fdc:peppol.eu:2017:poacc:billing:01:1.0
+    countryC1: text("country_c1").notNull(), // e.g. BE
+    xml: text("xml"), // XML body of the document, can be null if the body was not kept
 
-  sentOverPeppol: boolean("sent_over_peppol").notNull().default(true),
-  sentOverEmail: boolean("sent_over_email").notNull().default(false),
-  emailRecipients: text("email_recipients").notNull().array().default([]),
+    sentOverPeppol: boolean("sent_over_peppol").notNull().default(true),
+    sentOverEmail: boolean("sent_over_email").notNull().default(false),
+    emailRecipients: text("email_recipients").notNull().array().default([]),
 
-  type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
-  parsed: jsonb("parsed").$type<
-    | Invoice
-    | CreditNote
-    | SelfBillingInvoice
-    | SelfBillingCreditNote
-    | MessageLevelResponse
-  >(),
-  validation: jsonb("validation").$type<z.infer<typeof validationResponse>>(),
+    type: supportedDocumentTypeEnum("type").notNull().default("unknown"),
+    parsed: jsonb("parsed").$type<
+      | Invoice
+      | CreditNote
+      | SelfBillingInvoice
+      | SelfBillingCreditNote
+      | MessageLevelResponse
+    >(),
+    validation: jsonb("validation").$type<z.infer<typeof validationResponse>>(),
 
-  peppolMessageId: text("peppol_message_id"),
-  peppolConversationId: text("peppol_conversation_id"),
-  receivedPeppolSignalMessage: text("received_peppol_signal_message"),
-  envelopeId: text("envelope_id"),
+    senderName: text("sender_name"),
+    receiverName: text("receiver_name"),
+    documentNumber: text("document_number"),
+    // Important: after applying the migration for these columns, run
+    // scripts/backfill-transmitted-document-search.ts to backfill search data
+    // and create the indexes. Those indexes are managed outside Drizzle
+    // migrations because they must be created concurrently on this large table.
+    searchText: text("search_text"),
 
-  readAt: timestamp("read_at"), // defaults to null, set when the document is read
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  updatedAt: autoUpdateTimestamp(),
-});
+    peppolMessageId: text("peppol_message_id"),
+    peppolConversationId: text("peppol_conversation_id"),
+    receivedPeppolSignalMessage: text("received_peppol_signal_message"),
+    envelopeId: text("envelope_id"),
+
+    readAt: timestamp("read_at"), // defaults to null, set when the document is read
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  }
+);
 
 export const transmittedDocumentLabels = pgTable(
   "peppol_transmitted_document_labels",

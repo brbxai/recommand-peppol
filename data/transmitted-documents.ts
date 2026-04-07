@@ -1,19 +1,54 @@
 import { supportedDocumentTypeEnum, transmittedDocuments, transmittedDocumentLabels, labels } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and, sql, desc, isNull, isNotNull, inArray, or, ilike, SQL, gte, lt } from "drizzle-orm";
+import { eq, and, sql, desc, isNull, isNotNull, inArray, ilike, gte, lt } from "drizzle-orm";
 import type { Label } from "./labels";
 import { removeAttachmentsFromParsedDocument } from "@peppol/utils/parsing/remove-attachments";
 
 export type TransmittedDocument = typeof transmittedDocuments.$inferSelect;
 export type InsertTransmittedDocument = typeof transmittedDocuments.$inferInsert;
-
-// Create a type that excludes the body field but includes parsed data
-export type TransmittedDocumentWithoutBody = Omit<TransmittedDocument, "xml"> & {
-  labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[];
+type TransmittedDocumentSearchField = "senderName" | "receiverName" | "documentNumber" | "searchText";
+type TransmittedDocumentLabel = Omit<Label, "teamId" | "createdAt" | "updatedAt">;
+export type PublicTransmittedDocument = Omit<TransmittedDocument, TransmittedDocumentSearchField>;
+export type PublicTransmittedDocumentWithLabels = PublicTransmittedDocument & {
+  labels?: TransmittedDocumentLabel[];
 };
 
-async function getLabelsForDocuments(documentIds: string[]): Promise<Map<string, Omit<Label, "teamId" | "createdAt" | "updatedAt">[]>> {
-  const documentLabelsMap = new Map<string, Omit<Label, "teamId" | "createdAt" | "updatedAt">[]>();
+// Create a type that excludes the body field but includes parsed data
+export type TransmittedDocumentWithoutBody = Omit<PublicTransmittedDocument, "xml"> & {
+  labels?: TransmittedDocumentLabel[];
+};
+type InboxTransmittedDocument = Omit<PublicTransmittedDocument, "xml" | "parsed"> & {
+  labels?: TransmittedDocumentLabel[];
+};
+
+const publicTransmittedDocumentSelect = {
+  id: transmittedDocuments.id,
+  teamId: transmittedDocuments.teamId,
+  companyId: transmittedDocuments.companyId,
+  direction: transmittedDocuments.direction,
+  senderId: transmittedDocuments.senderId,
+  receiverId: transmittedDocuments.receiverId,
+  docTypeId: transmittedDocuments.docTypeId,
+  processId: transmittedDocuments.processId,
+  countryC1: transmittedDocuments.countryC1,
+  xml: transmittedDocuments.xml,
+  sentOverPeppol: transmittedDocuments.sentOverPeppol,
+  sentOverEmail: transmittedDocuments.sentOverEmail,
+  emailRecipients: transmittedDocuments.emailRecipients,
+  type: transmittedDocuments.type,
+  parsed: transmittedDocuments.parsed,
+  validation: transmittedDocuments.validation,
+  peppolMessageId: transmittedDocuments.peppolMessageId,
+  peppolConversationId: transmittedDocuments.peppolConversationId,
+  receivedPeppolSignalMessage: transmittedDocuments.receivedPeppolSignalMessage,
+  envelopeId: transmittedDocuments.envelopeId,
+  readAt: transmittedDocuments.readAt,
+  createdAt: transmittedDocuments.createdAt,
+  updatedAt: transmittedDocuments.updatedAt,
+};
+
+async function getLabelsForDocuments(documentIds: string[]): Promise<Map<string, TransmittedDocumentLabel[]>> {
+  const documentLabelsMap = new Map<string, TransmittedDocumentLabel[]>();
 
   if (documentIds.length === 0) {
     return documentLabelsMap;
@@ -67,6 +102,7 @@ export async function getTransmittedDocuments(
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
   const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread, envelopeId, peppolMessageId, peppolConversationId, excludeAttachments = false } = options;
   const offset = (page - 1) * limit;
+  const trimmedSearch = search?.trim();
 
   // Build the where clause
   const whereClause = [eq(transmittedDocuments.teamId, teamId)];
@@ -79,16 +115,9 @@ export async function getTransmittedDocuments(
   if (type) {
     whereClause.push(eq(transmittedDocuments.type, type));
   }
-  if (search) {
+  if (trimmedSearch) {
     whereClause.push(
-      or(
-        ilike(transmittedDocuments.id, `%${search}%`),
-        ilike(transmittedDocuments.senderId, `%${search}%`),
-        ilike(transmittedDocuments.receiverId, `%${search}%`),
-        ilike(transmittedDocuments.docTypeId, `%${search}%`),
-        ilike(transmittedDocuments.processId, `%${search}%`),
-        ilike(transmittedDocuments.countryC1, `%${search}%`)
-      ) as SQL
+      ilike(transmittedDocuments.searchText, `%${trimmedSearch}%`)
     );
   }
   if (from) {
@@ -193,7 +222,7 @@ export async function deleteAllTransmittedDocuments(
 export async function getInbox(
   teamId: string,
   companyId?: string
-): Promise<(Omit<TransmittedDocument, "xml" | "parsed"> & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] })[]> {
+): Promise<InboxTransmittedDocument[]> {
   // Build the where clause
   const whereClause = [
     eq(transmittedDocuments.teamId, teamId),
@@ -278,9 +307,9 @@ export async function markAsRead(teamId: string, documentId: string, read: boole
 export async function getTransmittedDocument(
   teamId: string,
   documentId: string
-): Promise<(TransmittedDocument & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] }) | null> {
+): Promise<PublicTransmittedDocumentWithLabels | null> {
   const document = await db
-    .select()
+    .select(publicTransmittedDocumentSelect)
     .from(transmittedDocuments)
     .where(
       and(
@@ -307,7 +336,7 @@ export async function getAllTransmittedDocumentsInRange(
   from: Date,
   to: Date,
   direction?: "incoming" | "outgoing"
-): Promise<(TransmittedDocument & { labels?: Omit<Label, "teamId" | "createdAt" | "updatedAt">[] })[]> {
+): Promise<PublicTransmittedDocumentWithLabels[]> {
   const whereClause = [
     eq(transmittedDocuments.teamId, teamId),
     gte(transmittedDocuments.createdAt, from),
@@ -319,7 +348,7 @@ export async function getAllTransmittedDocumentsInRange(
   }
 
   const documents = await db
-    .select()
+    .select(publicTransmittedDocumentSelect)
     .from(transmittedDocuments)
     .where(and(...whereClause))
     .orderBy(desc(transmittedDocuments.createdAt));

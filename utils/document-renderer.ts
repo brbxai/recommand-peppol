@@ -1,4 +1,4 @@
-import type { TransmittedDocument } from "@peppol/data/transmitted-documents";
+import type { PublicTransmittedDocument } from "@peppol/data/transmitted-documents";
 import { BILLING_DOCUMENT_TEMPLATE } from "@peppol/templates/billing-document";
 import { MESSAGE_LEVEL_RESPONSE_TEMPLATE } from "@peppol/templates/message-level-response";
 import { PAYMENT_MEANS } from "@peppol/utils/payment-means";
@@ -130,7 +130,7 @@ function forcePositiveAmountSign(value: string): string {
   return `+${trimmedValue}`;
 }
 
-function getDocumentTypeLabel(type: TransmittedDocument["type"]): string {
+function getDocumentTypeLabel(type: PublicTransmittedDocument["type"]): string {
   switch (type) {
     case "invoice":
       return "Invoice";
@@ -147,7 +147,7 @@ function getDocumentTypeLabel(type: TransmittedDocument["type"]): string {
   }
 }
 
-function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
+function buildTemplateData(document: PublicTransmittedDocument): BillingTemplateData {
   const parsed = document.parsed as ParsedBillingDocument;
 
   const isInvoice =
@@ -324,7 +324,7 @@ function buildTemplateData(document: TransmittedDocument): BillingTemplateData {
 }
 
 function buildMessageLevelResponseTemplateData(
-  document: TransmittedDocument,
+  document: PublicTransmittedDocument,
 ): MessageLevelResponseTemplateData {
   const parsed = document.parsed as MessageLevelResponse;
 
@@ -392,7 +392,7 @@ async function callTailwindPdfGenerator(
 }
 
 export async function renderDocumentHtml(
-  document: TransmittedDocument,
+  document: PublicTransmittedDocument,
 ): Promise<string> {
   if (document.type === "unknown") {
     throw new Error("Unknown document type");
@@ -417,7 +417,7 @@ export async function renderDocumentHtml(
 }
 
 export async function renderDocumentPdf(
-  document: TransmittedDocument,
+  document: PublicTransmittedDocument,
 ): Promise<Buffer> {
   if (document.type === "unknown") {
     throw new Error("Unknown document type");
@@ -440,5 +440,4 @@ export async function renderDocumentPdf(
   );
   return pdf as Buffer;
 }
-
 

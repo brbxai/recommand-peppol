@@ -936,6 +936,7 @@ export default function Page() {
               table={table}
               searchPlaceholder="Search documents..."
               enableGlobalSearch
+              throttleGlobalSearch
               filterColumns={filterConfigs}
             />
             <DataTable columns={columns} table={table} />

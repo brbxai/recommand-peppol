@@ -73,6 +73,7 @@ import { generateAndAttachPdf } from "@peppol/utils/pdf-attachment-helper";
 import {
   type ParsedDocument as FilenameParsedDocument,
 } from "@peppol/utils/document-filename";
+import { getTransmittedDocumentSearchFields } from "@peppol/utils/transmitted-document-search";
 
 const server = new Server();
 
@@ -744,6 +745,17 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
     }
 
     // Create a new transmittedDocument
+    const transmittedDocumentSearchFields = getTransmittedDocumentSearchFields({
+      id: transmittedDocumentId,
+      senderId: senderAddress,
+      receiverId: recipientAddress,
+      docTypeId: doctypeId,
+      processId,
+      countryC1,
+      type,
+      parsedDocument,
+    });
+
     const transmittedDocument = await db
       .insert(transmittedDocuments)
       .values({
@@ -765,6 +777,7 @@ async function _sendDocumentImplementation(c: SendDocumentContext) {
         type,
         parsed: parsedDocument,
         validation,
+        ...transmittedDocumentSearchFields,
 
         peppolMessageId: as4Response?.peppolMessageId ?? null,
         peppolConversationId: as4Response?.peppolConversationId ?? null,

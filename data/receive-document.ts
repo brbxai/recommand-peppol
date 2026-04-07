@@ -13,6 +13,8 @@ import { validateXmlDocument } from "./validation/client";
 import type { ValidationResponse } from "@peppol/types/validation";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
+import { getTransmittedDocumentSearchFields } from "@peppol/utils/transmitted-document-search";
+import { ulid } from "ulid";
 
 export async function receiveDocument(options: {
   senderId: string;
@@ -67,11 +69,23 @@ export async function receiveDocument(options: {
   const parseResults = parseDocument(cleanDocTypeId, options.body, company, senderId);
   const type = parseResults.type;
   const parsedDocument = parseResults.parsedDocument;
+  const transmittedDocumentId = "doc_" + ulid();
+  const transmittedDocumentSearchFields = getTransmittedDocumentSearchFields({
+    id: transmittedDocumentId,
+    senderId,
+    receiverId,
+    docTypeId: cleanDocTypeId,
+    processId: cleanProcessId,
+    countryC1: options.countryC1,
+    type,
+    parsedDocument,
+  });
 
   // Create a new transmittedDocument
   const transmittedDocument = await db
     .insert(transmittedDocuments)
     .values({
+      id: transmittedDocumentId,
       teamId: company.teamId,
       companyId: company.id,
       direction: "incoming",
@@ -87,6 +101,7 @@ export async function receiveDocument(options: {
       type,
       parsed: parsedDocument,
       validation,
+      ...transmittedDocumentSearchFields,
     })
     .returning({ id: transmittedDocuments.id })
     .then((rows) => rows[0]);
