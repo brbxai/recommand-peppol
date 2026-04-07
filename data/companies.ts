@@ -16,6 +16,7 @@ import { shouldRegisterWithSmp } from "@peppol/utils/playground";
 import { createVerificationSession } from "./didit/client";
 import { getCompanyVerificationLog } from "./company-verification";
 import { validateCountryIdentifier } from "@peppol/utils/identifier-validation";
+import { sendCompanyVerificationWebhook } from "./company-verification-webhooks";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -342,6 +343,14 @@ export async function updateCompany(company: Partial<InsertCompany> & { id: stri
       "Company Updated",
       `Company ${updatedCompany.name} has been updated. It is ${updatedCompany.isSmpRecipient ? "registered as an SMP recipient" : "not registered as an SMP recipient"}.`
     );
+  }
+
+  if ((enterpriseNumberChanged || vatNumberChanged) && oldCompany.isVerified && !updatedCompany.isVerified) {
+    await sendCompanyVerificationWebhook({
+      teamId: updatedCompany.teamId,
+      companyId: updatedCompany.id,
+      status: "rejected",
+    });
   }
 
   return updatedCompany;
