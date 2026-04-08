@@ -23,7 +23,7 @@ type Representative = {
 };
 
 type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected" | "error";
-type PlaygroundVerificationOutcome = "verified" | "rejected" | "error";
+type PlaygroundVerificationOutcome = "verified" | "rejected";
 
 type VerificationContext = {
     verificationLog: {
@@ -324,11 +324,11 @@ export default function Page() {
                             <CardHeader>
                                 <CardTitle className="text-base">Simulate Verification Result</CardTitle>
                                 <CardDescription>
-                                    This is a playground team, so identity verification is simulated. Choose how the verification for <span className="font-medium text-foreground">{companyName}</span> should finish.
+                                    This is a playground team, so identity verification is simulated. Choose whether the verification for <span className="font-medium text-foreground">{companyName}</span> should be accepted or rejected.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                <div className="grid gap-3 sm:grid-cols-3">
+                                <div className="grid gap-3 sm:grid-cols-2">
                                     <Button
                                         onClick={() => void handlePlaygroundSubmit("verified")}
                                         disabled={isSubmitting}
@@ -364,26 +364,6 @@ export default function Page() {
                                             <>
                                                 <XCircle className="h-4 w-4" />
                                                 Reject
-                                            </>
-                                        )}
-                                    </Button>
-
-                                    <Button
-                                        onClick={() => void handlePlaygroundSubmit("error")}
-                                        disabled={isSubmitting}
-                                        className="w-full"
-                                        size="lg"
-                                        variant="outline"
-                                    >
-                                        {isSubmitting && submittingPlaygroundOutcome === "error" ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                Marking...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <AlertCircle className="h-4 w-4" />
-                                                Manual Review
                                             </>
                                         )}
                                     </Button>

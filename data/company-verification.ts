@@ -12,14 +12,12 @@ import { sendCompanyVerificationWebhook } from "./company-verification-webhooks"
 export type CompanyVerificationLog = typeof companyVerificationLog.$inferSelect;
 export type CompanyVerificationStatus = CompanyVerificationLog["status"];
 export type CompanyVerificationFinalStatus = Extract<CompanyVerificationStatus, "verified" | "rejected" | "error">;
-export type PlaygroundVerificationOutcome = CompanyVerificationFinalStatus;
+export type PlaygroundVerificationOutcome = Extract<CompanyVerificationFinalStatus, "verified" | "rejected">;
 
 export type FinalizeCompanyVerificationResult = {
   status: CompanyVerificationFinalStatus;
   errorMessage: string | null;
 };
-
-export const PLAYGROUND_MANUAL_REVIEW_ERROR_MESSAGE = "This playground verification was marked for manual review.";
 
 export function namesMatch(a: string, b: string): boolean {
   const partsA = a.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -82,36 +80,6 @@ async function setCompanyVerificationError({
       errorMessage,
     })
     .where(eq(companyVerificationLog.id, companyVerificationLogId));
-}
-
-async function finalizeCompanyVerificationWithError({
-  companyVerificationLogId,
-  company,
-  verificationProofReference,
-  errorMessage,
-}: {
-  companyVerificationLogId: string;
-  company: Company;
-  verificationProofReference: string;
-  errorMessage: string;
-}): Promise<FinalizeCompanyVerificationResult> {
-  await setCompanyVerificationError({
-    companyVerificationLogId,
-    verificationProofReference,
-    errorMessage,
-  });
-
-  await sendCompanyVerificationWebhook({
-    teamId: company.teamId,
-    companyId: company.id,
-    status: "error",
-    errorMessage,
-  });
-
-  return {
-    status: "error",
-    errorMessage,
-  };
 }
 
 export async function finalizeCompanyVerification({
@@ -319,15 +287,6 @@ export async function submitPlaygroundVerification(
 ): Promise<FinalizeCompanyVerificationResult> {
   if (log.status === "verified" || log.status === "rejected" || log.status === "error") {
     throw new UserFacingError("This verification has already been completed.");
-  }
-
-  if (outcome === "error") {
-    return await finalizeCompanyVerificationWithError({
-      companyVerificationLogId,
-      company,
-      verificationProofReference: "PLAYGROUND_MANUAL_REVIEW",
-      errorMessage: PLAYGROUND_MANUAL_REVIEW_ERROR_MESSAGE,
-    });
   }
 
   return await finalizeCompanyVerification({

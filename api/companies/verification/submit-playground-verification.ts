@@ -16,7 +16,7 @@ const submitPlaygroundVerificationParamSchema = z.object({
 });
 
 const submitPlaygroundVerificationJsonBodySchema = z.object({
-    outcome: z.enum(["verified", "rejected", "error"]),
+    outcome: z.enum(["verified", "rejected"]),
 });
 
 type SubmitPlaygroundVerificationContext = Context<Record<string, never>, string, { in: { param: z.input<typeof submitPlaygroundVerificationParamSchema>, json: z.input<typeof submitPlaygroundVerificationJsonBodySchema> }, out: { param: z.infer<typeof submitPlaygroundVerificationParamSchema>, json: z.infer<typeof submitPlaygroundVerificationJsonBodySchema> } }>;
