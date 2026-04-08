@@ -44,7 +44,7 @@ export async function createVerificationSession(options: {
         workflow_id: workflowId,
         ...(vendorData && { vendor_data: vendorData }),
         ...(callback && { callback, callback_method: "initiator" }),
-        ...(metadata && { metadata: typeof metadata === "string" ? metadata : JSON.stringify(metadata) }),
+        ...(metadata && { metadata: typeof metadata === "string" ? metadata : JSON.stringify(metadata, null, 2) }),
         ...((expectedDetails?.firstName || expectedDetails?.lastName) && {
           expected_details: {
             ...(expectedDetails.firstName && { first_name: expectedDetails.firstName }),
