@@ -10,7 +10,7 @@ import { Checkbox } from "@core/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@core/components/ui/radio-group";
 import { StatusHero, StatusMessage } from "@recommand/components/status-feedback";
-import { Loader2, AlertCircle, ShieldCheck, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, ShieldCheck, RefreshCw, XCircle } from "lucide-react";
 import { ForwardSection } from "./forward-section";
 
 const client = rc<Companies>("v1");
@@ -23,6 +23,7 @@ type Representative = {
 };
 
 type VerificationStatus = "opened" | "idVerificationRequested" | "verified" | "rejected" | "error";
+type PlaygroundVerificationOutcome = "verified" | "rejected" | "error";
 
 type VerificationContext = {
     verificationLog: {
@@ -55,6 +56,7 @@ export default function Page() {
     const [confirmPermission, setConfirmPermission] = useState(false);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submittingPlaygroundOutcome, setSubmittingPlaygroundOutcome] = useState<PlaygroundVerificationOutcome | null>(null);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [isRestarting, setIsRestarting] = useState(false);
     const [restartError, setRestartError] = useState<string | null>(null);
@@ -105,29 +107,33 @@ export default function Page() {
         fetchContext();
     }, [companyVerificationLogId]);
 
-    const handleSubmit = async () => {
+    const handlePlaygroundSubmit = async (outcome: PlaygroundVerificationOutcome) => {
         if (!companyVerificationLogId) return;
 
-        if (context?.isPlayground) {
-            try {
-                setIsSubmitting(true);
-                setSubmitError(null);
-                const response = await client["companies"]["verification"][":companyVerificationLogId"]["submit-playground-verification"].$post({
-                    param: { companyVerificationLogId },
-                });
-                const json = await response.json();
-                if (!json.success) {
-                    setSubmitError(stringifyActionFailure(json.errors));
-                    return;
-                }
-                window.location.href = `/company-verification/${companyVerificationLogId}/status`;
-            } catch (error) {
-                setSubmitError("An unexpected error occurred. Please try again.");
-            } finally {
-                setIsSubmitting(false);
+        try {
+            setIsSubmitting(true);
+            setSubmittingPlaygroundOutcome(outcome);
+            setSubmitError(null);
+            const response = await client["companies"]["verification"][":companyVerificationLogId"]["submit-playground-verification"].$post({
+                param: { companyVerificationLogId },
+                json: { outcome },
+            });
+            const json = await response.json();
+            if (!json.success) {
+                setSubmitError(stringifyActionFailure(json.errors));
+                return;
             }
-            return;
+            window.location.href = `/company-verification/${companyVerificationLogId}/status`;
+        } catch (error) {
+            setSubmitError("An unexpected error occurred. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+            setSubmittingPlaygroundOutcome(null);
         }
+    };
+
+    const handleSubmit = async () => {
+        if (!companyVerificationLogId || context?.isPlayground) return;
 
         if (!isFormComplete) return;
 
@@ -304,42 +310,90 @@ export default function Page() {
                     </div>
                     <h1 className="text-2xl font-semibold tracking-tight">Company Verification</h1>
                     <p className="text-sm text-muted-foreground max-w-sm mx-auto text-balance">
-                        Verify your identity as a representative of <span className="font-medium text-foreground">{companyName}</span> to activate this company on the Peppol network.
+                        {context.isPlayground ? (
+                            <>Choose the simulated verification outcome for <span className="font-medium text-foreground">{companyName}</span> in this playground environment.</>
+                        ) : (
+                            <>Verify your identity as a representative of <span className="font-medium text-foreground">{companyName}</span> to activate this company on the Peppol network.</>
+                        )}
                     </p>
                 </div>
 
                 {context.isPlayground ? (
                     <>
                         <Card>
-                            <CardContent className="pt-6">
-                                <p className="text-sm text-muted-foreground text-pretty">
-                                    This is a playground team. Identity verification is simulated. In production environments you would have to provide proof of identity. Click the button below to verify <span className="font-medium text-foreground">{companyName}</span> immediately.
-                                </p>
+                            <CardHeader>
+                                <CardTitle className="text-base">Simulate Verification Result</CardTitle>
+                                <CardDescription>
+                                    This is a playground team, so identity verification is simulated. Choose how the verification for <span className="font-medium text-foreground">{companyName}</span> should finish.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid gap-3 sm:grid-cols-3">
+                                    <Button
+                                        onClick={() => void handlePlaygroundSubmit("verified")}
+                                        disabled={isSubmitting}
+                                        className="w-full"
+                                        size="lg"
+                                    >
+                                        {isSubmitting && submittingPlaygroundOutcome === "verified" ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Accepting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ShieldCheck className="h-4 w-4" />
+                                                Accept
+                                            </>
+                                        )}
+                                    </Button>
+
+                                    <Button
+                                        onClick={() => void handlePlaygroundSubmit("rejected")}
+                                        disabled={isSubmitting}
+                                        className="w-full"
+                                        size="lg"
+                                        variant="destructive"
+                                    >
+                                        {isSubmitting && submittingPlaygroundOutcome === "rejected" ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Rejecting...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <XCircle className="h-4 w-4" />
+                                                Reject
+                                            </>
+                                        )}
+                                    </Button>
+
+                                    <Button
+                                        onClick={() => void handlePlaygroundSubmit("error")}
+                                        disabled={isSubmitting}
+                                        className="w-full"
+                                        size="lg"
+                                        variant="outline"
+                                    >
+                                        {isSubmitting && submittingPlaygroundOutcome === "error" ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                Marking...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AlertCircle className="h-4 w-4" />
+                                                Manual Review
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
 
                         {submitError && (
                             <StatusMessage tone="error" icon={AlertCircle} description={submitError} />
                         )}
-
-                        <Button
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="w-full"
-                            size="lg"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Verifying...
-                                </>
-                            ) : (
-                                <>
-                                    <ShieldCheck className="h-4 w-4" />
-                                    Verify Company
-                                </>
-                            )}
-                        </Button>
                         <ForwardSection companyVerificationLogId={companyVerificationLogId!} />
                     </>
                 ) : (

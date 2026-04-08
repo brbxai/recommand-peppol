@@ -15,18 +15,24 @@ const submitPlaygroundVerificationParamSchema = z.object({
     companyVerificationLogId: z.string(),
 });
 
-type SubmitPlaygroundVerificationContext = Context<Record<string, never>, string, { in: { param: z.input<typeof submitPlaygroundVerificationParamSchema> }, out: { param: z.infer<typeof submitPlaygroundVerificationParamSchema> } }>;
+const submitPlaygroundVerificationJsonBodySchema = z.object({
+    outcome: z.enum(["verified", "rejected", "error"]),
+});
+
+type SubmitPlaygroundVerificationContext = Context<Record<string, never>, string, { in: { param: z.input<typeof submitPlaygroundVerificationParamSchema>, json: z.input<typeof submitPlaygroundVerificationJsonBodySchema> }, out: { param: z.infer<typeof submitPlaygroundVerificationParamSchema>, json: z.infer<typeof submitPlaygroundVerificationJsonBodySchema> } }>;
 
 const _submitPlaygroundVerification = server.post(
     "/companies/verification/:companyVerificationLogId/submit-playground-verification",
     describeRoute({ hide: true }),
     zodValidator("param", submitPlaygroundVerificationParamSchema),
+    zodValidator("json", submitPlaygroundVerificationJsonBodySchema),
     _submitPlaygroundVerificationImplementation,
 );
 
 async function _submitPlaygroundVerificationImplementation(c: SubmitPlaygroundVerificationContext) {
     try {
         const { companyVerificationLogId } = c.req.valid("param");
+        const { outcome } = c.req.valid("json");
 
         const verificationLog = await getCompanyVerificationLog(companyVerificationLogId);
         if (!verificationLog) {
@@ -43,7 +49,7 @@ async function _submitPlaygroundVerificationImplementation(c: SubmitPlaygroundVe
             return c.json(actionFailure("This endpoint is only available for playground teams"), 403);
         }
 
-        const result = await submitPlaygroundVerification(companyVerificationLogId, verificationLog, company);
+        const result = await submitPlaygroundVerification(companyVerificationLogId, verificationLog, company, outcome);
 
         return c.json(actionSuccess({ verified: result.status === "verified", status: result.status, errorMessage: result.errorMessage }));
     } catch (error) {
