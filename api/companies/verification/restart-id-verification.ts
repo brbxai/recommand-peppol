@@ -41,7 +41,7 @@ async function _restartIdVerificationImplementation(c: RestartIdVerificationCont
             return c.json(actionFailure("Company not found"), 404);
         }
 
-        const verificationUrl = await requestIdVerification(companyVerificationLogId, verificationLog);
+        const verificationUrl = await requestIdVerification(companyVerificationLogId, verificationLog, company);
         return c.json(actionSuccess({ verificationUrl }));
     } catch (error) {
         console.error(error);

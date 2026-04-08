@@ -259,7 +259,10 @@ export async function submitIdentityForm(
     }
   }
 
-  const verificationUrl = await createIdVerificationUrl(companyVerificationLogId);
+  const verificationUrl = await createIdVerificationUrl(companyVerificationLogId, company, {
+    firstName,
+    lastName,
+  });
 
   await db
     .update(companyVerificationLog)
@@ -294,13 +297,17 @@ export async function submitPlaygroundVerification(
 
 export async function requestIdVerification(
   companyVerificationLogId: string,
-  log: CompanyVerificationLog
+  log: CompanyVerificationLog,
+  company: Company
 ): Promise<string> {
   if (log.status !== "idVerificationRequested") {
     throw new UserFacingError("Verification is not in a state that allows identity verification.");
   }
 
-  const verificationUrl = await createIdVerificationUrl(companyVerificationLogId);
+  const verificationUrl = await createIdVerificationUrl(companyVerificationLogId, company, {
+    firstName: log.firstName,
+    lastName: log.lastName,
+  });
 
   await db
     .update(companyVerificationLog)
@@ -312,13 +319,22 @@ export async function requestIdVerification(
   return verificationUrl;
 }
 
-async function createIdVerificationUrl(companyVerificationLogId: string): Promise<string> {
+async function createIdVerificationUrl(
+  companyVerificationLogId: string,
+  company: Company,
+  expectedDetails?: {
+    firstName?: string | null;
+    lastName?: string | null;
+  }
+): Promise<string> {
   const baseUrl = getBaseUrlOrThrow();
 
   const callbackUrl = `${baseUrl}/company-verification/${companyVerificationLogId}/status`;
   const verificationUrl = await verifyCompany({
     companyVerificationLogId,
+    company,
     callback: callbackUrl,
+    expectedDetails,
   });
   if (!verificationUrl) {
     throw new UserFacingError("Failed to create verification session");

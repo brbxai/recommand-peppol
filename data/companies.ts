@@ -13,7 +13,7 @@ import { createCompanyDocumentType } from "./company-document-types";
 import { canUpsertCompanyIdentifier, createCompanyIdentifier, getCompanyIdentifiers } from "./company-identifiers";
 import { COUNTRIES } from "@peppol/utils/countries";
 import { shouldRegisterWithSmp } from "@peppol/utils/playground";
-import { createVerificationSession } from "./didit/client";
+import { createVerificationSession, type VerificationExpectedDetails } from "./didit/client";
 import { getCompanyVerificationLog } from "./company-verification";
 import { validateCountryIdentifier } from "@peppol/utils/identifier-validation";
 import { sendCompanyVerificationWebhook } from "./company-verification-webhooks";
@@ -385,10 +385,14 @@ export async function deleteCompany({
 
 export async function verifyCompany({
   companyVerificationLogId,
+  company,
   callback,
+  expectedDetails,
 }: {
   companyVerificationLogId: string;
+  company: Pick<Company, "id" | "name" | "enterpriseNumber" | "vatNumber">;
   callback?: string;
+  expectedDetails?: VerificationExpectedDetails;
 }): Promise<string> {
   const companyVerificationLog = await getCompanyVerificationLog(companyVerificationLogId);
   if (!companyVerificationLog) {
@@ -410,6 +414,13 @@ export async function verifyCompany({
     workflowId,
     vendorData: companyVerificationLog.id,
     callback,
+    metadata: {
+      company_id: company.id,
+      company_name: company.name,
+      enterprise_number: company.enterpriseNumber,
+      vat_number: company.vatNumber,
+    },
+    expectedDetails,
   });
 
   if (!session || !session.url) {

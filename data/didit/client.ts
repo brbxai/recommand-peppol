@@ -21,13 +21,20 @@ export type CreateVerificationSessionResponse = {
   url: string;
 };
 
+export type VerificationExpectedDetails = {
+  firstName?: string | null;
+  lastName?: string | null;
+};
+
 export async function createVerificationSession(options: {
   apiKey: string;
   workflowId: string;
   vendorData?: string;
   callback?: string;
+  metadata?: Record<string, unknown> | string;
+  expectedDetails?: VerificationExpectedDetails;
 }): Promise<CreateVerificationSessionResponse | null> {
-  const { apiKey, workflowId, vendorData, callback } = options;
+  const { apiKey, workflowId, vendorData, callback, metadata, expectedDetails } = options;
 
   try {
     const result = await fetchDidit("/v2/session/", {
@@ -37,6 +44,13 @@ export async function createVerificationSession(options: {
         workflow_id: workflowId,
         ...(vendorData && { vendor_data: vendorData }),
         ...(callback && { callback, callback_method: "initiator" }),
+        ...(metadata && { metadata: typeof metadata === "string" ? metadata : JSON.stringify(metadata) }),
+        ...((expectedDetails?.firstName || expectedDetails?.lastName) && {
+          expected_details: {
+            ...(expectedDetails.firstName && { first_name: expectedDetails.firstName }),
+            ...(expectedDetails.lastName && { last_name: expectedDetails.lastName }),
+          },
+        }),
       }),
     });
 
@@ -50,4 +64,3 @@ export async function createVerificationSession(options: {
     return null;
   }
 }
-
