@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@recommand/db";
 import { companyVerificationLog } from "@peppol/db/schema";
 import { UserFacingError } from "@peppol/utils/util";
-import { finalizeCompanyVerification, getCompanyVerificationLog, namesMatch } from "@peppol/data/company-verification";
+import { finalizeCompanyVerification, getCompanyVerificationLog } from "@peppol/data/company-verification";
 import { getCompanyById } from "@peppol/data/companies";
 import { sendManualVerificationEmail } from "@peppol/data/send-manual-verification-email";
 
@@ -97,7 +97,7 @@ server.post(
         const storedFirstName = companyVerificationLogRecord.firstName;
         const storedLastName = companyVerificationLogRecord.lastName;
 
-        if (diditFirstName && diditLastName && storedFirstName && storedLastName && namesMatch(diditFirstName, storedFirstName) && namesMatch(diditLastName, storedLastName)) {
+        if (diditFirstName && diditLastName && storedFirstName && storedLastName) { // We don't check if the names match anymore, because Didit does it for us now through the expected_details parameter
           isVerified = true;
         }
       } else if (status === "In Review") {
