@@ -102,7 +102,9 @@ export async function postToIntegration({
         body,
     });
 
-    const json = await response.json();
+    const responseBody = await response.text();
+    console.log("Response body from integration", responseBody);
+    const json = JSON.parse(responseBody);
     console.log("Response from integration", integration.manifest.url, event, JSON.stringify(json, null, 2));
 
     // Ensure the version is 1.0.0
