@@ -9,7 +9,7 @@ import { companyVerificationLog } from "@peppol/db/schema";
 import { UserFacingError } from "@peppol/utils/util";
 import { finalizeCompanyVerification, getCompanyVerificationLog } from "@peppol/data/company-verification";
 import { getCompanyById } from "@peppol/data/companies";
-import { sendManualVerificationEmail } from "@peppol/data/send-manual-verification-email";
+import { sendManualVerificationDeclinedEmail, sendManualVerificationEmail } from "@peppol/data/send-manual-verification-email";
 
 const server = new Server();
 
@@ -129,6 +129,13 @@ server.post(
 
       if (lastManualReview && result.status === "verified") {
         await sendManualVerificationEmail({
+          teamId: company.teamId,
+          companyName: company.name,
+        });
+      }
+
+      if (lastManualReview && result.status === "rejected") {
+        await sendManualVerificationDeclinedEmail({
           teamId: company.teamId,
           companyName: company.name,
         });
