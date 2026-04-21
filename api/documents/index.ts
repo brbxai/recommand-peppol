@@ -21,6 +21,7 @@ export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocu
 const server = new Server();
 server.route("/", listDocumentsServer);
 server.route("/", getDocumentServer);
+server.route("/", bulkDeleteServer);
 server.route("/", deleteAllDocumentsServer);
 server.route("/", deleteDocumentServer);
 server.route("/", getInboxServer);
@@ -33,5 +34,4 @@ server.route("/", exportDocumentsServer);
 server.route("/", bulkMarkAsReadServer);
 server.route("/", bulkAssignLabelServer);
 server.route("/", bulkExportServer);
-server.route("/", bulkDeleteServer);
 export default server;
