@@ -42,7 +42,7 @@ const getTransmittedDocumentsQuerySchema = z.object({
     description: "The page number to retrieve",
     example: 1,
   }),
-  limit: z.coerce.number().min(1).max(100).default(10).openapi({
+  limit: z.coerce.number().min(1).max(200).default(10).openapi({
     description: "The number of items per page",
     example: 10,
   }),
@@ -51,6 +51,12 @@ const getTransmittedDocumentsQuerySchema = z.object({
     .optional()
     .openapi({
       description: "Filter documents by company ID",
+    }),
+  labelId: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .openapi({
+      description: "Filter documents by label ID",
     }),
   direction: z.enum(["incoming", "outgoing"]).optional().openapi({
     description: "Filter documents by direction (incoming or outgoing)",
@@ -105,7 +111,7 @@ const _transmittedDocuments = server.get(
 
 async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocumentsContext) {
   try {
-    const { page, limit, companyId, direction, search, type, from, to, isUnread, envelopeId, excludeAttachments } = c.req.valid("query");
+    const { page, limit, companyId, labelId, direction, search, type, from, to, isUnread, envelopeId, excludeAttachments } = c.req.valid("query");
     const { documents, total } = await getTransmittedDocuments(
       c.var.team.id,
       {
@@ -115,6 +121,11 @@ async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocuments
           ? companyId
           : companyId
             ? [companyId]
+            : undefined,
+        labelId: Array.isArray(labelId)
+          ? labelId
+          : labelId
+            ? [labelId]
             : undefined,
         direction,
         search,

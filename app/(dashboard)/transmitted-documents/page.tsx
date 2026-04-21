@@ -1,6 +1,6 @@
 import { PageTemplate } from "@core/components/page-template";
 import { rc } from "@recommand/lib/client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { DataTable } from "@core/components/data-table";
 import {
   type ColumnDef,
@@ -8,7 +8,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type { SortingState } from "@tanstack/react-table";
+import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { useDataTableState } from "@core/hooks/use-data-table-state";
 import { Button } from "@core/components/ui/button";
 import { toast } from "@core/components/ui/sonner";
@@ -45,6 +45,7 @@ import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import type { SelfBillingInvoice } from "@peppol/utils/parsing/self-billing-invoice/schemas";
 import type { SelfBillingCreditNote } from "@peppol/utils/parsing/self-billing-creditnote/schemas";
+import { Checkbox } from "@core/components/ui/checkbox";
 
 const client = rc<TransmittedDocuments>("peppol");
 const companiesClient = rc<Companies>("peppol");
@@ -67,6 +68,8 @@ export default function Page() {
       documentNumber: false,
       totalExclVat: false,
       totalInclVat: false,
+      isUnread: false,
+      labelId: false,
     },
   });
 
@@ -83,6 +86,10 @@ export default function Page() {
   const isPlayground = useIsPlayground();
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [isBulkMarkingAsRead, setIsBulkMarkingAsRead] = useState(false);
+  const [isBulkExporting, setIsBulkExporting] = useState(false);
+  const [bulkAssigningLabelId, setBulkAssigningLabelId] = useState<string | null>(null);
 
   const fetchCompanies = useCallback(async () => {
     if (!activeTeam?.id) {
@@ -133,6 +140,9 @@ export default function Page() {
     const isUnreadFilter = columnFilters.find((f) => f.id === "isUnread");
     const filteredIsUnreadValues = isUnreadFilter?.value as string[] ?? [];
 
+    const labelFilter = columnFilters.find((f) => f.id === "labelId");
+    const filteredLabelIds = labelFilter?.value as string[] ?? [];
+
     try {
       const response = await client[":teamId"]["documents"].$get({
         param: { teamId: activeTeam.id },
@@ -140,6 +150,7 @@ export default function Page() {
           page: page,
           limit: limit,
           companyId: filteredCompanyIds,
+          labelId: filteredLabelIds.length > 0 ? filteredLabelIds : undefined,
           direction: ((filteredDirectionValues.length === 0 || filteredDirectionValues.length > 1) ? undefined : filteredDirectionValues[0]) as "incoming" | "outgoing", // When no or all options are selected, don't filter on direction
           search: globalFilter || undefined, // Add the global search term to the query
           type: ((filteredTypeValues.length === 0 || filteredTypeValues.length > 1) ? undefined : filteredTypeValues[0]) as SupportedDocumentType, // When no or all options are selected, don't filter on type
@@ -211,7 +222,56 @@ export default function Page() {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const handleDeleteDocument = async (id: string) => {
+  useEffect(() => {
+    const visibleDocumentIds = new Set(documents.map((document) => document.id));
+
+    setRowSelection((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(
+          ([documentId, isSelected]) => isSelected && visibleDocumentIds.has(documentId)
+        )
+      );
+
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+  }, [documents]);
+
+  const selectedDocumentIds = useMemo(
+    () =>
+      Object.entries(rowSelection)
+        .filter(([, isSelected]) => isSelected)
+        .map(([documentId]) => documentId),
+    [rowSelection]
+  );
+
+  const companiesById = useMemo(
+    () => new Map(companies.map((company) => [company.id, company.name])),
+    [companies]
+  );
+
+  const downloadResponseBlob = useCallback(async (response: Response, fallbackFilename: string) => {
+    if (!response.ok) {
+      const json = await response.json() as { errors?: { [key: string]: string[] | undefined } };
+      throw new Error(json.errors ? stringifyActionFailure(json.errors) : "Request failed");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download =
+      response.headers
+        .get("Content-Disposition")
+        ?.split("filename=")[1]
+        ?.replaceAll('"', "") || fallbackFilename;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }, []);
+
+  const handleDeleteDocument = useCallback(async (id: string) => {
     if (!activeTeam?.id) return;
 
     try {
@@ -232,9 +292,9 @@ export default function Page() {
     } catch (error) {
       toast.error("Failed to delete document");
     }
-  };
+  }, [activeTeam?.id, fetchDocuments]);
 
-  const handleDeleteAllDocuments = async () => {
+  const handleDeleteAllDocuments = useCallback(async () => {
     if (!activeTeam?.id || !isPlayground) return;
 
     setIsDeletingAll(true);
@@ -253,9 +313,9 @@ export default function Page() {
     } finally {
       setIsDeletingAll(false);
     }
-  };
+  }, [activeTeam?.id, isPlayground, fetchDocuments]);
 
-  const handleToggleMarkAsRead = async (id: string, currentReadAt: Date | null) => {
+  const handleToggleMarkAsRead = useCallback(async (id: string, currentReadAt: Date | null) => {
     if (!activeTeam?.id) return;
 
     const isRead = currentReadAt !== null;
@@ -301,9 +361,9 @@ export default function Page() {
       );
       toast.error("Failed to update document read status");
     }
-  };
+  }, [activeTeam?.id, fetchDocuments]);
 
-  const handleDownloadDocument = async (id: string) => {
+  const handleDownloadDocument = useCallback(async (id: string) => {
     if (!activeTeam?.id) return;
 
     try {
@@ -316,33 +376,15 @@ export default function Page() {
           generatePdf: "always",
         },
       });
-
-      // Create a blob from the response
-      const blob = await response.blob();
-
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(blob);
-
-      // Create a temporary link element
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${id}.zip`;
-
-      // Append to body, click, and remove
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Clean up the URL
-      window.URL.revokeObjectURL(url);
+      await downloadResponseBlob(response, `${id}.zip`);
 
       toast.success("Document downloaded successfully");
     } catch (error) {
-      toast.error("Failed to download document");
+      toast.error(error instanceof Error ? error.message : "Failed to download document");
     }
-  };
+  }, [activeTeam?.id, downloadResponseBlob]);
 
-  const handleAssignLabel = async (documentId: string, labelId: string) => {
+  const handleAssignLabel = useCallback(async (documentId: string, labelId: string) => {
     if (!activeTeam?.id) return;
 
     const document = documents.find((d) => d.id === documentId);
@@ -389,9 +431,9 @@ export default function Page() {
       );
       toast.error("Failed to assign label");
     }
-  };
+  }, [activeTeam?.id, documents, labels]);
 
-  const handleUnassignLabel = async (documentId: string, labelId: string) => {
+  const handleUnassignLabel = useCallback(async (documentId: string, labelId: string) => {
     if (!activeTeam?.id) return;
 
     const document = documents.find((d) => d.id === documentId);
@@ -439,9 +481,182 @@ export default function Page() {
       }
       toast.error("Failed to unassign label");
     }
-  };
+  }, [activeTeam?.id, documents, labels]);
 
-  const columns: ColumnDef<TransmittedDocumentWithoutBody>[] = [
+  const handleBulkMarkAsRead = useCallback(async () => {
+    if (!activeTeam?.id || selectedDocumentIds.length === 0) return;
+
+    const previousReadAtById = new Map(
+      documents
+        .filter((document) => selectedDocumentIds.includes(document.id))
+        .map((document) => [document.id, document.readAt] as const)
+    );
+
+    setIsBulkMarkingAsRead(true);
+    setDocuments((prev) =>
+      prev.map((document) =>
+        selectedDocumentIds.includes(document.id)
+          ? {
+              ...document,
+              readAt: document.readAt ?? new Date(),
+            }
+          : document
+      )
+    );
+
+    try {
+      const response = await client[":teamId"]["documents"]["bulkMarkAsRead"].$post({
+        param: { teamId: activeTeam.id },
+        json: {
+          documentIds: selectedDocumentIds,
+          read: true,
+        },
+      });
+      const json = await response.json();
+
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+
+      toast.success(`${selectedDocumentIds.length} documents marked as read`);
+      fetchDocuments();
+    } catch (error) {
+      setDocuments((prev) =>
+        prev.map((document) =>
+          previousReadAtById.has(document.id)
+            ? {
+                ...document,
+                readAt: previousReadAtById.get(document.id) ?? null,
+              }
+            : document
+        )
+      );
+      toast.error(error instanceof Error ? error.message : "Failed to mark documents as read");
+    } finally {
+      setIsBulkMarkingAsRead(false);
+    }
+  }, [activeTeam?.id, documents, selectedDocumentIds, fetchDocuments]);
+
+  const handleBulkAssignLabel = useCallback(async (labelId: string) => {
+    if (!activeTeam?.id || selectedDocumentIds.length === 0) return;
+
+    const label = labels.find((entry) => entry.id === labelId);
+
+    if (!label) {
+      toast.error("Label not found");
+      return;
+    }
+
+    const previousLabelsById = new Map(
+      documents
+        .filter((document) => selectedDocumentIds.includes(document.id))
+        .map((document) => [document.id, document.labels || []] as const)
+    );
+
+    setBulkAssigningLabelId(labelId);
+    setDocuments((prev) =>
+      prev.map((document) => {
+        if (!selectedDocumentIds.includes(document.id)) {
+          return document;
+        }
+
+        const hasLabel = document.labels?.some((existingLabel) => existingLabel.id === labelId);
+
+        if (hasLabel) {
+          return document;
+        }
+
+        return {
+          ...document,
+          labels: [...(document.labels || []), label],
+        };
+      })
+    );
+
+    try {
+      const response = await client[":teamId"]["documents"]["bulkAssignLabel"][":labelId"].$post({
+        param: {
+          teamId: activeTeam.id,
+          labelId,
+        },
+        json: {
+          documentIds: selectedDocumentIds,
+        },
+      });
+      const json = await response.json();
+
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+
+      toast.success(`Label added to ${selectedDocumentIds.length} documents`);
+      fetchDocuments();
+    } catch (error) {
+      setDocuments((prev) =>
+        prev.map((document) =>
+          previousLabelsById.has(document.id)
+            ? {
+                ...document,
+                labels: previousLabelsById.get(document.id) || [],
+              }
+            : document
+        )
+      );
+      toast.error(error instanceof Error ? error.message : "Failed to assign label");
+    } finally {
+      setBulkAssigningLabelId(null);
+    }
+  }, [activeTeam?.id, documents, labels, selectedDocumentIds, fetchDocuments]);
+
+  const handleBulkExport = useCallback(async (outputType: "flat" | "nested") => {
+    if (!activeTeam?.id || selectedDocumentIds.length === 0) return;
+
+    setIsBulkExporting(true);
+
+    try {
+      const response = await client[":teamId"]["documents"]["bulkExport"].$post({
+        param: { teamId: activeTeam.id },
+        json: {
+          documentIds: selectedDocumentIds,
+          outputType,
+          generatePdf: "never",
+        },
+      });
+
+      await downloadResponseBlob(response, "documents-selection.zip");
+      toast.success("Documents exported successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to export documents");
+    } finally {
+      setIsBulkExporting(false);
+    }
+  }, [activeTeam?.id, selectedDocumentIds, downloadResponseBlob]);
+
+  const columns = useMemo<ColumnDef<TransmittedDocumentWithoutBody>[]>(() => [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && "indeterminate")
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all rows"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      enableGlobalFilter: false,
+      size: 36,
+    },
     {
       accessorKey: "id",
       header: ({ column }) => <ColumnHeader column={column} title="ID" />,
@@ -477,8 +692,7 @@ export default function Page() {
       meta: { label: "Company" },
       cell: ({ row }) => {
         const companyId = row.original.companyId;
-        const company = companies.find((c) => c.id === companyId);
-        return company?.name ?? companyId;
+        return companiesById.get(companyId) ?? companyId;
       },
       enableColumnFilter: false,
       enableGlobalFilter: true,
@@ -719,6 +933,18 @@ export default function Page() {
       },
     },
     {
+      id: "labelId",
+      accessorFn: (row) => row.labels?.map((label) => label.id) || [],
+      header: () => null,
+      cell: () => null,
+      enableHiding: false,
+      filterFn: (row, _id, value) => {
+        if (!value || value.length === 0) return true;
+        const documentLabelIds = row.original.labels?.map((label) => label.id) || [];
+        return value.some((labelId: string) => documentLabelIds.includes(labelId));
+      },
+    },
+    {
       accessorKey: "labels",
       header: ({ column }) => <ColumnHeader column={column} title="Labels" />,
       meta: { label: "Labels" },
@@ -821,22 +1047,34 @@ export default function Page() {
         );
       },
     },
-  ];
+  ], [
+    companiesById,
+    handleAssignLabel,
+    handleDeleteDocument,
+    handleDownloadDocument,
+    handleToggleMarkAsRead,
+    handleUnassignLabel,
+    labels,
+  ]);
 
   const table = useReactTable({
     data: documents,
     columns,
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
     state: {
       sorting,
       globalFilter,
       columnFilters,
       columnVisibility,
       pagination: paginationState,
+      rowSelection,
     },
     onGlobalFilterChange: setGlobalFilter,
     onPaginationChange,
@@ -845,7 +1083,7 @@ export default function Page() {
     manualFiltering: true,
   });
 
-  const filterConfigs: FilterConfig<TransmittedDocumentWithoutBody>[] = [
+  const filterConfigs = useMemo<FilterConfig<TransmittedDocumentWithoutBody>[]>(() => [
     {
       id: "companyId",
       title: "Company",
@@ -881,7 +1119,15 @@ export default function Page() {
         { label: "Read", value: "false", icon: MailOpen },
       ],
     },
-  ];
+    {
+      id: "labelId",
+      title: "Label",
+      options: labels.map((label) => ({
+        label: label.name,
+        value: label.id,
+      })),
+    },
+  ], [companies, labels]);
 
   return (
     <PageTemplate
@@ -939,6 +1185,101 @@ export default function Page() {
               throttleGlobalSearch
               filterColumns={filterConfigs}
             />
+            {selectedDocumentIds.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                <span className="text-sm text-muted-foreground">
+                  {selectedDocumentIds.length} selected
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkMarkAsRead}
+                  disabled={isBulkMarkingAsRead || isBulkExporting || bulkAssigningLabelId !== null}
+                >
+                  {isBulkMarkingAsRead ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCheck className="mr-2 h-4 w-4" />
+                  )}
+                  Mark as read
+                </Button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isBulkMarkingAsRead || isBulkExporting || bulkAssigningLabelId !== null}
+                    >
+                      {bulkAssigningLabelId ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Tag className="mr-2 h-4 w-4" />
+                      )}
+                      Add label
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0" align="start">
+                    <div className="p-2">
+                      <div className="mb-2 text-sm font-medium">Assign label</div>
+                      <div className="max-h-64 space-y-1 overflow-y-auto">
+                        {labels.map((label) => (
+                          <button
+                            key={label.id}
+                            onClick={() => handleBulkAssignLabel(label.id)}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                          >
+                            <div
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: label.colorHex }}
+                            />
+                            <span className="flex-1">{label.name}</span>
+                          </button>
+                        ))}
+                        {labels.length === 0 && (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            No labels available
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isBulkMarkingAsRead || isBulkExporting || bulkAssigningLabelId !== null}
+                    >
+                      {isBulkExporting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      Download ZIP
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => handleBulkExport("flat")}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                      >
+                        <FolderArchive className="h-4 w-4" />
+                        <span>Flat UBL ZIP</span>
+                      </button>
+                      <button
+                        onClick={() => handleBulkExport("nested")}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent"
+                      >
+                        <FolderArchive className="h-4 w-4" />
+                        <span>Nested ZIP</span>
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
             <DataTable columns={columns} table={table} />
             <DataTablePagination table={table} />
           </>

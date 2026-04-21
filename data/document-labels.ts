@@ -1,6 +1,6 @@
 import { transmittedDocumentLabels, transmittedDocuments, labels } from "@peppol/db/schema";
 import { db } from "@recommand/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { UserFacingError } from "@peppol/utils/util";
 import { callWebhooks } from "@peppol/data/webhooks";
 import { getLabelsForSuppliers } from "./suppliers";
@@ -56,6 +56,75 @@ export async function assignLabelToDocument(
     companyId: document.companyId,
     labelId,
   });
+}
+
+export async function assignLabelToDocuments(
+  teamId: string,
+  documentIds: string[],
+  labelId: string
+): Promise<void> {
+  const uniqueDocumentIds = [...new Set(documentIds)];
+
+  if (uniqueDocumentIds.length === 0) {
+    return;
+  }
+
+  const teamDocuments = await db
+    .select({ id: transmittedDocuments.id, companyId: transmittedDocuments.companyId })
+    .from(transmittedDocuments)
+    .where(and(eq(transmittedDocuments.teamId, teamId), inArray(transmittedDocuments.id, uniqueDocumentIds)));
+
+  if (teamDocuments.length !== uniqueDocumentIds.length) {
+    throw new UserFacingError("Document not found");
+  }
+
+  const label = await db
+    .select({ id: labels.id })
+    .from(labels)
+    .where(and(eq(labels.id, labelId), eq(labels.teamId, teamId)))
+    .then((rows) => rows[0]);
+
+  if (!label) {
+    throw new UserFacingError("Label not found");
+  }
+
+  const existingAssignments = await db
+    .select({ transmittedDocumentId: transmittedDocumentLabels.transmittedDocumentId })
+    .from(transmittedDocumentLabels)
+    .where(
+      and(
+        inArray(transmittedDocumentLabels.transmittedDocumentId, uniqueDocumentIds),
+        eq(transmittedDocumentLabels.labelId, labelId)
+      )
+    );
+
+  const existingDocumentIds = new Set(existingAssignments.map((assignment) => assignment.transmittedDocumentId));
+  const documentsToAssign = teamDocuments.filter((document) => !existingDocumentIds.has(document.id));
+
+  if (documentsToAssign.length === 0) {
+    return;
+  }
+
+  await db
+    .insert(transmittedDocumentLabels)
+    .values(
+      documentsToAssign.map((document) => ({
+        transmittedDocumentId: document.id,
+        labelId,
+      }))
+    )
+    .onConflictDoNothing();
+
+  await Promise.all(
+    documentsToAssign.map((document) =>
+      callWebhooks(teamId, document.companyId, "document.label.assigned", {
+        documentId: document.id,
+        teamId,
+        companyId: document.companyId,
+        labelId,
+      })
+    )
+  );
 }
 
 export async function unassignLabelFromDocument(
@@ -154,4 +223,3 @@ export async function assignSupplierLabelsToDocument(
 
   return assignedCount;
 }
-

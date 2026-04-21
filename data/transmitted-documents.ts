@@ -88,6 +88,7 @@ export async function getTransmittedDocuments(
     page?: number;
     limit?: number;
     companyId?: string[];
+    labelId?: string[];
     direction?: "incoming" | "outgoing";
     search?: string;
     type?: (typeof supportedDocumentTypeEnum.enumValues)[number];
@@ -100,14 +101,37 @@ export async function getTransmittedDocuments(
     excludeAttachments?: boolean;
   } = {}
 ): Promise<{ documents: TransmittedDocumentWithoutBody[]; total: number }> {
-  const { page = 1, limit = 10, companyId, direction, search, type, from, to, isUnread, envelopeId, peppolMessageId, peppolConversationId, excludeAttachments = false } = options;
+  const { page = 1, limit = 10, companyId, labelId, direction, search, type, from, to, isUnread, envelopeId, peppolMessageId, peppolConversationId, excludeAttachments = false } = options;
   const offset = (page - 1) * limit;
   const trimmedSearch = search?.trim();
+  const normalizedLabelIds = labelId ? [...new Set(labelId)] : undefined;
 
   // Build the where clause
   const whereClause = [eq(transmittedDocuments.teamId, teamId)];
   if (companyId) {
     whereClause.push(inArray(transmittedDocuments.companyId, companyId));
+  }
+  if (normalizedLabelIds && normalizedLabelIds.length > 0) {
+    const validLabelIds = await db
+      .select({ id: labels.id })
+      .from(labels)
+      .where(and(eq(labels.teamId, teamId), inArray(labels.id, normalizedLabelIds)))
+      .then((rows) => rows.map((row) => row.id));
+
+    if (validLabelIds.length === 0) {
+      return { documents: [], total: 0 };
+    }
+
+    whereClause.push(
+      sql`exists (
+        select 1
+        from ${transmittedDocumentLabels}
+        inner join ${labels} on ${transmittedDocumentLabels.labelId} = ${labels.id}
+        where ${transmittedDocumentLabels.transmittedDocumentId} = ${transmittedDocuments.id}
+          and ${labels.teamId} = ${teamId}
+          and ${inArray(transmittedDocumentLabels.labelId, validLabelIds)}
+      )`
+    );
   }
   if (direction) {
     whereClause.push(eq(transmittedDocuments.direction, direction));
@@ -202,6 +226,39 @@ export async function getTransmittedDocuments(
   return { documents: documentsWithLabels, total };
 }
 
+export async function getTransmittedDocumentsByIds(
+  teamId: string,
+  documentIds: string[]
+): Promise<PublicTransmittedDocumentWithLabels[]> {
+  const uniqueDocumentIds = [...new Set(documentIds)];
+
+  if (uniqueDocumentIds.length === 0) {
+    return [];
+  }
+
+  const documents = await db
+    .select(publicTransmittedDocumentSelect)
+    .from(transmittedDocuments)
+    .where(
+      and(
+        eq(transmittedDocuments.teamId, teamId),
+        inArray(transmittedDocuments.id, uniqueDocumentIds)
+      )
+    )
+    .orderBy(desc(transmittedDocuments.createdAt));
+
+  if (documents.length !== uniqueDocumentIds.length) {
+    throw new Error("Some documents were not found");
+  }
+
+  const documentLabelsMap = await getLabelsForDocuments(uniqueDocumentIds);
+
+  return documents.map((doc) => ({
+    ...doc,
+    labels: documentLabelsMap.get(doc.id) || [],
+  }));
+}
+
 export async function deleteTransmittedDocument(
   teamId: string,
   documentId: string
@@ -274,23 +331,34 @@ export async function getInbox(
 }
 
 export async function markAsRead(teamId: string, documentId: string, read: boolean = true): Promise<void> {
-  // First check if the document exists
-  const document = await db
+  await markDocumentsAsRead(teamId, [documentId], read);
+}
+
+export async function markDocumentsAsRead(
+  teamId: string,
+  documentIds: string[],
+  read: boolean = true
+): Promise<void> {
+  const uniqueDocumentIds = [...new Set(documentIds)];
+
+  if (uniqueDocumentIds.length === 0) {
+    return;
+  }
+
+  const existingDocuments = await db
     .select({ id: transmittedDocuments.id })
     .from(transmittedDocuments)
     .where(
       and(
-        eq(transmittedDocuments.id, documentId),
-        eq(transmittedDocuments.teamId, teamId)
+        eq(transmittedDocuments.teamId, teamId),
+        inArray(transmittedDocuments.id, uniqueDocumentIds)
       )
-    )
-    .limit(1);
+    );
 
-  if (document.length === 0) {
+  if (existingDocuments.length !== uniqueDocumentIds.length) {
     throw new Error("Document not found");
   }
 
-  // Update the document
   await db
     .update(transmittedDocuments)
     .set({
@@ -298,8 +366,8 @@ export async function markAsRead(teamId: string, documentId: string, read: boole
     })
     .where(
       and(
-        eq(transmittedDocuments.id, documentId),
-        eq(transmittedDocuments.teamId, teamId)
+        eq(transmittedDocuments.teamId, teamId),
+        inArray(transmittedDocuments.id, uniqueDocumentIds)
       )
     );
 }
