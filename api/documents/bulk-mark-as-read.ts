@@ -34,7 +34,7 @@ type BulkMarkAsReadContext = Context<
 >;
 
 const _bulkMarkAsRead = server.post(
-  "/:teamId/documents/bulkMarkAsRead",
+  "/:teamId/documents/bulk-mark-as-read",
   requireIntegrationSupportedTeamAccess(),
   describeRoute({ hide: true }),
   zodValidator("param", bulkMarkAsReadParamSchema),

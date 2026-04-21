@@ -35,7 +35,7 @@ type BulkAssignLabelContext = Context<
 >;
 
 const _bulkAssignLabel = server.post(
-  "/:teamId/documents/bulkAssignLabel/:labelId",
+  "/:teamId/documents/bulk-assign-label/:labelId",
   requireIntegrationSupportedTeamAccess(),
   describeRoute({ hide: true }),
   zodValidator("param", bulkAssignLabelParamSchema),

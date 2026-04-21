@@ -268,6 +268,40 @@ export async function deleteTransmittedDocument(
     .where(and(eq(transmittedDocuments.id, documentId), eq(transmittedDocuments.teamId, teamId)));
 }
 
+export async function deleteTransmittedDocuments(
+  teamId: string,
+  documentIds: string[]
+): Promise<void> {
+  const uniqueDocumentIds = [...new Set(documentIds)];
+
+  if (uniqueDocumentIds.length === 0) {
+    return;
+  }
+
+  const existingDocuments = await db
+    .select({ id: transmittedDocuments.id })
+    .from(transmittedDocuments)
+    .where(
+      and(
+        eq(transmittedDocuments.teamId, teamId),
+        inArray(transmittedDocuments.id, uniqueDocumentIds)
+      )
+    );
+
+  if (existingDocuments.length !== uniqueDocumentIds.length) {
+    throw new Error("Document not found");
+  }
+
+  await db
+    .delete(transmittedDocuments)
+    .where(
+      and(
+        eq(transmittedDocuments.teamId, teamId),
+        inArray(transmittedDocuments.id, uniqueDocumentIds)
+      )
+    );
+}
+
 export async function deleteAllTransmittedDocuments(
   teamId: string
 ): Promise<void> {

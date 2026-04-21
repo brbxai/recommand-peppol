@@ -89,6 +89,7 @@ export default function Page() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [isBulkMarkingAsRead, setIsBulkMarkingAsRead] = useState(false);
   const [isBulkExporting, setIsBulkExporting] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [bulkAssigningLabelId, setBulkAssigningLabelId] = useState<string | null>(null);
 
   const fetchCompanies = useCallback(async () => {
@@ -505,7 +506,7 @@ export default function Page() {
     );
 
     try {
-      const response = await client[":teamId"]["documents"]["bulkMarkAsRead"].$post({
+      const response = await client[":teamId"]["documents"]["bulk-mark-as-read"].$post({
         param: { teamId: activeTeam.id },
         json: {
           documentIds: selectedDocumentIds,
@@ -574,7 +575,7 @@ export default function Page() {
     );
 
     try {
-      const response = await client[":teamId"]["documents"]["bulkAssignLabel"][":labelId"].$post({
+      const response = await client[":teamId"]["documents"]["bulk-assign-label"][":labelId"].$post({
         param: {
           teamId: activeTeam.id,
           labelId,
@@ -614,7 +615,7 @@ export default function Page() {
     setIsBulkExporting(true);
 
     try {
-      const response = await client[":teamId"]["documents"]["bulkExport"].$post({
+      const response = await client[":teamId"]["documents"]["bulk-export"].$post({
         param: { teamId: activeTeam.id },
         json: {
           documentIds: selectedDocumentIds,
@@ -631,6 +632,34 @@ export default function Page() {
       setIsBulkExporting(false);
     }
   }, [activeTeam?.id, selectedDocumentIds, downloadResponseBlob]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (!activeTeam?.id || selectedDocumentIds.length === 0) return;
+
+    setIsBulkDeleting(true);
+
+    try {
+      const response = await client[":teamId"]["documents"]["bulk-delete"].$delete({
+        param: { teamId: activeTeam.id },
+        json: {
+          documentIds: selectedDocumentIds,
+        },
+      });
+      const json = await response.json();
+
+      if (!json.success) {
+        throw new Error(stringifyActionFailure(json.errors));
+      }
+
+      toast.success(`${selectedDocumentIds.length} documents deleted`);
+      fetchDocuments();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete documents");
+      throw error;
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }, [activeTeam?.id, selectedDocumentIds, fetchDocuments]);
 
   const columns = useMemo<ColumnDef<TransmittedDocumentWithoutBody>[]>(() => [
     {
@@ -1194,7 +1223,7 @@ export default function Page() {
                   variant="outline"
                   size="sm"
                   onClick={handleBulkMarkAsRead}
-                  disabled={isBulkMarkingAsRead || isBulkExporting || bulkAssigningLabelId !== null}
+                  disabled={isBulkMarkingAsRead || isBulkExporting || isBulkDeleting || bulkAssigningLabelId !== null}
                 >
                   {isBulkMarkingAsRead ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1208,7 +1237,7 @@ export default function Page() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={isBulkMarkingAsRead || isBulkExporting || bulkAssigningLabelId !== null}
+                      disabled={isBulkMarkingAsRead || isBulkExporting || isBulkDeleting || bulkAssigningLabelId !== null}
                     >
                       {bulkAssigningLabelId ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1249,7 +1278,7 @@ export default function Page() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={isBulkMarkingAsRead || isBulkExporting || bulkAssigningLabelId !== null}
+                      disabled={isBulkMarkingAsRead || isBulkExporting || isBulkDeleting || bulkAssigningLabelId !== null}
                     >
                       {isBulkExporting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1278,6 +1307,23 @@ export default function Page() {
                     </div>
                   </PopoverContent>
                 </Popover>
+                <ConfirmDialog
+                  title="Delete Selected Documents"
+                  description={`Are you sure you want to delete ${selectedDocumentIds.length} selected documents? This action cannot be undone.`}
+                  confirmButtonText="Delete"
+                  onConfirm={handleBulkDelete}
+                  isLoading={isBulkDeleting}
+                  trigger={
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={isBulkMarkingAsRead || isBulkExporting || isBulkDeleting || bulkAssigningLabelId !== null}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  }
+                />
               </div>
             )}
             <DataTable columns={columns} table={table} />

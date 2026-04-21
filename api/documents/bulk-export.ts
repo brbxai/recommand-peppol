@@ -36,7 +36,7 @@ type BulkExportContext = Context<
 >;
 
 const _bulkExport = server.post(
-  "/:teamId/documents/bulkExport",
+  "/:teamId/documents/bulk-export",
   requireIntegrationSupportedTeamAccess(),
   describeRoute({ hide: true }),
   zodValidator("param", bulkExportParamSchema),

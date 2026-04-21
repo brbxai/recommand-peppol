@@ -14,8 +14,9 @@ import exportDocumentsServer, { type ExportDocuments } from "./export-documents"
 import bulkMarkAsReadServer, { type BulkMarkAsRead } from "./bulk-mark-as-read";
 import bulkAssignLabelServer, { type BulkAssignLabel } from "./bulk-assign-label";
 import bulkExportServer, { type BulkExport } from "./bulk-export";
+import bulkDeleteServer, { type BulkDelete } from "./bulk-delete";
 
-export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | DeleteAllTransmittedDocuments | GetInbox | MarkAsRead | DownloadPackage | AssignLabel | UnassignLabel | RenderDocument | ExportDocuments | BulkMarkAsRead | BulkAssignLabel | BulkExport;
+export type TransmittedDocuments = ListTransmittedDocuments | GetTransmittedDocument | DeleteTransmittedDocument | DeleteAllTransmittedDocuments | GetInbox | MarkAsRead | DownloadPackage | AssignLabel | UnassignLabel | RenderDocument | ExportDocuments | BulkMarkAsRead | BulkAssignLabel | BulkExport | BulkDelete;
 
 const server = new Server();
 server.route("/", listDocumentsServer);
@@ -32,4 +33,5 @@ server.route("/", exportDocumentsServer);
 server.route("/", bulkMarkAsReadServer);
 server.route("/", bulkAssignLabelServer);
 server.route("/", bulkExportServer);
+server.route("/", bulkDeleteServer);
 export default server;
