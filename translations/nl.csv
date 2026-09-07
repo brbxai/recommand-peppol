@@ -643,7 +643,7 @@ Fill in the required fields to see a preview.,Vul de verplichte velden in om een
 Flat UBLs (all XMLs in root),Platte UBL's (alle XML-bestanden in de hoofdmap)
 For Belgian businesses\, the VAT number will be used to infer the enterprise number.,Voor Belgische bedrijven wordt het ondernemingsnummer afgeleid uit het btw-nummer.
 For Dutch businesses\, the VAT number format is NL + 9 digits + B + 2 digits (e.g. NL123456789B01).,Voor Nederlandse bedrijven heeft het btw-nummer de notatie NL + 9 cijfers + B + 2 cijfers (bijv. NL123456789B01).
-For French businesses\, enter the 9 digit SIREN. The establishment SIRET is requested during verification.,Vul voor Franse bedrijven het SIREN-nummer van 9 cijfers in. Het SIRET-nummer van de vestiging wordt tijdens de verificatie gevraagd.
+For French businesses\, select scheme 0002 and enter the 9 digit SIREN. The establishment SIRET is requested during verification.,Kies voor Franse bedrijven schema 0002 en vul het SIREN-nummer van 9 cijfers in. Het SIRET-nummer van de vestiging wordt tijdens de verificatie gevraagd.
 Establishment SIRET,SIRET van de vestiging
 Establishment SIRET (Optional),SIRET van de vestiging (optioneel)
 Invalid verification details,Ongeldige verificatiegegevens
