@@ -164,6 +164,7 @@ export async function recordOutgoingDocument(options: {
       teamId,
       companyId: company.id,
       transmittedDocumentId: transmittedDocument.id,
+      document,
       delivery,
     });
     if (te.length > 0) {

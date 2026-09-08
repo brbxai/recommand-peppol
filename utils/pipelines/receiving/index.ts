@@ -11,6 +11,7 @@ import { sendIncomingDocumentNotifications } from "@peppol/data/send-document-no
 import { findSupplierByVatAndPeppolId } from "@directory/data/suppliers";
 import { validateXmlDocument } from "@peppol/data/validation/client";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
+import { isBillableDocument } from "@peppol/utils/type-repository/document-types/billing";
 import type { CreditNote } from "@peppol/utils/parsing/creditnote/schemas";
 import type { Invoice } from "@peppol/utils/parsing/invoice/schemas";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
@@ -162,7 +163,9 @@ export async function receivingPipeline(
     },
   });
 
-  if (!options.skipBilling) {
+  // Transport receipts and platform-level lifecycle statuses are not charged; see
+  // isBillableDocument for the rule.
+  if (!options.skipBilling && isBillableDocument(type, parsedDocument)) {
     await db.insert(transferEvents).values({
       teamId: company.teamId,
       companyId: company.id,

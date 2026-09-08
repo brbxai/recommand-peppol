@@ -144,16 +144,17 @@ describe("outgoing document recording", () => {
       teamId: "team_1",
       companyId: company.id,
       transmittedDocumentId: "doc_1",
+      document: { type: "invoice" as const, parsed: null },
     };
 
     expect(
       buildOutgoingTransferEvents({ ...base, delivery: reportingDelivery })
     ).toEqual([
-      { ...base, direction: "outgoing", type: "reporting" },
+      { teamId: base.teamId, companyId: base.companyId, transmittedDocumentId: base.transmittedDocumentId, direction: "outgoing", type: "reporting" },
     ]);
     expect(
       buildOutgoingTransferEvents({ ...base, delivery: peppolDelivery })
-    ).toEqual([{ ...base, direction: "outgoing", type: "peppol" }]);
+    ).toEqual([{ teamId: base.teamId, companyId: base.companyId, transmittedDocumentId: base.transmittedDocumentId, direction: "outgoing", type: "peppol" }]);
   });
 
   it("bills one event per email recipient alongside the Peppol transmission", () => {
@@ -161,6 +162,7 @@ describe("outgoing document recording", () => {
       teamId: "team_1",
       companyId: company.id,
       transmittedDocumentId: "doc_1",
+      document: { type: "invoice", parsed: null },
       delivery: {
         kind: "peppol",
         sentPeppol: true,
@@ -182,6 +184,7 @@ describe("outgoing document recording", () => {
         teamId: "team_1",
         companyId: company.id,
         transmittedDocumentId: "doc_1",
+        document: { type: "invoice", parsed: null },
         delivery: {
           kind: "peppol",
           sentPeppol: false,

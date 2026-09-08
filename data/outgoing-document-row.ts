@@ -8,6 +8,7 @@ import type { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import type { ParsedDocument } from "@peppol/utils/document-filename";
 import type { ParsedOrUnknownDocumentType } from "@peppol/utils/type-repository/document-types/types";
 import { getDocumentType } from "@peppol/utils/type-repository/document-types";
+import { isBillableDocument } from "@peppol/utils/type-repository/document-types/billing";
 import type { ValidationResponse } from "@peppol/types/validation";
 
 /**
@@ -148,14 +149,20 @@ export function buildOutgoingDocumentRow(options: {
 
 /**
  * Builds the billable transfer events for an outgoing document: one per Peppol
- * transmission, one per email recipient, and one per filed report.
+ * transmission, one per email recipient, and one per filed report. A document
+ * that is not billable (a transport receipt, a platform-level lifecycle status)
+ * produces none, however it left the platform.
  */
 export function buildOutgoingTransferEvents(options: {
   teamId: string;
   companyId: string;
   transmittedDocumentId: string;
+  document: Pick<OutgoingDocumentPayload, "type" | "parsed">;
   delivery: OutgoingDocumentDelivery;
 }): (typeof transferEvents.$inferInsert)[] {
+  if (!isBillableDocument(options.document.type, options.document.parsed)) {
+    return [];
+  }
   const facts = deliveryFacts(options.delivery);
   const base = {
     teamId: options.teamId,
