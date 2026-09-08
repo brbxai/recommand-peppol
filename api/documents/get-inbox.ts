@@ -24,9 +24,12 @@ const getInboxRouteDescription = describeRoute({
     tags: ["Documents"],
     responses: {
         ...describeSuccessResponseWithZod("Successfully retrieved inbox documents", z.object({
+            // Incoming documents are never filed reports, so the inbox carries no
+            // reporting status either.
             documents: z.array(transmittedDocumentResponse.omit({
                 xml: true,
                 parsed: true,
+                reporting: true,
             })),
         })),
         ...describeErrorResponse(500, "Failed to fetch inbox documents"),

@@ -330,6 +330,9 @@ export async function deleteTransmittedDocument(
     .select(offloadedDocumentSelect)
     .from(transmittedDocuments)
     .where(and(eq(transmittedDocuments.id, documentId), eq(transmittedDocuments.teamId, teamId)));
+  if (docs.length === 0) {
+    throw new Error("Document not found");
+  }
 
   // Offloaded S3 objects are removed by the background deletion worker;
   // enqueueing in the same transaction as the delete means they can never be
