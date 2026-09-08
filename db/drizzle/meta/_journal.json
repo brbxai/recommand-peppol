@@ -722,6 +722,13 @@
       "when": 1788600050898,
       "tag": "20260905092050_verification_country_specific",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1788858714418,
+      "tag": "20260908091154_fr_reporting_declarants",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ import { enqueueS3PrefixDeletions } from "./s3-deletion";
 import { validateCountryIdentifier } from "@peppol/utils/identifier-validation";
 import { publishCompanyVerificationEvent } from "./company-verification-webhooks";
 import { resolveDefaultPeppolProviders } from "./peppol-providers";
+import { getPartnerRegisteredFrenchReportingDeclarants } from "./fr-reporting-declarants";
 
 export type Company = typeof companies.$inferSelect;
 export type InsertCompany = typeof companies.$inferInsert;
@@ -410,6 +411,21 @@ export async function deleteCompany({
   const useTestNetwork = teamExtension?.useTestNetwork ?? false;
   if (shouldRegisterWithSmp({ isPlayground: isPlaygroundTeam, useTestNetwork, isSmpRecipient: company.isSmpRecipient, isVerified: company.isVerified, verificationRequirements: teamExtension?.verificationRequirements ?? undefined })) {
     await unregisterCompanyRegistrations({ companyId, useTestNetwork });
+  }
+
+  // A French e-reporting registration is never removed automatically: removing a
+  // declarant mid-period leaves that period unfiled at the partner. The rows go
+  // with the company; support removes the partner registration once the last
+  // period has been filed.
+  const declarants = await getPartnerRegisteredFrenchReportingDeclarants(companyId);
+  if (declarants.length > 0) {
+    sendSystemAlert(
+      "Company With French Reporting Declarant Deleted",
+      `Company ${company.name} (${companyId}) was deleted while registered as a French e-reporting declarant with Arratech: ` +
+        declarants.map((d) => `SIREN ${d.siren} (${d.environment})`).join(", ") +
+        `. Remove the registration at Arratech once its last reporting period has been filed.`,
+      "warning"
+    );
   }
 
   // The company's documents are deleted by the FK cascade; their S3 objects

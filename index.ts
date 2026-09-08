@@ -33,6 +33,7 @@ import { initializeOffloadCronJobs } from "./data/offload/cron";
 import { initializeProviderSentCronJobs } from "./data/provider-sent/cron";
 import { initializeS3DeletionCronJobs } from "./data/s3-deletion/cron";
 import { initializeArratechOnboardingCron } from "./data/at/kyc-onboarding";
+import { initializeFrenchReportingDeclarantCron } from "./data/fr-reporting-declarants";
 import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
 import { onTeamCreated, onTeamBeforeDelete } from "./lib/backend-events";
 import { addBackendEventListener, CORE_BACKEND_EVENTS } from "@core/lib/backend-events";
@@ -60,6 +61,7 @@ export async function init(app: RecommandApp, server: Server) {
   initializeProviderSentCronJobs(logger);
   initializeS3DeletionCronJobs(logger);
   initializeArratechOnboardingCron(logger);
+  initializeFrenchReportingDeclarantCron(logger);
 
   initializeMetricsServer(logger);
 

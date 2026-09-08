@@ -15,6 +15,7 @@ import {
   primaryKey,
   serial,
   date,
+  integer,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { isNotNull, SQL, sql } from "drizzle-orm";
@@ -324,6 +325,92 @@ export const companyVerificationLog = pgTable(
       .defaultNow()
       .notNull(),
   },
+);
+
+// French e-reporting (DGFiP Flux 10) is filed through our reporting partner, which
+// only accepts events for a SIREN that was registered to us as a declarant first.
+// One registration per company and environment: the partner keeps TEST and PROD
+// registrations apart, and a SIREN can be held by a single organisation per
+// environment.
+export const frReportingEnvironments = ["PROD", "TEST"] as const;
+export const zodFrReportingEnvironments = z.enum(frReportingEnvironments);
+export const frReportingEnvironmentEnum = pgEnum(
+  "peppol_fr_reporting_environment",
+  frReportingEnvironments
+);
+
+// The VAT regime drives the filing cadence and period boundaries of the declarant.
+export const frVatRegimes = [
+  "REEL_NORMAL_MENSUEL",
+  "REEL_SIMPLIFIE",
+  "FRANCHISE_EN_BASE",
+] as const;
+export const zodFrVatRegimes = z.enum(frVatRegimes);
+export const frVatRegimeEnum = pgEnum("peppol_fr_vat_regime", frVatRegimes);
+
+// VAT point of taxation. Payment events (sub-fluxes 10.2 and 10.4) only exist under
+// ENCAISSEMENTS; under DEBITS they are out of scope.
+export const frVatExigibilities = ["ENCAISSEMENTS", "DEBITS"] as const;
+export const zodFrVatExigibilities = z.enum(frVatExigibilities);
+export const frVatExigibilityEnum = pgEnum(
+  "peppol_fr_vat_exigibility",
+  frVatExigibilities
+);
+
+// pending: waiting for (or retrying) the registration with the partner.
+// registered: the partner accepted the registration, or the registration is
+// simulated because the team never reaches the partner.
+// blocked: the partner refused it or retries ran out; support has to intervene.
+export const frReportingDeclarantStates = ["pending", "registered", "blocked"] as const;
+export const zodFrReportingDeclarantStates = z.enum(frReportingDeclarantStates);
+export const frReportingDeclarantStateEnum = pgEnum(
+  "peppol_fr_reporting_declarant_state",
+  frReportingDeclarantStates
+);
+
+export const frReportingDeclarants = pgTable(
+  "peppol_fr_reporting_declarants",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "frd_" + ulid()),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    environment: frReportingEnvironmentEnum("environment").notNull(),
+    siren: text("siren").notNull(),
+    // Legal name carried as the issuer on every report filed for this declarant.
+    issuerName: text("issuer_name").notNull(),
+    vatRegime: frVatRegimeEnum("vat_regime").notNull(),
+    vatExigibility: frVatExigibilityEnum("vat_exigibility").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    // Playground and test-network teams never reach the partner: their registration
+    // is recorded here only, and their reports are simulated.
+    simulated: boolean("simulated").notNull().default(false),
+    state: frReportingDeclarantStateEnum("state").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastError: text("last_error"),
+    registeredAt: timestamp("registered_at", { withTimezone: true }),
+    // The partner's last view of the registration, kept for support.
+    partnerSnapshot: jsonb("partner_snapshot").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_fr_reporting_declarants_company_environment_idx").on(
+      table.companyId,
+      table.environment
+    ),
+    index("peppol_fr_reporting_declarants_due_idx").on(
+      table.state,
+      table.nextAttemptAt
+    ),
+  ]
 );
 
 export const enterpriseDataCache = pgTable(

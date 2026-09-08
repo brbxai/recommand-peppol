@@ -15,6 +15,7 @@ import { CompanyIdentifiersManager } from "../../../../components/company-identi
 import { CompanyDocumentTypesManager } from "../../../../components/company-document-types-manager";
 import { CompanyNotificationsManager } from "../../../../components/company-notifications-manager";
 import { CompanyIntegrationsManager } from "../../../../components/company-integrations-manager";
+import { CompanyFrenchReportingManager } from "../../../../components/company-french-reporting-manager";
 import type { Company, CompanyFormData } from "@peppol/types/company";
 import { defaultCompanyFormData } from "@peppol/types/company";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@core/components/ui/card";
@@ -394,6 +395,12 @@ export default function CompanyDetailPage() {
               teamId={activeTeam.id}
               companyId={company.id}
             />
+            {company.country === "FR" && (
+              <CompanyFrenchReportingManager
+                companyId={company.id}
+                isVerified={isVerified ?? company.isVerified}
+              />
+            )}
             {canUseIntegrations(isPlayground, subscription) ? (
               <CompanyIntegrationsManager
                 teamId={activeTeam.id}

@@ -281,3 +281,20 @@ export function validateCountryIdentifier(
     validator.enterpriseNumber(identifiers.enterpriseNumber);
   }
 }
+
+/**
+ * The SIREN a French company is identified by for tax purposes. Companies register
+ * either their SIREN (9 digits) or the SIRET of an establishment (14 digits, the
+ * SIREN followed by a 5-digit NIC); both name the same legal entity. Returns null
+ * when the number is neither, or fails its check digit.
+ */
+export function getFrenchSiren(enterpriseNumber: string | null | undefined): string | null {
+  const digits = enterpriseNumber?.replace(/[\s.-]/g, "") ?? "";
+  if (isSiren(digits)) {
+    return digits;
+  }
+  if (isSiret(digits)) {
+    return digits.slice(0, 9);
+  }
+  return null;
+}
