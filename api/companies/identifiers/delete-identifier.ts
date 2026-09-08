@@ -18,7 +18,7 @@ const server = new Server();
 
 const deleteIdentifierRouteDescription = describeRoute({
     operationId: "deleteCompanyIdentifier",
-    description: "Delete a company identifier",
+    description: "Remove an identifier from the company and unregister it from the SMP, so documents can no longer be routed to that address. Documents already received under it are kept.",
     summary: "Delete Company Identifier",
     tags: ["Company Identifiers"],
     responses: {

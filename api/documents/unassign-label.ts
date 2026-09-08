@@ -14,7 +14,7 @@ const server = new Server();
 
 const unassignLabelRouteDescription = describeRoute({
     operationId: "unassignLabelFromDocument",
-    description: "Unassign a label from a document",
+    description: "Remove a label from a document. The label itself is left alone and stays available for other documents; use the delete label endpoint to remove it from the team. Removing a label that is not on the document also succeeds.",
     summary: "Unassign Label from Document",
     tags: ["Documents"],
     responses: {

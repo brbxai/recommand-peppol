@@ -15,7 +15,7 @@ const server = new Server();
 
 const updateAddressRouteDescription = describeRoute({
     operationId: "updateCompanyNotificationEmailAddress",
-    description: "Update an existing company notification email address",
+    description: "Change which documents an address is notified about and what its notifications carry. Set both `notifyIncoming` and `notifyOutgoing` to false to silence it without removing it.",
     summary: "Update Company Notification Email Address",
     tags: ["Company Notification Email Addresses"],
     responses: {

@@ -5,6 +5,7 @@ import type {
 import {
   describeErrorResponse,
   describeSuccessResponseWithZod,
+  describeValidationErrorResponse,
 } from "@core/lib/api-docs";
 import { audit } from "@core/lib/audit";
 import {
@@ -58,7 +59,7 @@ export const frenchReportingDeclarantResponse = z
     }),
     enabled: z.boolean().openapi({
       description:
-        "Whether reports are currently accepted. Suspended registrations are handled by support.",
+        "Whether reports are currently accepted. A suspended registration keeps its registered state but refuses reports with a 400 until support re-enables it.",
     }),
     state: zodFrReportingDeclarantStates.openapi({
       description:
@@ -71,9 +72,17 @@ export const frenchReportingDeclarantResponse = z
     lastError: z.string().nullable().openapi({
       description: "The reason the last registration attempt failed, if any.",
     }),
-    registeredAt: z.string().nullable(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
+    registeredAt: z.string().nullable().openapi({
+      description:
+        "When the registration was accepted. The company's reporting periods run from this moment. Null while the state is still `pending`.",
+    }),
+    createdAt: z.string().openapi({
+      description: "When the registration was first requested.",
+    }),
+    updatedAt: z.string().openapi({
+      description:
+        "When the registration last changed, including a background retry of a `pending` registration.",
+    }),
   })
   .openapi({ ref: "FrenchReportingDeclarant", title: "French e-reporting registration" });
 
@@ -142,8 +151,11 @@ Calling this endpoint again updates the VAT regime and exigibility. Changing the
       "The registration as it stands after this request",
       z.object({ declarant: frenchReportingDeclarantResponse }),
     ),
-    ...describeErrorResponse(400, "The company cannot be registered as it is"),
+    ...describeValidationErrorResponse(
+      "The company is not registered in France, has no valid SIREN or SIRET as enterprise number, is not verified, or was verified without a signed French mandate.",
+    ),
     ...describeErrorResponse(404, "Company not found"),
+    ...describeErrorResponse(500, "The registration could not be requested"),
   },
 });
 

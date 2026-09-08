@@ -14,7 +14,7 @@ const server = new Server();
 
 const deleteAddressRouteDescription = describeRoute({
     operationId: "deleteCompanyNotificationEmailAddress",
-    description: "Delete a company notification email address",
+    description: "Stop emailing this address about the company's documents and remove it.",
     summary: "Delete Company Notification Email Address",
     tags: ["Company Notification Email Addresses"],
     responses: {

@@ -16,7 +16,7 @@ const server = new Server();
 
 const createDocumentTypeRouteDescription = describeRoute({
     operationId: "createCompanyDocumentType",
-    description: "Create a new company document type",
+    description: "Declare that the company can receive a document type, under a given process. When the company is registered as an SMP recipient, the document type is published in the SMP, which is what lets senders address it. A company created without `skipDefaultCompanySetup` already has the default document types for its country; use this to accept something beyond them, and only for document types you can actually process.",
     summary: "Create Company Document Type",
     tags: ["Company Document Types"],
     responses: {

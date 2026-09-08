@@ -16,7 +16,7 @@ const server = new Server();
 
 const updateDocumentTypeRouteDescription = describeRoute({
     operationId: "updateCompanyDocumentType",
-    description: "Update an existing company document type",
+    description: "Change the document type identifier or the process it is accepted under. The old combination is withdrawn from the SMP and the new one published, so senders stop being able to address the old one.",
     summary: "Update Company Document Type",
     tags: ["Company Document Types"],
     responses: {

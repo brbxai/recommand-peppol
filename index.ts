@@ -171,6 +171,11 @@ For additional support or questions, don't hesitate to contact our support team.
             "You can manage all notification email addresses for a company. Notification email addresses are used to receive notifications when a document is received or sent by a company.",
         },
         {
+          name: "Webhooks",
+          description:
+            "Configure webhook endpoints that receive document and company events in real time.",
+        },
+        {
           name: "Playgrounds",
           description:
             "Endpoints for working with playgrounds. Playgrounds are used to test the Recommand API without affecting production data or communicating over the Peppol network. A new playground can be created via the Recommand dashboard by clicking the team switcher in the top left, or via the API outlined below. Usage of the playground is free.",

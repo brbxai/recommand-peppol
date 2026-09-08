@@ -14,7 +14,7 @@ const server = new Server();
 
 const assignLabelRouteDescription = describeRoute({
     operationId: "assignLabelToDocument",
-    description: "Assign a label to a document",
+    description: "Attach one of the team's labels to a document, so you can filter for it later with the `labelId` parameter of the list documents endpoint. Assigning a label that is already on the document changes nothing and still succeeds. Both the document and the label have to belong to the calling team.",
     summary: "Assign Label to Document",
     tags: ["Documents"],
     responses: {

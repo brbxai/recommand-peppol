@@ -15,7 +15,7 @@ const server = new Server();
 
 const deleteDocumentTypeRouteDescription = describeRoute({
     operationId: "deleteCompanyDocumentType",
-    description: "Delete a company document type",
+    description: "Stop accepting a document type. It is withdrawn from the SMP, so senders can no longer address the company for it and their transmissions will fail. Documents already received under it are kept.",
     summary: "Delete Company Document Type",
     tags: ["Company Document Types"],
     responses: {
