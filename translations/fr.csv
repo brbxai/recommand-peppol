@@ -962,3 +962,45 @@ to resolve this issue.,pour résoudre ce problème.
 Company activation in progress,Activation de l'entreprise en cours
 Your identity has been verified. We are completing your company's network registration. This page will update automatically when activation is complete.,Votre identité a été vérifiée. Nous finalisons l'inscription de votre entreprise sur le réseau. Cette page sera automatiquement mise à jour une fois l'activation terminée.
 Your request is being processed by our support team. You will receive a message when there is an update.,Notre équipe d’assistance traite votre demande. Vous recevrez un message dès qu’une mise à jour sera disponible.
+Accepted\, awaiting filing,Acceptée\, en attente de dépôt
+Change VAT settings,Modifier les paramètres de TVA
+Changing the regime during a reporting period can leave that period unfiled. Coordinate such a change with support.,Modifier le régime pendant une période de déclaration peut laisser cette période sans dépôt. Coordonnez ce changement avec le support.
+Choose the VAT regime and when VAT becomes due first,Choisissez d'abord le régime de TVA et le moment d'exigibilité de la TVA
+Daily B2C totals and cross-border invoices are reported to the French tax administration on the company's behalf. Register the company once\, then submit reports through the API.,Les totaux B2C journaliers et les factures transfrontalières sont transmis à l'administration fiscale française au nom de l'entreprise. Enregistrez l'entreprise une fois\, puis soumettez les déclarations via l'API.
+Failed to load the e-reporting registration,Impossible de charger l'enregistrement e-reporting
+Failed to register the company for e-reporting,Impossible d'enregistrer l'entreprise pour l'e-reporting
+Filed by corrective filing,Déposée par dépôt rectificatif
+Filed,Déposée
+Franchise en base de TVA,Franchise en base de TVA
+French e-reporting,E-reporting France
+Last checked {0}.,Dernière vérification le {0}.
+Late\, awaiting corrective filing,En retard\, en attente de dépôt rectificatif
+Needs support,Support requis
+On invoicing (TVA sur les débits),À la facturation (TVA sur les débits)
+On payment (TVA sur les encaissements),À l'encaissement (TVA sur les encaissements)
+Our support team has been notified and will contact you. You can also reach us at support@recommand.eu.,Notre équipe support a été informée et vous contactera. Vous pouvez aussi nous joindre à support@recommand.eu.
+Outcome code {0}.,Code de résultat {0}.
+Payment reports are only filed when VAT becomes due on payment.,Les déclarations de paiement ne sont déposées que lorsque la TVA est exigible à l'encaissement.
+Playground and test-network teams do not file with the tax administration. Reports are accepted and recorded\, but simulated.,Les équipes playground et réseau de test ne déposent rien auprès de l'administration fiscale. Les déclarations sont acceptées et enregistrées\, mais simulées.
+Register for e-reporting,S'enregistrer pour l'e-reporting
+Registered,Enregistrée
+Reporting period ends {0}.,La période de déclaration se termine le {0}.
+Régime réel normal (monthly),Régime réel normal (mensuel)
+Régime réel simplifié,Régime réel simplifié
+SIREN {0},SIREN {0}
+Select the VAT regime,Sélectionnez le régime de TVA
+Select when VAT becomes due,Sélectionnez le moment d'exigibilité de la TVA
+Simulated,Simulée
+Simulated: this report is recorded but not filed.,Simulée : cette déclaration est enregistrée mais non déposée.
+Superseded,Remplacée
+Suspended,Suspendue
+The company is registered for French e-reporting,L'entreprise est enregistrée pour l'e-reporting France
+The regime determines how often the reports are filed with the tax administration.,Le régime détermine la fréquence de dépôt des déclarations auprès de l'administration fiscale.
+The registration could not be completed.,L'enregistrement n'a pas pu être finalisé.
+The registration is being completed in the background,L'enregistrement est finalisé en arrière-plan
+The registration is being completed with our French reporting partner. Reports can be submitted once it is registered.,L'enregistrement est en cours de finalisation auprès de notre partenaire de déclaration français. Les déclarations pourront être soumises une fois l'enregistrement effectué.
+The registration needs support; see the details below,L'enregistrement nécessite le support ; voir les détails ci-dessous
+Update registration,Mettre à jour l'enregistrement
+VAT becomes due,Exigibilité de la TVA
+VAT regime,Régime de TVA
+Verify the company first. The signed French mandate is what allows us to report on its behalf.,Vérifiez d'abord l'entreprise. Le mandat français signé est ce qui nous autorise à déclarer en son nom.

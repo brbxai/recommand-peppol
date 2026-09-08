@@ -962,3 +962,45 @@ to resolve this issue.,um dieses Problem zu lösen.
 Company activation in progress,Unternehmensaktivierung läuft
 Your identity has been verified. We are completing your company's network registration. This page will update automatically when activation is complete.,Ihre Identität wurde verifiziert. Wir schließen die Netzwerkregistrierung Ihres Unternehmens ab. Diese Seite wird nach Abschluss der Aktivierung automatisch aktualisiert.
 Your request is being processed by our support team. You will receive a message when there is an update.,Unser Supportteam bearbeitet Ihre Anfrage. Sie erhalten eine Nachricht sobald es Neuigkeiten gibt.
+Accepted\, awaiting filing,Angenommen\, wartet auf Einreichung
+Change VAT settings,MwSt.-Einstellungen ändern
+Changing the regime during a reporting period can leave that period unfiled. Coordinate such a change with support.,Eine Änderung des Regimes während eines Meldezeitraums kann dazu führen\, dass dieser Zeitraum nicht eingereicht wird. Stimmen Sie eine solche Änderung mit dem Support ab.
+Choose the VAT regime and when VAT becomes due first,Wählen Sie zuerst das MwSt.-Regime und den Zeitpunkt der Steuerentstehung
+Daily B2C totals and cross-border invoices are reported to the French tax administration on the company's behalf. Register the company once\, then submit reports through the API.,Tägliche B2C-Summen und grenzüberschreitende Rechnungen werden im Namen des Unternehmens an die französische Steuerverwaltung gemeldet. Registrieren Sie das Unternehmen einmalig und reichen Sie die Meldungen anschließend über die API ein.
+Failed to load the e-reporting registration,Die E-Reporting-Registrierung konnte nicht geladen werden
+Failed to register the company for e-reporting,Das Unternehmen konnte nicht für E-Reporting registriert werden
+Filed by corrective filing,Eingereicht per Korrekturmeldung
+Filed,Eingereicht
+Franchise en base de TVA,Franchise en base de TVA
+French e-reporting,Französisches E-Reporting
+Last checked {0}.,Zuletzt geprüft am {0}.
+Late\, awaiting corrective filing,Verspätet\, wartet auf Korrekturmeldung
+Needs support,Support erforderlich
+On invoicing (TVA sur les débits),Bei Rechnungsstellung (TVA sur les débits)
+On payment (TVA sur les encaissements),Bei Zahlung (TVA sur les encaissements)
+Our support team has been notified and will contact you. You can also reach us at support@recommand.eu.,Unser Support-Team wurde benachrichtigt und wird sich bei Ihnen melden. Sie erreichen uns auch unter support@recommand.eu.
+Outcome code {0}.,Ergebniscode {0}.
+Payment reports are only filed when VAT becomes due on payment.,Zahlungsmeldungen werden nur eingereicht\, wenn die MwSt. bei Zahlung entsteht.
+Playground and test-network teams do not file with the tax administration. Reports are accepted and recorded\, but simulated.,Playground- und Testnetzwerk-Teams reichen nichts bei der Steuerverwaltung ein. Meldungen werden angenommen und gespeichert\, aber simuliert.
+Register for e-reporting,Für E-Reporting registrieren
+Registered,Registriert
+Reporting period ends {0}.,Der Meldezeitraum endet am {0}.
+Régime réel normal (monthly),Régime réel normal (monatlich)
+Régime réel simplifié,Régime réel simplifié
+SIREN {0},SIREN {0}
+Select the VAT regime,MwSt.-Regime auswählen
+Select when VAT becomes due,Zeitpunkt der Steuerentstehung auswählen
+Simulated,Simuliert
+Simulated: this report is recorded but not filed.,Simuliert: Diese Meldung wurde gespeichert\, aber nicht eingereicht.
+Superseded,Ersetzt
+Suspended,Ausgesetzt
+The company is registered for French e-reporting,Das Unternehmen ist für französisches E-Reporting registriert
+The regime determines how often the reports are filed with the tax administration.,Das Regime bestimmt\, wie oft die Meldungen bei der Steuerverwaltung eingereicht werden.
+The registration could not be completed.,Die Registrierung konnte nicht abgeschlossen werden.
+The registration is being completed in the background,Die Registrierung wird im Hintergrund abgeschlossen
+The registration is being completed with our French reporting partner. Reports can be submitted once it is registered.,Die Registrierung wird bei unserem französischen Meldepartner abgeschlossen. Meldungen können eingereicht werden\, sobald sie registriert ist.
+The registration needs support; see the details below,Die Registrierung benötigt Support; siehe Details unten
+Update registration,Registrierung aktualisieren
+VAT becomes due,Steuerentstehung
+VAT regime,MwSt.-Regime
+Verify the company first. The signed French mandate is what allows us to report on its behalf.,Verifizieren Sie zuerst das Unternehmen. Das unterzeichnete französische Mandat berechtigt uns\, in seinem Namen zu melden.
