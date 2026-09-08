@@ -330,9 +330,8 @@ export async function deleteTransmittedDocument(
     .select(offloadedDocumentSelect)
     .from(transmittedDocuments)
     .where(and(eq(transmittedDocuments.id, documentId), eq(transmittedDocuments.teamId, teamId)));
-  if (docs.length === 0) {
-    throw new Error("Document not found");
-  }
+  // A delete of an id that no longer exists is answered like the first one:
+  // the outcome the caller asked for holds, and a retried delete stays safe.
 
   // Offloaded S3 objects are removed by the background deletion worker;
   // enqueueing in the same transaction as the delete means they can never be
