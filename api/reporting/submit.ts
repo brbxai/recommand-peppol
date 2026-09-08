@@ -10,6 +10,7 @@ import { audit } from "@core/lib/audit";
 import {
   buildFrenchDeclarant,
   buildFrenchSeller,
+  describeFrenchReportEvent,
   FrenchReportingSubmissionError,
   submitArratechB2BiReport,
   submitArratechB2CReport,
@@ -22,6 +23,7 @@ import {
   resolveFrenchReportingEnvironment,
   type FrenchReportingDeclarant,
 } from "@peppol/data/fr-reporting-declarants";
+import { recordFrenchReportingSubmission } from "@peppol/data/fr-reporting-submissions";
 import { recordOutgoingDocument } from "@peppol/data/record-outgoing-document";
 import { findOutgoingDocumentByExternalReference } from "@peppol/data/transmitted-documents";
 import {
@@ -229,15 +231,17 @@ async function fileFrenchReport({
     return c.json(actionFailure(rejection), 400);
   }
 
+  const simulated = isFrenchReportingSimulated(team);
   let externalReferenceId: string;
   let duplicate = false;
-  if (isFrenchReportingSimulated(team)) {
+  let submission: FrenchReportingSubmissionResult | null = null;
+  if (simulated) {
     externalReferenceId = simulatedReference(company.id, report.reference);
   } else {
     try {
-      const result = await submit({ environment });
-      externalReferenceId = result.flowId;
-      duplicate = result.duplicate;
+      submission = await submit({ environment });
+      externalReferenceId = submission.flowId;
+      duplicate = submission.duplicate;
     } catch (error) {
       console.error("Failed to submit French report:", error);
       await audit(c, {
@@ -300,6 +304,27 @@ async function fileFrenchReport({
     },
     delivery: { kind: "reporting", externalReferenceId },
   });
+
+  // The filing's own record, which the status worker follows until the tax
+  // administration has ruled on it. Recorded after the document so it can point
+  // at it; a failure here must not fail a report that was filed and recorded.
+  try {
+    await recordFrenchReportingSubmission({
+      transmittedDocumentId: transmittedDocument.id,
+      declarantId: declarant.id,
+      teamId: team.id,
+      companyId: company.id,
+      environment,
+      flowId: externalReferenceId,
+      reference: report.reference,
+      ...describeFrenchReportEvent(report),
+      simulated,
+      ledgerStatus: submission?.status ?? null,
+      reportingStatus: submission?.reportingStatus ?? null,
+    });
+  } catch (error) {
+    console.error("Failed to record French reporting submission:", error);
+  }
 
   return c.json(actionSuccess({ id: transmittedDocument.id, duplicate }));
 }

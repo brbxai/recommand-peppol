@@ -148,6 +148,26 @@ const arratechActionByPublicAction = {
 type FrenchReportAction = keyof typeof arratechActionByPublicAction;
 
 /**
+ * The sub-flux and operation a report is filed as, for the record we keep of the
+ * filing.
+ */
+export function describeFrenchReportEvent(report: FrenchB2CReport | FrenchB2BiReport): {
+  subFlux: "10.1" | "10.2" | "10.3" | "10.4";
+  operation: "SUBMIT" | "CANCEL";
+  transmissionType: "IN" | "RE";
+} {
+  const subFlux =
+    report.type === "invoice"
+      ? "10.1"
+      : report.type === "payment"
+        ? "10.2"
+        : report.type === "sales"
+          ? "10.3"
+          : "10.4";
+  return { subFlux, ...arratechActionByPublicAction[report.action] };
+}
+
+/**
  * Wraps a sub-flux payload in the FR-F10 envelope every submission shares. The
  * environment is always named: the partner would otherwise resolve it from the
  * declarant registrations, and a test-intended event must never land in PROD.

@@ -55,6 +55,8 @@ import { CsvAttachmentTable } from "@peppol/components/csv-attachment-table";
 import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-response/schemas";
 import { DocumentLabelPicker } from "@peppol/components/document-label-picker";
 import { isReportingDocumentTypeKey } from "@peppol/utils/type-repository/document-types/keys";
+import { FrenchReportingStatusBadge } from "../../../../components/french-reporting-status-badge";
+import type { FrenchReportingStatusSummary } from "@peppol/data/fr-reporting-submissions";
 import { useTranslation } from "@core/hooks/use-translation";
 import { getDocumentTypeLabel } from "@peppol/lib/client/document-type-labels";
 
@@ -63,6 +65,7 @@ const labelsClient = rc<Labels>("v1");
 
 type TransmittedDocumentWithLabels = TransmittedDocument & {
   labels?: Label[];
+  reporting?: FrenchReportingStatusSummary | null;
 };
 
 export default function TransmittedDocumentDetailPage() {
@@ -536,6 +539,7 @@ export default function TransmittedDocumentDetailPage() {
                 emailRecipients={doc.emailRecipients || undefined}
                 isReporting={isReportingDocumentTypeKey(doc.type)}
               />
+              <FrenchReportingStatusBadge reporting={doc.reporting} />
               {doc.labels &&
                 doc.labels.map((label) => (
                   <LabelBadge

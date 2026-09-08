@@ -678,6 +678,79 @@ export const transmittedDocuments = pgTable(
   ]
 );
 
+// Where a filed e-reporting event stands with the tax administration. The first two
+// are the states an event is accepted into; the other four are reached later and
+// are terminal. `pending_rectificative` means the event arrived after its period
+// was filed and will be carried by a corrective filing: it is not on any report yet.
+export const frReportingStatuses = [
+  "accepted",
+  "pending_rectificative",
+  "filed",
+  "filed_rectificative",
+  "superseded",
+  "rejected",
+] as const;
+export const zodFrReportingStatuses = z.enum(frReportingStatuses);
+export const frReportingStatusEnum = pgEnum(
+  "peppol_fr_reporting_status",
+  frReportingStatuses
+);
+
+// One row per e-reporting event we filed, keyed by the partner's flow id. The
+// partner sends no webhook for reporting, so the status is polled from here until
+// it is terminal; the document itself only knows the flow id.
+export const frReportingSubmissions = pgTable(
+  "peppol_fr_reporting_submissions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "frs_" + ulid()),
+    transmittedDocumentId: text("transmitted_document_id")
+      .references(() => transmittedDocuments.id, { onDelete: "cascade" })
+      .notNull(),
+    declarantId: text("declarant_id").references(() => frReportingDeclarants.id, {
+      onDelete: "set null",
+    }),
+    teamId: text("team_id").notNull(),
+    companyId: text("company_id").notNull(),
+    environment: frReportingEnvironmentEnum("environment").notNull(),
+    // The partner's handle for the event; the document's external reference id.
+    flowId: text("flow_id").notNull(),
+    reference: text("reference").notNull(),
+    subFlux: text("sub_flux").notNull(),
+    operation: text("operation").notNull(),
+    transmissionType: text("transmission_type").notNull(),
+    // Simulated filings never reach the partner and are never polled.
+    simulated: boolean("simulated").notNull().default(false),
+    // The partner's internal ledger state, kept for support.
+    ledgerStatus: text("ledger_status"),
+    reportingStatus: frReportingStatusEnum("reporting_status").notNull().default("accepted"),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    operationDate: text("operation_date"),
+    periodStart: text("period_start"),
+    periodEnd: text("period_end"),
+    submissionId: text("submission_id"),
+    outcomeCode: text("outcome_code"),
+    outcomeAt: timestamp("outcome_at", { withTimezone: true }),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    // Null once there is nothing left to learn: terminal status, simulated, or
+    // given up on.
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
+    checkAttempts: integer("check_attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_fr_reporting_submissions_flow_id_idx").on(table.flowId),
+    uniqueIndex("peppol_fr_reporting_submissions_document_idx").on(
+      table.transmittedDocumentId
+    ),
+    index("peppol_fr_reporting_submissions_due_idx").on(table.nextCheckAt),
+  ]
+);
+
 // Queue of S3 key prefixes whose objects must be deleted. Rows are enqueued in
 // the same transaction that deletes documents (or a whole company), so the
 // HTTP request returns as soon as the database rows are gone and a background
