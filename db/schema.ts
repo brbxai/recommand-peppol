@@ -15,6 +15,7 @@ import {
   primaryKey,
   serial,
   date,
+  integer,
 } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 import { isNotNull, SQL, sql } from "drizzle-orm";
@@ -326,6 +327,92 @@ export const companyVerificationLog = pgTable(
   },
 );
 
+// French e-reporting (DGFiP Flux 10) is filed through our reporting partner, which
+// only accepts events for a SIREN that was registered to us as a declarant first.
+// One registration per company and environment: the partner keeps TEST and PROD
+// registrations apart, and a SIREN can be held by a single organisation per
+// environment.
+export const frReportingEnvironments = ["PROD", "TEST"] as const;
+export const zodFrReportingEnvironments = z.enum(frReportingEnvironments);
+export const frReportingEnvironmentEnum = pgEnum(
+  "peppol_fr_reporting_environment",
+  frReportingEnvironments
+);
+
+// The VAT regime drives the filing cadence and period boundaries of the declarant.
+export const frVatRegimes = [
+  "REEL_NORMAL_MENSUEL",
+  "REEL_SIMPLIFIE",
+  "FRANCHISE_EN_BASE",
+] as const;
+export const zodFrVatRegimes = z.enum(frVatRegimes);
+export const frVatRegimeEnum = pgEnum("peppol_fr_vat_regime", frVatRegimes);
+
+// VAT point of taxation. Payment events (sub-fluxes 10.2 and 10.4) only exist under
+// ENCAISSEMENTS; under DEBITS they are out of scope.
+export const frVatExigibilities = ["ENCAISSEMENTS", "DEBITS"] as const;
+export const zodFrVatExigibilities = z.enum(frVatExigibilities);
+export const frVatExigibilityEnum = pgEnum(
+  "peppol_fr_vat_exigibility",
+  frVatExigibilities
+);
+
+// pending: waiting for (or retrying) the registration with the partner.
+// registered: the partner accepted the registration, or the registration is
+// simulated because the team never reaches the partner.
+// blocked: the partner refused it or retries ran out; support has to intervene.
+export const frReportingDeclarantStates = ["pending", "registered", "blocked"] as const;
+export const zodFrReportingDeclarantStates = z.enum(frReportingDeclarantStates);
+export const frReportingDeclarantStateEnum = pgEnum(
+  "peppol_fr_reporting_declarant_state",
+  frReportingDeclarantStates
+);
+
+export const frReportingDeclarants = pgTable(
+  "peppol_fr_reporting_declarants",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "frd_" + ulid()),
+    companyId: text("company_id")
+      .references(() => companies.id, { onDelete: "cascade" })
+      .notNull(),
+    environment: frReportingEnvironmentEnum("environment").notNull(),
+    siren: text("siren").notNull(),
+    // Legal name carried as the issuer on every report filed for this declarant.
+    issuerName: text("issuer_name").notNull(),
+    vatRegime: frVatRegimeEnum("vat_regime").notNull(),
+    vatExigibility: frVatExigibilityEnum("vat_exigibility").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    // Playground and test-network teams never reach the partner: their registration
+    // is recorded here only, and their reports are simulated.
+    simulated: boolean("simulated").notNull().default(false),
+    state: frReportingDeclarantStateEnum("state").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastError: text("last_error"),
+    registeredAt: timestamp("registered_at", { withTimezone: true }),
+    // The partner's last view of the registration, kept for support.
+    partnerSnapshot: jsonb("partner_snapshot").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_fr_reporting_declarants_company_environment_idx").on(
+      table.companyId,
+      table.environment
+    ),
+    index("peppol_fr_reporting_declarants_due_idx").on(
+      table.state,
+      table.nextAttemptAt
+    ),
+  ]
+);
+
 export const enterpriseDataCache = pgTable(
   "enterprise_data_cache",
   {
@@ -581,6 +668,86 @@ export const transmittedDocuments = pgTable(
     uniqueIndex("peppol_transmitted_documents_ap_transaction_id_idx")
       .on(table.apTransactionId)
       .where(isNotNull(table.apTransactionId)),
+    // Unique: one document per filing. A report retried under the same reference
+    // comes back from the filing service with the same reference id, and the
+    // constraint is what turns that retry into the existing document instead of a
+    // second one with its own billing.
+    uniqueIndex("peppol_transmitted_documents_external_reference_id_idx")
+      .on(table.externalReferenceId)
+      .where(isNotNull(table.externalReferenceId)),
+  ]
+);
+
+// Where a filed e-reporting event stands with the tax administration. The first two
+// are the states an event is accepted into; the other four are reached later and
+// are terminal. `pending_rectificative` means the event arrived after its period
+// was filed and will be carried by a corrective filing: it is not on any report yet.
+export const frReportingStatuses = [
+  "accepted",
+  "pending_rectificative",
+  "filed",
+  "filed_rectificative",
+  "superseded",
+  "rejected",
+] as const;
+export const zodFrReportingStatuses = z.enum(frReportingStatuses);
+export const frReportingStatusEnum = pgEnum(
+  "peppol_fr_reporting_status",
+  frReportingStatuses
+);
+
+// One row per e-reporting event we filed, keyed by the partner's flow id. The
+// partner sends no webhook for reporting, so the status is polled from here until
+// it is terminal; the document itself only knows the flow id.
+export const frReportingSubmissions = pgTable(
+  "peppol_fr_reporting_submissions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => "frs_" + ulid()),
+    transmittedDocumentId: text("transmitted_document_id")
+      .references(() => transmittedDocuments.id, { onDelete: "cascade" })
+      .notNull(),
+    declarantId: text("declarant_id").references(() => frReportingDeclarants.id, {
+      onDelete: "set null",
+    }),
+    teamId: text("team_id").notNull(),
+    companyId: text("company_id").notNull(),
+    environment: frReportingEnvironmentEnum("environment").notNull(),
+    // The partner's handle for the event; the document's external reference id.
+    flowId: text("flow_id").notNull(),
+    reference: text("reference").notNull(),
+    subFlux: text("sub_flux").notNull(),
+    operation: text("operation").notNull(),
+    transmissionType: text("transmission_type").notNull(),
+    // Simulated filings never reach the partner and are never polled.
+    simulated: boolean("simulated").notNull().default(false),
+    // The partner's internal ledger state, kept for support.
+    ledgerStatus: text("ledger_status"),
+    reportingStatus: frReportingStatusEnum("reporting_status").notNull().default("accepted"),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    operationDate: text("operation_date"),
+    periodStart: text("period_start"),
+    periodEnd: text("period_end"),
+    submissionId: text("submission_id"),
+    outcomeCode: text("outcome_code"),
+    outcomeAt: timestamp("outcome_at", { withTimezone: true }),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    // Null once there is nothing left to learn: terminal status, simulated, or
+    // given up on.
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
+    checkAttempts: integer("check_attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: autoUpdateTimestamp(),
+  },
+  (table) => [
+    uniqueIndex("peppol_fr_reporting_submissions_flow_id_idx").on(table.flowId),
+    uniqueIndex("peppol_fr_reporting_submissions_document_idx").on(
+      table.transmittedDocumentId
+    ),
+    index("peppol_fr_reporting_submissions_due_idx").on(table.nextCheckAt),
   ]
 );
 

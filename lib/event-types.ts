@@ -78,6 +78,34 @@ const documentLabelPayloadSchema = z.object({
   receiverId: z.string().nullable(),
 });
 
+const reportingStatuses = [
+  "accepted",
+  "pending_rectificative",
+  "filed",
+  "filed_rectificative",
+  "superseded",
+  "rejected",
+] as const;
+
+const reportingStatusLabels: Record<(typeof reportingStatuses)[number], string> = {
+  accepted: "Accepted",
+  pending_rectificative: "Awaiting corrective filing",
+  filed: "Filed",
+  filed_rectificative: "Filed by corrective filing",
+  superseded: "Superseded",
+  rejected: "Rejected",
+};
+
+const documentReportingStatusPayloadSchema = z.object({
+  companyId: z.string(),
+  docType: z.string(),
+  reportingStatus: z.enum(reportingStatuses),
+  previousReportingStatus: z.enum(reportingStatuses),
+  periodEnd: z.string().nullable().optional(),
+  submissionId: z.string().nullable().optional(),
+  outcomeCode: z.string().nullable().optional(),
+});
+
 const companyVerificationPayloadSchema = z.object({
   companyId: z.string(),
   status: z.enum(verificationStatuses),
@@ -234,6 +262,39 @@ export function registerPeppolEventTypes() {
     },
     ui: {
       label: "Document label unassigned",
+      group: "Documents",
+    },
+  });
+
+  registerEventType({
+    type: "peppol.document.reporting_status.v1",
+    aggregateType: "peppol.document",
+    payload: documentReportingStatusPayloadSchema,
+    conditionFields: [
+      { path: "payload.companyId", label: "Company", valueType: "string", operators: ["eq", "neq", "in"], picker: "company" },
+      { path: "payload.reportingStatus", label: "Reporting status", valueType: "enum", operators: ["eq", "neq", "in", "notIn"], enumValues: [...reportingStatuses], enumLabels: reportingStatusLabels },
+      { path: "payload.outcomeCode", label: "Outcome code", valueType: "string", operators: ["eq", "neq", "exists"] },
+    ],
+    webhook: {
+      eventType: "document.reporting_status_changed",
+      project: (event) => {
+        const payload = event.payload as z.infer<typeof documentReportingStatusPayloadSchema>;
+        return {
+          eventType: "document.reporting_status_changed",
+          documentId: event.aggregateId,
+          teamId: event.teamId,
+          companyId: payload.companyId,
+          reportingStatus: payload.reportingStatus,
+          previousReportingStatus: payload.previousReportingStatus,
+          periodEnd: payload.periodEnd ?? null,
+          submissionId: payload.submissionId ?? null,
+          outcomeCode: payload.outcomeCode ?? null,
+        };
+      },
+    },
+    ui: {
+      label: "Report status changed",
+      description: "A French e-reporting report was filed, superseded or rejected by the tax administration",
       group: "Documents",
     },
   });

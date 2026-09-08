@@ -106,6 +106,20 @@ export async function recordOutgoingDocument(options: {
     // claim. Everything that follows from the document has then already happened, so
     // this returns what is there instead of failing a send whose document did leave
     // the platform.
+    // external_reference_id is unique too: a report retried under the same
+    // reference is the same filing, and two concurrent retries must end up with the
+    // one document the first of them recorded. That is expected, not alarming.
+    if (facts.externalReferenceId && isUniqueViolation(error)) {
+      const existingFiling = await db
+        .select({ id: transmittedDocuments.id })
+        .from(transmittedDocuments)
+        .where(eq(transmittedDocuments.externalReferenceId, facts.externalReferenceId))
+        .limit(1)
+        .then((rows) => rows[0]);
+      if (existingFiling) {
+        return existingFiling;
+      }
+    }
     const existing =
       facts.apTransactionId && isUniqueViolation(error)
         ? await db
@@ -150,6 +164,7 @@ export async function recordOutgoingDocument(options: {
       teamId,
       companyId: company.id,
       transmittedDocumentId: transmittedDocument.id,
+      document,
       delivery,
     });
     if (te.length > 0) {

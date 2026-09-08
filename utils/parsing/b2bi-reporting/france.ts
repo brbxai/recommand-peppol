@@ -2,70 +2,99 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zCurrencies } from "@peppol/utils/currencies";
 import { zodValidIsoIcdSchemeIdentifiers } from "@peppol/utils/iso-icd-scheme-identifiers";
+import { vatCategoryEnum } from "@peppol/utils/parsing/invoice/schemas";
 import {
-  decimalSchema,
-  vatCategoryEnum,
-} from "@peppol/utils/parsing/invoice/schemas";
+  f10ActionSchema,
+  f10AmountSchema,
+  f10PercentSchema,
+  f10ReferenceSchema,
+  isEuCountry,
+} from "@peppol/utils/parsing/fr-reporting/shared";
 import type { ReportingDocumentTypeKey } from "@peppol/utils/type-repository/document-types/types";
 
-const frenchB2BiReportActionSchema = z
-  .enum(["submit", "correct", "cancel"])
-  .default("submit")
-  .openapi({
-    example: "submit",
-    description:
-      "Use `submit` for a new report, `correct` to replace a report sent earlier under the same reference, or `cancel` to cancel it. Defaults to `submit`.",
-  });
-
 const frenchB2BiReportBaseShape = {
-  reference: z.string().min(1).openapi({
+  reference: f10ReferenceSchema.openapi({
     example: "EREPORT-INV-2026-000431",
-    description:
-      "Your unique reference for this submission. Reuse the same reference when retrying, correcting or cancelling this report; a new reference always files a new report.",
   }),
-  action: frenchB2BiReportActionSchema,
+  action: f10ActionSchema,
 };
 
+/**
+ * The tax administration identifies a foreign buyer by where it is established: EU
+ * buyers by their intra-community VAT number, buyers outside the EU by their
+ * country and name, and buyers in the French overseas collectivities by their
+ * local registry number. The public schema therefore asks for the country and the
+ * name up front, and for the VAT number when the buyer is in the EU.
+ */
 const frenchB2BiBuyerSchema = z
   .object({
-    enterpriseNumber: z.string().min(1).openapi({
-      example: "IT00987654321",
-      description: "The buyer's company registration number.",
-    }),
-    enterpriseNumberScheme: zodValidIsoIcdSchemeIdentifiers.openapi({
-      example: "0223",
-      description:
-        "The scheme the buyer's company registration number belongs to. Schemes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/ICD/).",
-    }),
-    vatNumber: z.string().nullish().openapi({
-      example: "IT00987654321",
-      description:
-        "The buyer's VAT number. Required for buyers established in the European Union.",
+    name: z.string().min(1).openapi({
+      example: "Rossi Forniture S.r.l.",
+      description: "The buyer's legal name.",
     }),
     country: z
       .string()
       .length(2, "Country code must be in ISO 3166-1:Alpha2 format")
+      .transform((value) => value.toUpperCase())
       .openapi({
         example: "IT",
-        description: "The buyer's country in ISO 3166-1:Alpha2 format.",
+        description:
+          "The country the buyer is established in, in ISO 3166-1:Alpha2 format. Must not be `FR`: invoices to French buyers are exchanged over the e-invoicing network instead of being reported.",
       }),
+    vatNumber: z.string().min(1).nullish().openapi({
+      example: "IT00987654321",
+      description:
+        "The buyer's intra-community VAT number. Required for buyers established in the European Union; it is how the tax administration identifies them.",
+    }),
+    enterpriseNumber: z.string().min(1).nullish().openapi({
+      example: "0123456",
+      description:
+        "The buyer's company registration number. Used for buyers in Nouvelle-Calédonie (RIDET) and Polynésie française (TAHITI); optional elsewhere.",
+    }),
+    enterpriseNumberScheme: zodValidIsoIcdSchemeIdentifiers.nullish().openapi({
+      example: "0223",
+      description:
+        "The scheme the buyer's company registration number belongs to. Schemes can be found [here](https://docs.peppol.eu/poacc/billing/3.0/codelist/ICD/).",
+    }),
+  })
+  .superRefine((buyer, ctx) => {
+    if (isEuCountry(buyer.country) && !buyer.vatNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["vatNumber"],
+        message: "A VAT number is required for buyers established in the European Union",
+      });
+    }
+    if (
+      (buyer.country === "NC" || buyer.country === "PF") &&
+      !buyer.enterpriseNumber
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["enterpriseNumber"],
+        message:
+          "A registration number (RIDET or TAHITI) is required for buyers in Nouvelle-Calédonie and Polynésie française",
+      });
+    }
   })
   .openapi({
     ref: "FrenchB2BiBuyer",
     description: "The foreign business the reported operation was invoiced to.",
   });
 
+export type FrenchB2BiBuyer = z.infer<typeof frenchB2BiBuyerSchema>;
+
 const frenchB2BiInvoiceVatSchema = z
   .object({
-    percentage: decimalSchema.openapi({
+    percentage: f10PercentSchema.openapi({
       example: "0.00",
       description: "VAT rate applied to this part of the invoice.",
     }),
-    taxableAmount: decimalSchema.openapi({
+    taxableAmount: f10AmountSchema.openapi({
       example: "10000.00",
       description: "Amount excluding VAT taxed at this rate.",
     }),
-    taxAmount: decimalSchema.openapi({
+    taxAmount: f10AmountSchema.openapi({
       example: "0.00",
       description: "VAT amount for this rate.",
     }),
@@ -92,11 +121,11 @@ const frenchB2BiInvoiceVatSchema = z
 
 const frenchB2BiPaymentVatSchema = z
   .object({
-    percentage: decimalSchema.openapi({
+    percentage: f10PercentSchema.openapi({
       example: "20.00",
       description: "VAT rate that applies to the received amount.",
     }),
-    amount: decimalSchema.openapi({
+    amount: f10AmountSchema.openapi({
       example: "12000.00",
       description: "Amount received including VAT for this VAT rate.",
     }),
@@ -116,7 +145,7 @@ export const frenchB2BiInvoiceReportSchema = z
     documentNumber: z.string().min(1).openapi({
       example: "INV-2026-000431",
       description:
-        "The number of the invoice or credit note being reported. A payment report refers back to it.",
+        "The number of the invoice or credit note being reported. A payment report refers back to it, and a correction or cancellation is matched on it.",
     }),
     documentType: z
       .enum(["invoice", "creditNote"])
@@ -140,11 +169,11 @@ export const frenchB2BiInvoiceReportSchema = z
         "Three-letter currency code of the reported amounts. EUR is used when this field is omitted.",
     }),
     buyer: frenchB2BiBuyerSchema,
-    taxExclusiveAmount: decimalSchema.openapi({
+    taxExclusiveAmount: f10AmountSchema.openapi({
       example: "10000.00",
       description: "Total amount of the document excluding VAT.",
     }),
-    taxAmount: decimalSchema.openapi({
+    taxAmount: f10AmountSchema.openapi({
       example: "0.00",
       description: "Total VAT amount of the document.",
     }),
@@ -194,7 +223,7 @@ export const frenchB2BiPaymentReportSchema = z
     ref: "FrenchB2BiPaymentReport",
     title: "French cross-border payment report",
     description:
-      "Reports a payment received on a cross-border invoice. Report the invoice first, then report the payment for the day it was received.",
+      "Reports a payment received on a cross-border invoice. Report the invoice first, then report the payment for the day it was received. Only accepted for companies registered with VAT due on payment.",
   });
 
 export const frenchB2BiReportSchema = z

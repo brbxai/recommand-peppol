@@ -33,6 +33,8 @@ import { initializeOffloadCronJobs } from "./data/offload/cron";
 import { initializeProviderSentCronJobs } from "./data/provider-sent/cron";
 import { initializeS3DeletionCronJobs } from "./data/s3-deletion/cron";
 import { initializeArratechOnboardingCron } from "./data/at/kyc-onboarding";
+import { initializeFrenchReportingDeclarantCron } from "./data/fr-reporting-declarants";
+import { initializeFrenchReportingStatusCron } from "./data/fr-reporting-submissions";
 import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
 import { onTeamCreated, onTeamBeforeDelete } from "./lib/backend-events";
 import { addBackendEventListener, CORE_BACKEND_EVENTS } from "@core/lib/backend-events";
@@ -60,6 +62,8 @@ export async function init(app: RecommandApp, server: Server) {
   initializeProviderSentCronJobs(logger);
   initializeS3DeletionCronJobs(logger);
   initializeArratechOnboardingCron(logger);
+  initializeFrenchReportingDeclarantCron(logger);
+  initializeFrenchReportingStatusCron(logger);
 
   initializeMetricsServer(logger);
 
@@ -135,7 +139,7 @@ For additional support or questions, don't hesitate to contact our support team.
         {
           name: "Reporting",
           description:
-            "Submit B2C sales and payment information that Recommand reports to the relevant tax administration on your behalf.",
+            "French e-reporting: register a company as a declarant, then submit the daily B2C totals and cross-border invoices that Recommand reports to the French tax administration on its behalf. Available for companies registered in France.",
         },
         {
           name: "Recipients",
@@ -224,7 +228,7 @@ for (const prefix of ["/peppol/", "/v1/"]) {
 
   server.route(prefix, billingProfileServer); 
   server.route(prefix, billingServer);
-  // server.route(prefix, reportingServer); // TODO: Re-enable and validate this when the French reporting is available with AT, our PA
+  server.route(prefix, reportingServer);
   server.route(prefix, subscriptionServer);
   server.route(prefix, teamsServer);
 }

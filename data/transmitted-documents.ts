@@ -3,6 +3,7 @@ import { labels } from "@directory/db/schema";
 import { db } from "@recommand/db";
 import { eq, and, or, sql, desc, isNull, isNotNull, inArray, ilike, gte, lt } from "drizzle-orm";
 import type { Label } from "@directory/data/labels";
+import type { FrenchReportingStatusSummary } from "./fr-reporting-submissions";
 import { removeAttachmentsFromParsedDocument } from "@peppol/utils/parsing/remove-attachments";
 import {
   offloadedDocumentS3Prefixes,
@@ -28,6 +29,8 @@ export type PublicTransmittedDocument = Omit<
 >;
 export type PublicTransmittedDocumentWithLabels = PublicTransmittedDocument & {
   labels?: TransmittedDocumentLabel[];
+  /** Present on filed reports once the API has attached where they stand. */
+  reporting?: FrenchReportingStatusSummary | null;
 };
 
 // Internal storage-location fields that must never be exposed to API consumers.
@@ -36,6 +39,7 @@ type InternalStorageField = "xmlLocation" | "attachmentsLocation" | "originalPay
 // Create a type that excludes the body field but includes parsed data
 export type TransmittedDocumentWithoutBody = Omit<PublicTransmittedDocument, "xml" | InternalStorageField> & {
   labels?: TransmittedDocumentLabel[];
+  reporting?: FrenchReportingStatusSummary | null;
 };
 type InboxTransmittedDocument = Omit<PublicTransmittedDocument, "xml" | InternalStorageField | "parsed"> & {
   labels?: TransmittedDocumentLabel[];
@@ -543,4 +547,26 @@ export async function getAllTransmittedDocumentsInRange(
     ...doc,
     labels: documentLabelsMap.get(doc.id) || [],
   }));
+}
+
+/**
+ * The document a filing was recorded as, by the reference the filing service gave
+ * it. Used to answer a retried report with the document filed the first time.
+ */
+export async function findOutgoingDocumentByExternalReference(
+  companyId: string,
+  externalReferenceId: string,
+): Promise<{ id: string } | undefined> {
+  return await db
+    .select({ id: transmittedDocuments.id })
+    .from(transmittedDocuments)
+    .where(
+      and(
+        eq(transmittedDocuments.companyId, companyId),
+        eq(transmittedDocuments.direction, "outgoing"),
+        eq(transmittedDocuments.externalReferenceId, externalReferenceId),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows[0]);
 }

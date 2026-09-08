@@ -30,6 +30,7 @@ import { PartyInfoTooltip } from "@peppol/components/party-info-tooltip";
 import { TransmissionStatusIcons } from "@peppol/components/transmission-status-icons";
 import { DocumentTypeCell } from "@peppol/components/document-type-cell";
 import { LabelBadge } from "@directory/components/label-badge";
+import { FrenchReportingStatusBadge } from "../../../components/french-reporting-status-badge";
 import { DocumentLabelPicker } from "@peppol/components/document-label-picker";
 import {
   Popover,
@@ -907,6 +908,7 @@ export default function Page() {
               emailRecipients={emailRecipients || undefined}
               isReporting={isReporting}
             />
+            {isReporting && <FrenchReportingStatusBadge reporting={document.reporting} size="sm" />}
           </div>
         );
       },
