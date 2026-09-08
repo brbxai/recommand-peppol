@@ -19,7 +19,7 @@ const server = new Server();
 
 const createIdentifierRouteDescription = describeRoute({
     operationId: "createCompanyIdentifier",
-    description: "Create a new company identifier",
+    description: "Add a Peppol identifier the company can be addressed by. When the company is registered as an SMP recipient, the identifier is registered in the SMP as well, which is what makes the address reachable on the network. A company created without `skipDefaultCompanySetup` already has the default identifiers for its country, so use this to add an extra address, for example a GLN alongside a national registration number.",
     summary: "Create Company Identifier",
     tags: ["Company Identifiers"],
     responses: {

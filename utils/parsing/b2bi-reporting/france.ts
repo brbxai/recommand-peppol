@@ -37,6 +37,11 @@ const frenchB2BiBuyerSchema = z
       .length(2, "Country code must be in ISO 3166-1:Alpha2 format")
       .transform((value) => value.toUpperCase())
       .openapi({
+        // The transform only uppercases, so input and output are the same
+        // string. Saying so lets this schema be rendered in a response too,
+        // which it is: a stored cross-border report is returned as a
+        // document's `parsed` payload.
+        effectType: "same",
         example: "IT",
         description:
           "The country the buyer is established in, in ISO 3166-1:Alpha2 format. Must not be `FR`: invoices to French buyers are exchanged over the e-invoicing network instead of being reported.",
@@ -44,7 +49,7 @@ const frenchB2BiBuyerSchema = z
     vatNumber: z.string().min(1).nullish().openapi({
       example: "IT00987654321",
       description:
-        "The buyer's intra-community VAT number. Required for buyers established in the European Union; it is how the tax administration identifies them.",
+        "The buyer's intra-community VAT number. Required for buyers established in the European Union; it is how the tax administration identifies them. Leave it off for buyers outside the European Union, who are identified by their country and name instead.",
     }),
     enterpriseNumber: z.string().min(1).nullish().openapi({
       example: "0123456",
@@ -186,7 +191,7 @@ export const frenchB2BiInvoiceReportSchema = z
     ref: "FrenchB2BiInvoiceReport",
     title: "French cross-border invoice report",
     description:
-      "Reports one invoice or credit note issued to a business established outside France. These operations are not exchanged over the French e-invoicing network, so they are reported to the French tax administration instead.",
+      "Reports one invoice or credit note issued to a business established outside France. These operations are not exchanged over the French e-invoicing network, so they are reported to the French tax administration instead. The reporting company must carry its own French VAT number as well as its SIREN; cross-border reports identify the seller by both.",
   });
 
 export const frenchB2BiPaymentReportSchema = z

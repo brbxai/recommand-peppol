@@ -37,7 +37,8 @@ export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType];
 const sendXmlSchema = z.string().openapi({
   ref: "XML",
   title: "XML",
-  description: "XML document as a string",
+  description:
+    "A complete Peppol UBL or CII document as a string. Set `doctypeId` yourself when it cannot be detected.",
 });
 
 /**

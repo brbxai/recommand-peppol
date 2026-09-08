@@ -91,7 +91,7 @@ export const frenchB2CSalesReportSchema = z
     transactionCount: z.number().int().positive().openapi({
       example: 42,
       description:
-        "Number of individual sales included in this daily total.",
+        "Number of individual sales included in this daily total. At least 1; a day without sales is not reported.",
     }),
     vatBreakdown: z.array(frenchB2CSalesVatSchema).min(1).openapi({
       description:

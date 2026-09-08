@@ -19,7 +19,7 @@ const server = new Server();
 
 const updateIdentifierRouteDescription = describeRoute({
     operationId: "updateCompanyIdentifier",
-    description: "Update an existing company identifier",
+    description: "Change the scheme or value of an identifier. The old address is unregistered from the SMP and the new one registered in its place, so anything routed to the old address stops arriving. Senders who stored the old address will have to be told.",
     summary: "Update Company Identifier",
     tags: ["Company Identifiers"],
     responses: {

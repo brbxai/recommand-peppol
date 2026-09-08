@@ -18,7 +18,7 @@ export const f10ReferenceSchema = z
   .openapi({
     example: "SALES-2026-07-01-GOODS",
     description:
-      "Your unique reference for this submission, at most 128 characters. Every submission needs its own reference; a retry of the exact same request may reuse it, which returns the report that was filed the first time instead of filing it again.",
+      "Your unique reference for this submission, at most 128 characters. It is the idempotency key: retrying the exact same request with the same reference files nothing again and returns the report filed the first time, with `duplicate: true`. Every new submission, corrections and cancellations included, needs its own reference.",
   });
 
 /** A monetary amount as the tax administration expects it: "1234.50", never negative. */

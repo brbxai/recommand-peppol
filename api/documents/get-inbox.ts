@@ -19,7 +19,7 @@ const server = new Server();
 
 const getInboxRouteDescription = describeRoute({
     operationId: "getInbox",
-    description: "List all unread incoming documents.",
+    description: "List the incoming documents that have not been marked as read. Use it as a work queue: process a document, then mark it as read so the next call no longer returns it. This response is not paginated and carries every unread incoming document, so keeping up with the marking is what keeps it a reasonable size. It differs from `GET /documents?isUnread=true&direction=incoming` in two ways: that endpoint is paginated and filterable, and it returns the parsed document body, which the inbox leaves out to stay cheap. Fetch a document by its ID when you need its contents.",
     summary: "Inbox",
     tags: ["Documents"],
     responses: {

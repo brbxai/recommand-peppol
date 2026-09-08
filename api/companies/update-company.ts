@@ -8,7 +8,7 @@ import { z } from "zod";
 import "zod-openapi/extend";
 import { zodValidator } from "@recommand/lib/zod-validator";
 import { describeRoute } from "hono-openapi";
-import { describeErrorResponse, describeSuccessResponseWithZod } from "@core/lib/api-docs";
+import { describeErrorResponse, describeSuccessResponseWithZod, describeValidationErrorResponse } from "@core/lib/api-docs";
 import { companyResponse, toCompanyResponse } from "@peppol/api/companies/shared";
 import type { CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { cleanEnterpriseNumber, cleanVatNumber, UserFacingError } from "@directory/utils/util";
@@ -25,7 +25,7 @@ const updateCompanyRouteDescription = describeRoute({
     tags: ["Companies"],
     responses: {
         ...describeSuccessResponseWithZod("Successfully updated company", z.object({ company: companyResponse })),
-        ...describeErrorResponse(400, "Invalid request data"),
+        ...describeValidationErrorResponse("Invalid request data"),
         ...describeErrorResponse(404, "Company not found"),
         ...describeErrorResponse(500, "Failed to update company"),
     },

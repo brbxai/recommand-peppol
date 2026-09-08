@@ -5,6 +5,7 @@ import type {
 import {
   describeErrorResponse,
   describeSuccessResponseWithZod,
+  describeValidationErrorResponse,
 } from "@core/lib/api-docs";
 import { audit } from "@core/lib/audit";
 import {
@@ -56,7 +57,7 @@ const server = new Server();
 const frenchReportResponseSchema = z.object({
   id: z.string().openapi({
     description:
-      "Identifier of the report. Keep it for support and future status checks. The report is also listed with your other documents.",
+      "The identifier of the document this report was recorded as. Pass it to the get document endpoint to follow the report's `reporting` block until it is filed.",
   }),
   duplicate: z.boolean().openapi({
     description:
@@ -88,7 +89,9 @@ A submitted report is recorded alongside your sent documents and counts towards 
       "The report was accepted for processing",
       frenchReportResponseSchema
     ),
-    ...describeErrorResponse(400, "Invalid reporting data, or the company is not registered for e-reporting"),
+    ...describeValidationErrorResponse(
+      "Invalid reporting data; the company is not registered for e-reporting, its registration is not yet registered, or it is suspended; the company is not registered in France or lacks the identifiers a report needs; a payment report was sent for a company whose VAT is due on invoicing; or the reporting service refused the report.",
+    ),
     ...describeErrorResponse(409, "The report conflicts with what was filed before"),
     ...describeErrorResponse(
       502,
@@ -117,7 +120,9 @@ A submitted report is recorded alongside your sent documents and counts towards 
       "The report was accepted for processing",
       frenchReportResponseSchema
     ),
-    ...describeErrorResponse(400, "Invalid reporting data, or the company is not registered for e-reporting"),
+    ...describeValidationErrorResponse(
+      "Invalid reporting data; the company is not registered for e-reporting, its registration is not yet registered, or it is suspended; the company is not registered in France or lacks the identifiers a report needs; a payment report was sent for a company whose VAT is due on invoicing; or the reporting service refused the report.",
+    ),
     ...describeErrorResponse(409, "The report conflicts with what was filed before"),
     ...describeErrorResponse(
       502,
