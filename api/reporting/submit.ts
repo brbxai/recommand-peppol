@@ -10,11 +10,20 @@ import { audit } from "@core/lib/audit";
 import {
   buildFrenchDeclarant,
   buildFrenchSeller,
+  FrenchReportingSubmissionError,
   submitArratechB2BiReport,
   submitArratechB2CReport,
+  type FrenchReportingSubmissionResult,
 } from "@peppol/data/at/fr-reporting";
 import { getSendingCompanyIdentifier } from "@peppol/data/company-identifiers";
+import {
+  getReadyFrenchReportingDeclarant,
+  isFrenchReportingSimulated,
+  resolveFrenchReportingEnvironment,
+  type FrenchReportingDeclarant,
+} from "@peppol/data/fr-reporting-declarants";
 import { recordOutgoingDocument } from "@peppol/data/record-outgoing-document";
+import { findOutgoingDocumentByExternalReference } from "@peppol/data/transmitted-documents";
 import {
   requireCompanyVerificationForStrictTeams,
   requireIntegrationSupportedCompanyAccess,
@@ -35,6 +44,7 @@ import type { ReportingDocumentTypeKey } from "@peppol/utils/type-repository/doc
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
 import { zodValidator } from "@recommand/lib/zod-validator";
+import { createHash } from "node:crypto";
 import { describeRoute } from "hono-openapi";
 import { ulid } from "ulid";
 import { z } from "zod";
@@ -46,9 +56,15 @@ const frenchReportResponseSchema = z.object({
     description:
       "Identifier of the report. Keep it for support and future status checks. The report is also listed with your other documents.",
   }),
+  duplicate: z.boolean().openapi({
+    description:
+      "True when this reference was already filed, in which case the identifier of the existing report is returned and nothing was filed again.",
+  }),
 });
 
-const referenceGuidance = `Choose a unique \`reference\` for every report. Reuse it when retrying the exact same request; this makes retries safe without creating a second filing. Reuse it as well, together with the optional \`action\` field, to correct or cancel a report you sent earlier: a correction or cancellation acts on the report that carries the same reference, while a new reference always files a new report.`;
+const referenceGuidance = `Choose a new, unique \`reference\` for every report, including corrections and cancellations. Retrying the exact same request with the same reference is safe: it returns the report filed the first time instead of filing a second one. A correction or cancellation acts on the report identified by the data in the request (the day and category of a daily total, or the document number of an invoice) and carries the optional \`action\` field.`;
+
+const registrationGuidance = `The company must be registered for French e-reporting first, through \`PUT /:companyId/reporting/fr/declarant\`. Reports for playground and test-network teams are recorded but not filed.`;
 
 const b2cRouteDescription = describeRoute({
   operationId: "submitFrenchB2CReport",
@@ -56,9 +72,11 @@ const b2cRouteDescription = describeRoute({
   tags: ["Reporting"],
   description: `Submit French daily sales or payment totals for transactions with private individuals. You do not need to create or submit a regulatory file yourself.
 
-Use a sales report for the normal daily transaction totals, regardless of when customers pay. This endpoint accepts one sales summary per day and per category. The current integration supports taxable goods and taxable services.
+Use a sales report for the normal daily transaction totals, regardless of when customers pay. This endpoint accepts one sales summary per day, category and currency. The current integration supports taxable goods and taxable services.
 
-Use a payment report only as an additional report for services using cash-basis VAT (\`TVA sur les encaissements\`), where VAT becomes due when the customer pays. Submit the sales report as usual, then submit the payment report for the day payment is received. Do not send payment reports for goods or for services where VAT becomes due when invoiced (\`TVA sur les débits\`).
+Use a payment report only as an additional report for services using cash-basis VAT (\`TVA sur les encaissements\`), where VAT becomes due when the customer pays. Submit the sales report as usual, then submit the payment report for the day payment is received. Payment reports are only accepted for companies registered with VAT due on payment.
+
+${registrationGuidance}
 
 ${referenceGuidance}
 
@@ -68,10 +86,11 @@ A submitted report is recorded alongside your sent documents and counts towards 
       "The report was accepted for processing",
       frenchReportResponseSchema
     ),
-    ...describeErrorResponse(400, "Invalid reporting data or company details"),
+    ...describeErrorResponse(400, "Invalid reporting data, or the company is not registered for e-reporting"),
+    ...describeErrorResponse(409, "The report conflicts with what was filed before"),
     ...describeErrorResponse(
       502,
-      "The reporting service could not accept the report"
+      "The reporting service could not accept the report; retry with the same reference"
     ),
   },
 });
@@ -82,9 +101,11 @@ const b2biRouteDescription = describeRoute({
   tags: ["Reporting"],
   description: `Submit a French e-reporting declaration for an operation with a business established outside France. These invoices are not exchanged over the French e-invoicing network, so their data is reported to the French tax administration instead. You do not need to create or submit a regulatory file yourself.
 
-Use an invoice report for a single cross-border invoice or credit note. Report every such document; the buyer must not be established in France.
+Use an invoice report for a single cross-border invoice or credit note. Report every such document; the buyer must not be established in France. Buyers in the European Union are identified by their VAT number, buyers elsewhere by their country and name.
 
-Use a payment report for a payment received on a cross-border invoice. The invoice has to be reported before its payment can be, and the payment report refers back to it by \`invoiceNumber\`. Amounts on a payment report include VAT.
+Use a payment report for a payment received on a cross-border invoice. The invoice has to be reported before its payment can be, and the payment report refers back to it by \`invoiceNumber\`. Amounts on a payment report include VAT. Payment reports are only accepted for companies registered with VAT due on payment.
+
+${registrationGuidance}
 
 ${referenceGuidance}
 
@@ -94,10 +115,11 @@ A submitted report is recorded alongside your sent documents and counts towards 
       "The report was accepted for processing",
       frenchReportResponseSchema
     ),
-    ...describeErrorResponse(400, "Invalid reporting data or company details"),
+    ...describeErrorResponse(400, "Invalid reporting data, or the company is not registered for e-reporting"),
+    ...describeErrorResponse(409, "The report conflicts with what was filed before"),
     ...describeErrorResponse(
       502,
-      "The reporting service could not accept the report"
+      "The reporting service could not accept the report; retry with the same reference"
     ),
   },
 });
@@ -113,12 +135,67 @@ type FrenchReportDocumentProfile = {
 };
 
 /**
+ * The reference a simulated filing gets. Derived from the company and the report's
+ * own reference so that a retried simulated report finds its earlier document,
+ * exactly like a real one does through the partner's idempotency.
+ */
+function simulatedReference(companyId: string, reference: string): string {
+  const digest = createHash("sha256").update(`${companyId}\0${reference}`).digest("hex");
+  return `sim_${digest.slice(0, 26)}`;
+}
+
+const PAYMENT_REPORT_TYPES: ReadonlySet<string> = new Set(["payments", "payment"]);
+
+/**
+ * Checks the report against the declarant it is filed under. Payment events only
+ * exist for taxpayers whose VAT is due on payment; under the other regime the
+ * partner would refuse them, so they are refused here with the reason.
+ */
+function rejectForDeclarant(
+  report: FrenchB2CReport | FrenchB2BiReport,
+  declarant: FrenchReportingDeclarant,
+): string | null {
+  if (PAYMENT_REPORT_TYPES.has(report.type) && declarant.vatExigibility === "DEBITS") {
+    return "Payment reports only apply to companies whose VAT becomes due on payment (TVA sur les encaissements). This company is registered with VAT due on invoicing.";
+  }
+  return null;
+}
+
+function toFailureResponse(c: FrenchReportingContext, error: FrenchReportingSubmissionError) {
+  switch (error.kind) {
+    case "rejected":
+      return c.json(actionFailure(`The report was refused: ${error.message}`), 400);
+    case "unregistered":
+      return c.json(
+        actionFailure(
+          `The company is not registered for French e-reporting, or its registration is suspended: ${error.message}`,
+        ),
+        400,
+      );
+    case "conflict":
+      return c.json(
+        actionFailure(`The report conflicts with what was filed before: ${error.message}`),
+        409,
+      );
+    default:
+      return c.json(
+        actionFailure(
+          "The reporting service could not accept the report. Retry later with the same reference.",
+        ),
+        502,
+      );
+  }
+}
+
+/**
  * Files a French report with the reporting provider and records it as an outgoing
  * document. Every report type reaches the platform the same way; only the payload
  * that is submitted differs, which is what `submit` holds.
  *
- * Playground teams that are not on the test network never reach the provider, so
- * they get a simulated reference instead of a filing.
+ * A retry under a reference that was filed before ends up at the document that
+ * filing produced: the provider answers a replayed reference with the original
+ * flow id, and one document exists per flow id. Playground and test-network teams
+ * never reach the provider and get a simulated reference derived the same way.
  */
 async function fileFrenchReport({
   c,
@@ -129,19 +206,38 @@ async function fileFrenchReport({
   c: FrenchReportingContext;
   report: FrenchB2CReport | FrenchB2BiReport;
   profile: FrenchReportDocumentProfile;
-  submit: (options: { useTestNetwork: boolean }) => Promise<{ flowId: string }>;
+  submit: (options: {
+    environment: FrenchReportingDeclarant["environment"];
+  }) => Promise<FrenchReportingSubmissionResult>;
 }) {
   const company = c.var.company;
-  const isPlayground = c.var.team.isPlayground;
-  const useTestNetwork = c.var.team.useTestNetwork ?? false;
+  const team = c.var.team;
+  const isPlayground = team.isPlayground;
+  const environment = resolveFrenchReportingEnvironment(team);
+
+  const declarant = await getReadyFrenchReportingDeclarant(company.id, environment);
+  if (!declarant) {
+    return c.json(
+      actionFailure(
+        "The company is not registered for French e-reporting yet. Register it first through PUT /:companyId/reporting/fr/declarant and wait until the registration is in the registered state.",
+      ),
+      400,
+    );
+  }
+  const rejection = rejectForDeclarant(report, declarant);
+  if (rejection) {
+    return c.json(actionFailure(rejection), 400);
+  }
 
   let externalReferenceId: string;
-  if (isPlayground && !useTestNetwork) {
-    externalReferenceId = "sim_" + ulid();
+  let duplicate = false;
+  if (isFrenchReportingSimulated(team)) {
+    externalReferenceId = simulatedReference(company.id, report.reference);
   } else {
     try {
-      const result = await submit({ useTestNetwork });
+      const result = await submit({ environment });
       externalReferenceId = result.flowId;
+      duplicate = result.duplicate;
     } catch (error) {
       console.error("Failed to submit French report:", error);
       await audit(c, {
@@ -157,16 +253,29 @@ async function fileFrenchReport({
           documentType: profile.type,
           reportType: report.type,
           reference: report.reference,
+          providerStatus: error instanceof FrenchReportingSubmissionError ? error.status : null,
+          providerCode: error instanceof FrenchReportingSubmissionError ? error.code : null,
           error: error instanceof Error ? error.message : String(error),
         },
       });
+      if (error instanceof FrenchReportingSubmissionError) {
+        return toFailureResponse(c, error);
+      }
       return c.json(
         actionFailure(
-          "The reporting service could not accept the report. Please try again later."
+          "The reporting service could not accept the report. Retry later with the same reference.",
         ),
-        502
+        502,
       );
     }
+  }
+
+  const existing = await findOutgoingDocumentByExternalReference(
+    company.id,
+    externalReferenceId,
+  );
+  if (existing) {
+    return c.json(actionSuccess({ id: existing.id, duplicate: true }));
   }
 
   // The report is filed rather than transmitted, so it has no XML and no
@@ -175,7 +284,7 @@ async function fileFrenchReport({
   const transmittedDocument = await recordOutgoingDocument({
     c,
     id: "doc_" + ulid(),
-    teamId: c.var.team.id,
+    teamId: team.id,
     company,
     isPlayground,
     inputFormat: "json_api",
@@ -192,7 +301,7 @@ async function fileFrenchReport({
     delivery: { kind: "reporting", externalReferenceId },
   });
 
-  return c.json(actionSuccess({ id: transmittedDocument.id }));
+  return c.json(actionSuccess({ id: transmittedDocument.id, duplicate }));
 }
 
 type FrenchB2CReportingContext = Context<
@@ -228,7 +337,7 @@ const _submitFrenchB2CReport = server.post(
     if (!declarant) {
       return c.json(
         actionFailure(
-          "The company needs a valid 9-digit French SIREN before a B2C report can be submitted."
+          "The company needs a valid French SIREN or SIRET as enterprise number before a B2C report can be submitted."
         ),
         400
       );
@@ -238,8 +347,8 @@ const _submitFrenchB2CReport = server.post(
       c,
       report,
       profile: getFrenchB2CReportDocumentProfile(report.type),
-      submit: ({ useTestNetwork }) =>
-        submitArratechB2CReport({ input: report, declarant, useTestNetwork }),
+      submit: ({ environment }) =>
+        submitArratechB2CReport({ input: report, declarant, environment }),
     });
   }
 );
@@ -280,7 +389,7 @@ const _submitFrenchB2BiReport = server.post(
     if (!declarant || !seller) {
       return c.json(
         actionFailure(
-          "The company needs a valid 9-digit French SIREN and a VAT number before a cross-border report can be submitted."
+          "The company needs a valid French SIREN or SIRET and a VAT number before a cross-border report can be submitted."
         ),
         400
       );
@@ -301,12 +410,12 @@ const _submitFrenchB2BiReport = server.post(
       c,
       report,
       profile: getFrenchB2BiReportDocumentProfile(report.type),
-      submit: ({ useTestNetwork }) =>
+      submit: ({ environment }) =>
         submitArratechB2BiReport({
           input: report,
           declarant,
           seller,
-          useTestNetwork,
+          environment,
         }),
     });
   }

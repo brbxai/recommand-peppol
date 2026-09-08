@@ -544,3 +544,25 @@ export async function getAllTransmittedDocumentsInRange(
     labels: documentLabelsMap.get(doc.id) || [],
   }));
 }
+
+/**
+ * The document a filing was recorded as, by the reference the filing service gave
+ * it. Used to answer a retried report with the document filed the first time.
+ */
+export async function findOutgoingDocumentByExternalReference(
+  companyId: string,
+  externalReferenceId: string,
+): Promise<{ id: string } | undefined> {
+  return await db
+    .select({ id: transmittedDocuments.id })
+    .from(transmittedDocuments)
+    .where(
+      and(
+        eq(transmittedDocuments.companyId, companyId),
+        eq(transmittedDocuments.direction, "outgoing"),
+        eq(transmittedDocuments.externalReferenceId, externalReferenceId),
+      ),
+    )
+    .limit(1)
+    .then((rows) => rows[0]);
+}

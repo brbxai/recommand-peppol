@@ -217,6 +217,7 @@ type FranceB2BiReportTemplateData = {
   invoiceNumber?: string;
   issueDate: string;
   dueDate?: string;
+  buyerName?: string;
   buyerScheme?: string;
   buyerCompanyId?: string;
   buyerVatNumber?: string;
@@ -640,8 +641,9 @@ export function buildFranceB2BiReportTemplateData(
     documentNumber: isInvoice ? parsed.documentNumber : undefined,
     invoiceNumber: isInvoice ? undefined : parsed.invoiceNumber,
     dueDate: (isInvoice && parsed.dueDate) || undefined,
-    buyerScheme: isInvoice ? parsed.buyer.enterpriseNumberScheme : undefined,
-    buyerCompanyId: isInvoice ? parsed.buyer.enterpriseNumber : undefined,
+    buyerName: isInvoice ? parsed.buyer.name : undefined,
+    buyerScheme: (isInvoice && parsed.buyer.enterpriseNumberScheme) || undefined,
+    buyerCompanyId: (isInvoice && parsed.buyer.enterpriseNumber) || undefined,
     buyerVatNumber: (isInvoice && parsed.buyer.vatNumber) || undefined,
     buyerCountry: isInvoice ? parsed.buyer.country : undefined,
     taxExclusiveAmount: isInvoice ? parsed.taxExclusiveAmount : undefined,

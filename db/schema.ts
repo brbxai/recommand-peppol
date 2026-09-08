@@ -668,6 +668,13 @@ export const transmittedDocuments = pgTable(
     uniqueIndex("peppol_transmitted_documents_ap_transaction_id_idx")
       .on(table.apTransactionId)
       .where(isNotNull(table.apTransactionId)),
+    // Unique: one document per filing. A report retried under the same reference
+    // comes back from the filing service with the same reference id, and the
+    // constraint is what turns that retry into the existing document instead of a
+    // second one with its own billing.
+    uniqueIndex("peppol_transmitted_documents_external_reference_id_idx")
+      .on(table.externalReferenceId)
+      .where(isNotNull(table.externalReferenceId)),
   ]
 );
 

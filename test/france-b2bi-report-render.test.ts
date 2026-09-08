@@ -37,6 +37,7 @@ const invoiceDocument = documentFor({
   issueDate: "2026-01-15",
   dueDate: "2026-02-14",
   buyer: {
+    name: "Rossi Forniture S.r.l.",
     enterpriseNumber: "IT00987654321",
     enterpriseNumberScheme: "0223",
     vatNumber: "IT00987654321",
@@ -91,6 +92,7 @@ describe("French cross-border report rendering", () => {
       documentKindLabel: "Invoice",
       documentNumber: "INV-2026-000431",
       dueDate: "2026-02-14",
+      buyerName: "Rossi Forniture S.r.l.",
       buyerScheme: "0223",
       buyerCompanyId: "IT00987654321",
       buyerVatNumber: "IT00987654321",
