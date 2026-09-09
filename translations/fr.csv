@@ -967,6 +967,8 @@ Change VAT settings,Modifier les paramètres de TVA
 Changing the regime during a reporting period can leave that period unfiled. Coordinate such a change with support.,Modifier le régime pendant une période de déclaration peut laisser cette période sans dépôt. Coordonnez ce changement avec le support.
 Choose the VAT regime and when VAT becomes due first,Choisissez d'abord le régime de TVA et le moment d'exigibilité de la TVA
 Daily B2C totals and cross-border invoices are reported to the French tax administration on the company's behalf. Register the company once\, then submit reports through the API.,Les totaux B2C journaliers et les factures transfrontalières sont transmis à l'administration fiscale française au nom de l'entreprise. Enregistrez l'entreprise une fois\, puis soumettez les déclarations via l'API.
+Delivery failed,Livraison échouée
+Error code {0}.,Code d'erreur {0}.
 Failed to load the e-reporting registration,Impossible de charger l'enregistrement e-reporting
 Failed to register the company for e-reporting,Impossible d'enregistrer l'entreprise pour l'e-reporting
 Filed by corrective filing,Déposée par dépôt rectificatif
@@ -994,6 +996,8 @@ Simulated,Simulée
 Simulated: this report is recorded but not filed.,Simulée : cette déclaration est enregistrée mais non déposée.
 Superseded,Remplacée
 Suspended,Suspendue
+The access point accepted this document but reported afterwards that it could not be validated or delivered. It did not reach the recipient.,Le Peppol Access Point a accepté ce document mais a signalé ensuite qu'il n'a pas pu être validé ou livré. Il n'est pas parvenu au destinataire.
+The access point could not deliver this document.,Le Peppol Access Point n'a pas pu livrer ce document.
 The company is registered for French e-reporting,L'entreprise est enregistrée pour l'e-reporting France
 The regime determines how often the reports are filed with the tax administration.,Le régime détermine la fréquence de dépôt des déclarations auprès de l'administration fiscale.
 The registration could not be completed.,L'enregistrement n'a pas pu être finalisé.

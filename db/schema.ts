@@ -797,6 +797,47 @@ export const outgoingEnvelopeClaims = pgTable("peppol_outgoing_envelope_claims",
   index("peppol_outgoing_envelope_claims_created_at_idx").on(table.createdAt),
 ]);
 
+// A delivery failure an access point reported for a transaction it had already
+// accepted. Acceptance is all a send gets to see; validation and delivery happen
+// afterwards and their failure is reported through the provider's webhook. Keyed by
+// the transaction because the report can arrive before the send has recorded its
+// document, in which case the row waits here and is attached when the document is
+// written (see data/delivery-failures). One row per transaction, however many times
+// the provider retries the report.
+export const providerDeliveryFailures = pgTable(
+  "peppol_provider_delivery_failures",
+  {
+    apTransactionId: text("ap_transaction_id").primaryKey(),
+    accessPointProvider: accessPointProviderEnum("access_point_provider").notNull(),
+    useTestNetwork: boolean("use_test_network").notNull().default(false),
+    // The provider's own id for the webhook event that reported the failure, and the
+    // provider's name for the event. The payload of a failure carries no direction:
+    // the event type is what says whether a send or a receipt failed.
+    eventId: text("event_id").notNull(),
+    eventType: text("event_type").notNull(),
+    transactionStatus: text("transaction_status"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    errorCategory: text("error_category"),
+    docInstanceId: text("doc_instance_id"),
+    // The event payload as reported, for support.
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    transmittedDocumentId: text("transmitted_document_id").references(
+      () => transmittedDocuments.id,
+      { onDelete: "cascade" }
+    ),
+    reportedAt: timestamp("reported_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    attachedAt: timestamp("attached_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("peppol_provider_delivery_failures_document_idx")
+      .on(table.transmittedDocumentId)
+      .where(isNotNull(table.transmittedDocumentId)),
+  ]
+);
+
 export const transmittedDocumentLabels = pgTable(
   "peppol_transmitted_document_labels",
   {

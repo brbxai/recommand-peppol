@@ -106,6 +106,18 @@ const documentReportingStatusPayloadSchema = z.object({
   outcomeCode: z.string().nullable().optional(),
 });
 
+const documentDeliveryFailedPayloadSchema = z.object({
+  companyId: z.string(),
+  docType: z.string(),
+  senderId: z.string(),
+  receiverId: z.string().nullable(),
+  envelopeId: z.string().nullable().optional(),
+  errorCode: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+  errorCategory: z.string().nullable().optional(),
+  transactionStatus: z.string().nullable().optional(),
+});
+
 const companyVerificationPayloadSchema = z.object({
   companyId: z.string(),
   status: z.enum(verificationStatuses),
@@ -262,6 +274,39 @@ export function registerPeppolEventTypes() {
     },
     ui: {
       label: "Document label unassigned",
+      group: "Documents",
+    },
+  });
+
+  registerEventType({
+    type: "peppol.document.delivery_failed.v1",
+    aggregateType: "peppol.document",
+    payload: documentDeliveryFailedPayloadSchema,
+    conditionFields: [
+      { path: "payload.companyId", label: "Company", valueType: "string", operators: ["eq", "neq", "in"], picker: "company" },
+      documentTypeField,
+      { path: "payload.senderId", label: "Sender address", valueType: "string", operators: ["eq", "neq", "in", "notIn"] },
+      { path: "payload.receiverId", label: "Receiver address", valueType: "string", operators: ["eq", "neq", "in", "notIn"] },
+      { path: "payload.errorCategory", label: "Failure category", valueType: "string", operators: ["eq", "neq", "in", "notIn", "exists"] },
+    ],
+    webhook: {
+      eventType: "document.delivery_failed",
+      project: (event) => {
+        const payload = event.payload as z.infer<typeof documentDeliveryFailedPayloadSchema>;
+        return {
+          eventType: "document.delivery_failed",
+          documentId: event.aggregateId,
+          teamId: event.teamId,
+          companyId: payload.companyId,
+          errorCode: payload.errorCode ?? null,
+          errorMessage: payload.errorMessage ?? null,
+          errorCategory: payload.errorCategory ?? null,
+        };
+      },
+    },
+    ui: {
+      label: "Document delivery failed",
+      description: "The access point reported that a sent document failed validation or delivery after it was accepted",
       group: "Documents",
     },
   });

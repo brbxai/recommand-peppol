@@ -13,6 +13,7 @@ import {
   uploadDocumentOriginalPayload,
   type OriginalPayloadContainerFormat,
 } from "@peppol/data/offload/storage";
+import { attachPendingDeliveryFailure } from "@peppol/data/delivery-failures";
 import { sendOutgoingDocumentNotifications } from "@peppol/data/send-document-notifications";
 import { transferEvents, transmittedDocuments } from "@peppol/db/schema";
 import { isUniqueViolation } from "@peppol/utils/db-errors";
@@ -169,6 +170,32 @@ export async function recordOutgoingDocument(options: {
     });
     if (te.length > 0) {
       await db.insert(transferEvents).values(te);
+    }
+  }
+
+  // The access point may already have reported this transaction as failed, if its
+  // report overtook the send that produced the document. That failure is attached
+  // here so the document is never shown as delivered; nothing above is undone, the
+  // document did leave the platform and its transmission was made.
+  if (facts.apTransactionId) {
+    try {
+      await attachPendingDeliveryFailure({
+        id: transmittedDocument.id,
+        teamId,
+        companyId: company.id,
+        type: document.type,
+        senderId: document.senderId,
+        receiverId: document.receiverId,
+        envelopeId: facts.envelopeId,
+        apTransactionId: facts.apTransactionId,
+      });
+    } catch (error) {
+      console.error("Failed to attach a pending delivery failure:", error);
+      sendSystemAlert(
+        "Delivery Failure Not Attached",
+        `Could not check for a delivery failure reported for transaction ${facts.apTransactionId} of document ${transmittedDocument.id}.`,
+        "error"
+      );
     }
   }
 

@@ -29,6 +29,27 @@ export const frenchReportingStatusResponse = z.object({
     simulated: z.boolean().openapi({ description: "True for playground and test-network reports, which are recorded but never filed." }),
 }).openapi({ ref: "FrenchReportingStatus" });
 
+export const deliveryFailureResponse = z.object({
+    code: z.string().nullable().openapi({
+        description: "The access point's error code for the failure, when it reported one.",
+        example: "TXE-1005",
+    }),
+    message: z.string().nullable().openapi({
+        description: "The access point's description of what went wrong, written for the sender.",
+    }),
+    category: z.string().nullable().openapi({
+        description: "The kind of failure, as classified by the access point, such as a validation error, an unknown recipient or a transport error.",
+        example: "VALIDATION_ERROR",
+    }),
+    transactionStatus: z.string().nullable().openapi({
+        description: "The access point's status of the transaction when it reported the failure.",
+        example: "FAILED",
+    }),
+    reportedAt: z.string().openapi({
+        description: "When the failure was reported.",
+    }),
+});
+
 export const transmittedDocumentResponse = z.object({
     id: z.string().openapi({
         description: "The Recommand document ID. Use it with the other document endpoints.",
@@ -127,5 +148,8 @@ export const transmittedDocumentResponse = z.object({
     }),
     reporting: frenchReportingStatusResponse.nullable().openapi({
         description: "Where a French e-reporting report stands with the tax administration. Null for documents that are not reports.",
+    }),
+    deliveryFailure: deliveryFailureResponse.nullable().openapi({
+        description: "Set when the access point reported that an outgoing document failed validation or delivery after accepting it. The document was then not delivered to the recipient, even though it was sent over Peppol. Null while no failure has been reported, and for incoming documents.",
     }),
 });

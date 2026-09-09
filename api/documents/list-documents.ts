@@ -16,6 +16,7 @@ import { supportedDocumentTypeEnum } from "@peppol/db/schema";
 import { requireIntegrationSupportedTeamAccess, type CompanyAccessContext } from "@peppol/utils/auth-middleware";
 import { transmittedDocumentResponse } from "./shared";
 import { withFrenchReportingStatus } from "@peppol/data/fr-reporting-submissions";
+import { withDeliveryFailure } from "@peppol/data/delivery-failures";
 
 const server = new Server();
 
@@ -153,7 +154,7 @@ async function _getTransmittedDocumentsImplementation(c: GetTransmittedDocuments
 
     return c.json(
       actionSuccess({
-        documents: await withFrenchReportingStatus(documents),
+        documents: await withDeliveryFailure(await withFrenchReportingStatus(documents)),
         pagination: {
           total,
           page,

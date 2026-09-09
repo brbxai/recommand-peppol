@@ -56,7 +56,9 @@ import type { MessageLevelResponse } from "@peppol/utils/parsing/message-level-r
 import { DocumentLabelPicker } from "@peppol/components/document-label-picker";
 import { isReportingDocumentTypeKey } from "@peppol/utils/type-repository/document-types/keys";
 import { FrenchReportingStatusBadge } from "../../../../components/french-reporting-status-badge";
+import { DeliveryFailureBadge } from "../../../../components/delivery-failure-badge";
 import type { FrenchReportingStatusSummary } from "@peppol/data/fr-reporting-submissions";
+import type { DeliveryFailureSummary } from "@peppol/data/delivery-failures";
 import { useTranslation } from "@core/hooks/use-translation";
 import { getDocumentTypeLabel } from "@peppol/lib/client/document-type-labels";
 
@@ -66,6 +68,7 @@ const labelsClient = rc<Labels>("v1");
 type TransmittedDocumentWithLabels = TransmittedDocument & {
   labels?: Label[];
   reporting?: FrenchReportingStatusSummary | null;
+  deliveryFailure?: DeliveryFailureSummary | null;
 };
 
 export default function TransmittedDocumentDetailPage() {
@@ -540,6 +543,7 @@ export default function TransmittedDocumentDetailPage() {
                 isReporting={isReportingDocumentTypeKey(doc.type)}
               />
               <FrenchReportingStatusBadge reporting={doc.reporting} />
+              <DeliveryFailureBadge failure={doc.deliveryFailure} />
               {doc.labels &&
                 doc.labels.map((label) => (
                   <LabelBadge
@@ -551,6 +555,19 @@ export default function TransmittedDocumentDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        {doc.deliveryFailure && (
+          <Alert variant="destructive">
+            <AlertTitle>{t`Delivery failed`}</AlertTitle>
+            <AlertDescription>
+              <p>{t`The access point accepted this document but reported afterwards that it could not be validated or delivered. It did not reach the recipient.`}</p>
+              {doc.deliveryFailure.message && <p className="mt-1">{doc.deliveryFailure.message}</p>}
+              {doc.deliveryFailure.code && (
+                <p className="mt-1 text-xs">{t`Error code ${doc.deliveryFailure.code}.`}</p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {!hasStructuredData && (
           <Alert className="border-dashed">

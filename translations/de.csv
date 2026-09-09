@@ -967,6 +967,8 @@ Change VAT settings,MwSt.-Einstellungen ändern
 Changing the regime during a reporting period can leave that period unfiled. Coordinate such a change with support.,Eine Änderung des Regimes während eines Meldezeitraums kann dazu führen\, dass dieser Zeitraum nicht eingereicht wird. Stimmen Sie eine solche Änderung mit dem Support ab.
 Choose the VAT regime and when VAT becomes due first,Wählen Sie zuerst das MwSt.-Regime und den Zeitpunkt der Steuerentstehung
 Daily B2C totals and cross-border invoices are reported to the French tax administration on the company's behalf. Register the company once\, then submit reports through the API.,Tägliche B2C-Summen und grenzüberschreitende Rechnungen werden im Namen des Unternehmens an die französische Steuerverwaltung gemeldet. Registrieren Sie das Unternehmen einmalig und reichen Sie die Meldungen anschließend über die API ein.
+Delivery failed,Zustellung fehlgeschlagen
+Error code {0}.,Fehlercode {0}.
 Failed to load the e-reporting registration,Die E-Reporting-Registrierung konnte nicht geladen werden
 Failed to register the company for e-reporting,Das Unternehmen konnte nicht für E-Reporting registriert werden
 Filed by corrective filing,Eingereicht per Korrekturmeldung
@@ -994,6 +996,8 @@ Simulated,Simuliert
 Simulated: this report is recorded but not filed.,Simuliert: Diese Meldung wurde gespeichert\, aber nicht eingereicht.
 Superseded,Ersetzt
 Suspended,Ausgesetzt
+The access point accepted this document but reported afterwards that it could not be validated or delivered. It did not reach the recipient.,Der Peppol Access Point hat dieses Dokument angenommen, meldete danach aber, dass es nicht validiert oder zugestellt werden konnte. Es hat den Empfänger nicht erreicht.
+The access point could not deliver this document.,Der Peppol Access Point konnte dieses Dokument nicht zustellen.
 The company is registered for French e-reporting,Das Unternehmen ist für französisches E-Reporting registriert
 The regime determines how often the reports are filed with the tax administration.,Das Regime bestimmt\, wie oft die Meldungen bei der Steuerverwaltung eingereicht werden.
 The registration could not be completed.,Die Registrierung konnte nicht abgeschlossen werden.

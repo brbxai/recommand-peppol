@@ -967,6 +967,8 @@ Change VAT settings,Btw-instellingen wijzigen
 Changing the regime during a reporting period can leave that period unfiled. Coordinate such a change with support.,Het regime wijzigen tijdens een aangifteperiode kan ervoor zorgen dat die periode niet wordt aangegeven. Stem zo'n wijziging af met support.
 Choose the VAT regime and when VAT becomes due first,Kies eerst het btw-regime en wanneer de btw verschuldigd wordt
 Daily B2C totals and cross-border invoices are reported to the French tax administration on the company's behalf. Register the company once\, then submit reports through the API.,Dagelijkse B2C-totalen en grensoverschrijdende facturen worden namens het bedrijf aan de Franse belastingdienst gerapporteerd. Registreer het bedrijf eenmalig en dien daarna rapporten in via de API.
+Delivery failed,Aflevering mislukt
+Error code {0}.,Foutcode {0}.
 Failed to load the e-reporting registration,Laden van de e-reporting-registratie mislukt
 Failed to register the company for e-reporting,Registreren van het bedrijf voor e-reporting mislukt
 Filed by corrective filing,Aangegeven via corrigerende aangifte
@@ -994,6 +996,8 @@ Simulated,Gesimuleerd
 Simulated: this report is recorded but not filed.,Gesimuleerd: dit rapport is opgeslagen maar niet ingediend.
 Superseded,Vervangen
 Suspended,Opgeschort
+The access point accepted this document but reported afterwards that it could not be validated or delivered. It did not reach the recipient.,Het Peppol Access Point heeft dit document aanvaard maar meldde nadien dat het niet gevalideerd of afgeleverd kon worden. Het heeft de ontvanger niet bereikt.
+The access point could not deliver this document.,Het Peppol Access Point kon dit document niet afleveren.
 The company is registered for French e-reporting,Het bedrijf is geregistreerd voor Franse e-reporting
 The regime determines how often the reports are filed with the tax administration.,Het regime bepaalt hoe vaak de rapporten bij de belastingdienst worden ingediend.
 The registration could not be completed.,De registratie kon niet worden voltooid.
