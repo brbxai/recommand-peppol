@@ -126,7 +126,7 @@ async function generateImplementation(c: GenerateContext) {
     const team = c.var.team;
     const isPlayground = team.isPlayground ?? false;
     const useTestNetwork = team.useTestNetwork ?? false;
-    const senderIdentifier = await getSendingCompanyIdentifier(company.id);
+    const senderIdentifier = await getSendingCompanyIdentifier(company);
     const recipientAddress = normalizePeppolAddress(input.recipient);
 
     // The same lookup the send endpoint does, under the same condition, so the
