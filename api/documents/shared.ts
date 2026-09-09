@@ -7,7 +7,7 @@ import { creditNoteSchema } from "@peppol/utils/parsing/creditnote/schemas";
 import { messageLevelResponseSchema } from "@peppol/utils/parsing/message-level-response/schemas";
 import { franceCdarSchema } from "@peppol/utils/parsing/france-cdar/schemas";
 import { frenchB2CReportSchema } from "@peppol/utils/parsing/b2c-reporting/france";
-import { frenchB2BiReportSchema } from "@peppol/utils/parsing/b2bi-reporting/france";
+import { storedFrenchB2BiReportSchema } from "@peppol/utils/parsing/b2bi-reporting/france";
 import { labelResponse } from "@directory/api/labels/shared";
 import { validationResponse } from "@peppol/types/validation";
 import { STORED_DOCUMENT_TYPE_KEYS } from "@peppol/utils/type-repository/document-types/keys";
@@ -90,7 +90,9 @@ export const transmittedDocumentResponse = z.object({
         messageLevelResponseSchema,
         franceCdarSchema,
         frenchB2CReportSchema,
-        frenchB2BiReportSchema,
+        // The stored shape, which reads back reports filed before the invoicing
+        // framework was part of a cross-border report.
+        storedFrenchB2BiReportSchema,
         z.null(),
     ]).openapi({
         description: "The document read into the JSON shape of its type, so you do not have to parse the XML yourself. Null when the type is `unknown` or the payload was not kept.",

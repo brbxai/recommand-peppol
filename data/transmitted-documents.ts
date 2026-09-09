@@ -553,14 +553,15 @@ export async function getAllTransmittedDocumentsInRange(
 
 /**
  * The document a filing was recorded as, by the reference the filing service gave
- * it. Used to answer a retried report with the document filed the first time.
+ * it. Used to answer a retried report with the document filed the first time, and to
+ * compare that report with the one being submitted now.
  */
 export async function findOutgoingDocumentByExternalReference(
   companyId: string,
   externalReferenceId: string,
-): Promise<{ id: string } | undefined> {
+): Promise<{ id: string; parsed: unknown } | undefined> {
   return await db
-    .select({ id: transmittedDocuments.id })
+    .select({ id: transmittedDocuments.id, parsed: transmittedDocuments.parsed })
     .from(transmittedDocuments)
     .where(
       and(

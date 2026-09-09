@@ -20,9 +20,6 @@ const FRENCH_REPORTING_PROFILE = "FR-F10";
 /** The declarant files as the seller of the reported operations. */
 const FRENCH_DECLARANT_ROLE = "SE";
 
-/** The only "cadre de facturation" Arratech documents for a 10.1 event. */
-const FRENCH_INVOICE_CADRE = "S1";
-
 /**
  * The tax administration's own party codes. They are not ICD codes: an Italian
  * buyer is 0223, never 0211. The code decides what the company id must contain.
@@ -151,7 +148,10 @@ type FrenchReportAction = keyof typeof arratechActionByPublicAction;
  * The sub-flux and operation a report is filed as, for the record we keep of the
  * filing.
  */
-export function describeFrenchReportEvent(report: FrenchB2CReport | FrenchB2BiReport): {
+export function describeFrenchReportEvent(report: {
+  type: FrenchB2CReport["type"] | FrenchB2BiReport["type"];
+  action: FrenchReportAction;
+}): {
   subFlux: "10.1" | "10.2" | "10.3" | "10.4";
   operation: "SUBMIT" | "CANCEL";
   transmissionType: "IN" | "RE";
@@ -243,7 +243,10 @@ export function toArratechB2BiFlow(
         typeCode: input.documentType === "creditNote" ? "381" : "380",
         currencyCode: input.currency,
         ...(input.dueDate ? { dueDate: input.dueDate } : {}),
-        cadre: FRENCH_INVOICE_CADRE,
+        // The "cadre de facturation" is the invoicing framework of the reported
+        // document, in the codes an invoice carries. It is checked against the invoice
+        // when the period is assembled, so it comes from the report and is not assumed.
+        cadre: input.billingMode,
         seller,
         buyer: toFrenchReportingBuyer(input.buyer),
         taxExclusiveAmount: input.taxExclusiveAmount,
@@ -304,12 +307,14 @@ export const frenchReportingLedgerStatuses = [
   "REJECTED",
 ] as const;
 
+// The statuses are read as plain strings for the same reason as on the status
+// endpoint: an unknown value must not fail a report that was accepted.
 const arratechSubmissionResponseSchema = z
   .object({
     flowId: z.string().min(1),
     duplicate: z.boolean().default(false),
-    status: z.enum(frenchReportingLedgerStatuses).nullish(),
-    reportingStatus: z.enum(frenchReportingStatuses).nullish(),
+    status: z.string().nullish(),
+    reportingStatus: z.string().nullish(),
   })
   .passthrough();
 
@@ -317,10 +322,20 @@ export type FrenchReportingSubmissionResult = {
   flowId: string;
   /** True when this reference was already on file and nothing new was filed. */
   duplicate: boolean;
-  status: (typeof frenchReportingLedgerStatuses)[number] | null;
+  /** The service's own ledger value, kept as it was answered. */
+  status: string | null;
+  /** Null when the service answered a status this integration does not know. */
   reportingStatus: FrenchReportingStatus | null;
+  /** The reporting status as answered, when it is not one this integration knows. */
+  unknownReportingStatus: string | null;
 };
 
+/**
+ * The status of an event as the service answers it. The two status vocabularies are
+ * read as plain strings rather than as closed lists: a value we do not know yet must
+ * be visible and recoverable, not a parse failure that stops the event from ever
+ * being followed again. `toKnownReportingStatus` decides what a value means.
+ */
 const arratechSubmissionStatusSchema = z
   .object({
     flowId: z.string(),
@@ -329,8 +344,8 @@ const arratechSubmissionStatusSchema = z
     subFlux: z.string(),
     operation: z.string(),
     transmissionType: z.string(),
-    status: z.enum(frenchReportingLedgerStatuses),
-    reportingStatus: z.enum(frenchReportingStatuses),
+    status: z.string().nullable(),
+    reportingStatus: z.string(),
     receivedAt: z.string(),
     operationDate: z.string().nullable(),
     periodStart: z.string().nullable(),
@@ -342,6 +357,17 @@ const arratechSubmissionStatusSchema = z
   .passthrough();
 
 export type FrenchReportingSubmissionStatus = z.infer<typeof arratechSubmissionStatusSchema>;
+
+/**
+ * The status a reported value stands for, or null when the value is not one this
+ * integration knows. A null is never treated as progress: the caller keeps the status
+ * it already had and makes the unknown value visible.
+ */
+export function toKnownReportingStatus(value: string | null): FrenchReportingStatus | null {
+  return (frenchReportingStatuses as readonly string[]).includes(value ?? "")
+    ? (value as FrenchReportingStatus)
+    : null;
+}
 
 /**
  * Why a submission did not go through, in the terms the API answers with:
@@ -435,12 +461,15 @@ async function submitArratechFlow({
   }
 
   const parsed = arratechSubmissionResponseSchema.parse(await response.json());
+  const answered = parsed.reportingStatus ?? null;
+  const reportingStatus = toKnownReportingStatus(answered);
   return {
     flowId: parsed.flowId,
     // A 200 is the partner's answer to a replayed reference; a 202 is a new event.
     duplicate: parsed.duplicate || response.status === 200,
     status: parsed.status ?? null,
-    reportingStatus: parsed.reportingStatus ?? null,
+    reportingStatus,
+    unknownReportingStatus: reportingStatus ? null : answered,
   };
 }
 

@@ -4,14 +4,18 @@ import type { Logger } from "@recommand/lib/logger";
 import { Cron } from "croner";
 import { and, eq, inArray, isNotNull, lte } from "drizzle-orm";
 import {
+  describeFrenchReportEvent,
   FrenchReportingSubmissionError,
   getArratechSubmissionStatus,
+  toKnownReportingStatus,
   type FrenchReportingStatus,
   type FrenchReportingSubmissionStatus,
 } from "@peppol/data/at/fr-reporting";
 import type { FrenchReportingEnvironment } from "@peppol/data/fr-reporting-declarants";
 import { frReportingSubmissions, transmittedDocuments } from "@peppol/db/schema";
 import { isUniqueViolation } from "@peppol/utils/db-errors";
+import { readStoredFrenchReport } from "@peppol/utils/parsing/fr-reporting/duplicates";
+import { createAlertSuppressor } from "@peppol/utils/system-notifications/suppression";
 import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import { isReportingDocumentTypeKey } from "@peppol/utils/type-repository/document-types/keys";
 
@@ -26,6 +30,8 @@ export const TERMINAL_REPORTING_STATUSES: ReadonlySet<FrenchReportingStatus> = n
 
 /** How long after its period's cutoff an event is still expected to reach a filing. */
 const STALE_AFTER_PERIOD_END_DAYS = 45;
+/** How long to wait before asking again about an event whose status is not understood. */
+const UNKNOWN_STATUS_RETRY_HOURS = 6;
 const HOUR = 60 * 60_000;
 const DAY = 24 * HOUR;
 
@@ -155,6 +161,95 @@ export async function getFrenchReportingSubmissionByDocument(
 }
 
 /**
+ * What a report needs to be followed, apart from what its own document already says.
+ * The event it was filed as is read back from the stored report rather than from the
+ * request at hand, because the two are only the same request when it is a retry.
+ */
+export type FrenchReportingSubmissionRecordInput = {
+  transmittedDocumentId: string;
+  /** The report as it was stored on the document, which is what was filed. */
+  storedReport: unknown;
+  declarantId: string | null;
+  teamId: string;
+  companyId: string;
+  environment: FrenchReportingEnvironment;
+  flowId: string;
+  simulated: boolean;
+  ledgerStatus: string | null;
+  reportingStatus: FrenchReportingStatus | null;
+};
+
+export type FrenchReportingSubmissionRecordOutcome =
+  | "present"
+  | "repaired"
+  | "unrecoverable";
+
+export type FrenchReportingSubmissionRecordDependencies = {
+  findByDocument: (
+    transmittedDocumentId: string,
+  ) => Promise<FrenchReportingSubmission | undefined>;
+  record: typeof recordFrenchReportingSubmission;
+  alert: typeof sendSystemAlert;
+};
+
+const defaultRecordDependencies: FrenchReportingSubmissionRecordDependencies = {
+  findByDocument: getFrenchReportingSubmissionByDocument,
+  record: recordFrenchReportingSubmission,
+  alert: sendSystemAlert,
+};
+
+/**
+ * Makes sure a report that was filed is also followed here. A report is recorded
+ * right after its document, and the two are written separately: when the second write
+ * fails, the report is filed and its document exists, but nothing polls it. The next
+ * retry of the same reference lands on the existing document, and that is where this
+ * repairs the missing record.
+ *
+ * Only what the earlier filing itself says is used. The reference and the event it was
+ * filed as come from the stored report, never from the request that happens to be
+ * retrying, so a reference reused for something else cannot rewrite history. When the
+ * stored report cannot be read, nothing is invented and support is told.
+ */
+export async function ensureFrenchReportingSubmissionRecord(
+  input: FrenchReportingSubmissionRecordInput,
+  dependencies: Partial<FrenchReportingSubmissionRecordDependencies> = {},
+): Promise<FrenchReportingSubmissionRecordOutcome> {
+  const { findByDocument, record, alert } = {
+    ...defaultRecordDependencies,
+    ...dependencies,
+  };
+
+  if (await findByDocument(input.transmittedDocumentId)) {
+    return "present";
+  }
+
+  const filed = readStoredFrenchReport(input.storedReport);
+  if (!filed) {
+    alert(
+      "French Reporting Record Missing",
+      `E-reporting event ${input.flowId} (company ${input.companyId}) has a document but no record to follow it by, and the stored report could not be read back to rebuild one. Its status will not be followed until support restores the record.`,
+      "error",
+    );
+    return "unrecoverable";
+  }
+
+  await record({
+    transmittedDocumentId: input.transmittedDocumentId,
+    declarantId: input.declarantId,
+    teamId: input.teamId,
+    companyId: input.companyId,
+    environment: input.environment,
+    flowId: input.flowId,
+    reference: filed.reference,
+    ...describeFrenchReportEvent(filed),
+    simulated: input.simulated,
+    ledgerStatus: input.ledgerStatus,
+    reportingStatus: input.reportingStatus,
+  });
+  return "repaired";
+}
+
+/**
  * Attaches the reporting status to the documents that are filed reports. Other
  * documents get null, so the field is always present on the API shape.
  */
@@ -191,6 +286,14 @@ function toDate(value: string | null | undefined): Date | null {
 /**
  * Applies what the partner reports about an event. Returns the row patch and
  * whether the reporting status moved, which is what the customer is told about.
+ *
+ * A status this integration does not know is not progress. The event keeps the status
+ * it had, so an unfamiliar value can never quietly retire an event or present it as
+ * filed, and `unknownStatus` carries the value on so it can be looked into. Such an
+ * event is looked at again on a fixed delay instead of on the normal cadence: the
+ * cadence is derived from a status, and the status is exactly what is not understood,
+ * so applying it could stop the event from being followed at all. Everything else the
+ * report says, including the raw ledger value, is still recorded.
  */
 export function applyStatusReport(
   submission: Pick<FrenchReportingSubmission, "reportingStatus" | "simulated">,
@@ -199,13 +302,17 @@ export function applyStatusReport(
 ): {
   patch: Partial<typeof frReportingSubmissions.$inferInsert>;
   changed: boolean;
+  unknownStatus: string | null;
 } {
-  const changed = report.reportingStatus !== submission.reportingStatus;
+  const known = toKnownReportingStatus(report.reportingStatus);
+  const reportingStatus = known ?? submission.reportingStatus;
+  const changed = reportingStatus !== submission.reportingStatus;
   return {
     changed,
+    unknownStatus: known ? null : report.reportingStatus,
     patch: {
       ledgerStatus: report.status,
-      reportingStatus: report.reportingStatus,
+      reportingStatus,
       receivedAt: toDate(report.receivedAt),
       operationDate: report.operationDate,
       periodStart: report.periodStart,
@@ -215,17 +322,46 @@ export function applyStatusReport(
       outcomeAt: toDate(report.outcomeAt),
       lastCheckedAt: now,
       checkAttempts: 0,
-      nextCheckAt: planNextStatusCheck(
-        {
-          reportingStatus: report.reportingStatus,
-          periodEnd: report.periodEnd,
-          simulated: submission.simulated,
-        },
-        now,
-      ),
+      nextCheckAt: known
+        ? planNextStatusCheck(
+            {
+              reportingStatus,
+              periodEnd: report.periodEnd,
+              simulated: submission.simulated,
+            },
+            now,
+          )
+        : submission.simulated
+          ? null
+          : new Date(now.getTime() + UNKNOWN_STATUS_RETRY_HOURS * HOUR),
     },
   };
 }
+
+/**
+ * How the same operational condition is recognised across the events it reaches. One
+ * answer about a filing reaches every event that filing carries, so the filing is what
+ * a message is about. Until a filing exists there is nothing to group by and the event
+ * speaks for itself, which is what keeps unrelated filings apart.
+ */
+export function operationalAlertKey(
+  kind: string,
+  submission: Pick<
+    FrenchReportingSubmission,
+    "id" | "environment" | "companyId" | "submissionId" | "outcomeCode"
+  >,
+): string {
+  const subject = submission.submissionId
+    ? `deposit:${submission.submissionId}:${submission.outcomeCode ?? "no-outcome"}`
+    : `event:${submission.id}`;
+  return `${kind}:${submission.environment}:${submission.companyId}:${subject}`;
+}
+
+/**
+ * Repeated operational alerts are thinned out per process (see the suppressor). It
+ * reduces noise; it does not promise a single message across instances or restarts.
+ */
+const operationalAlerts = createAlertSuppressor({ intervalMs: 6 * HOUR });
 
 async function publishStatusChange(
   submission: FrenchReportingSubmission,
@@ -290,6 +426,17 @@ export async function refreshFrenchReportingSubmission(
     logger.warn(
       `French reporting status check for ${submission.flowId} failed (attempt ${attempts}): ${error instanceof Error ? error.message : String(error)}`,
     );
+    // An answer that cannot be read at all is not a temporary outage: it repeats on
+    // every retry, and an answer this integration cannot read is rarely about one
+    // event. It is reported per environment rather than per event, so a change on the
+    // other side is one message and not one per event that ran into it.
+    if (!unavailable && operationalAlerts.shouldSend(`unreadable:${submission.environment}`, now)) {
+      sendSystemAlert(
+        "French Reporting Status Unreadable",
+        `The status of e-reporting event ${submission.flowId} (company ${submission.companyId}) could not be read: ${error instanceof Error ? error.message : String(error)}. Other events may be running into the same answer. They are all still being polled; their status is not moving until this is understood.`,
+        "warning",
+      );
+    }
     return;
   }
 
@@ -308,7 +455,7 @@ export async function refreshFrenchReportingSubmission(
     return;
   }
 
-  const { patch, changed } = applyStatusReport(submission, report, now);
+  const { patch, changed, unknownStatus } = applyStatusReport(submission, report, now);
   const updated = await db
     .update(frReportingSubmissions)
     .set(patch)
@@ -319,12 +466,31 @@ export async function refreshFrenchReportingSubmission(
     return;
   }
 
-  if (updated.nextCheckAt === null && !TERMINAL_REPORTING_STATUSES.has(updated.reportingStatus)) {
-    sendSystemAlert(
-      "French Reporting Event Stale",
-      `E-reporting event ${updated.flowId} (reference ${updated.reference}, company ${updated.companyId}) is still ${updated.reportingStatus} long after its period ended on ${updated.periodEnd}. Ask Arratech what happened to it.`,
-      "warning",
+  if (unknownStatus) {
+    logger.warn(
+      `French reporting event ${updated.flowId} came back with reporting status "${unknownStatus}", which this integration does not know; it keeps status ${updated.reportingStatus} and stays under review`,
     );
+    // A status this integration does not know is about the vocabulary rather than
+    // about one event, so it is reported per value and not per event that meets it.
+    if (
+      operationalAlerts.shouldSend(`vocabulary:${updated.environment}:${unknownStatus}`, now)
+    ) {
+      sendSystemAlert(
+        "French Reporting Status Not Recognised",
+        `E-reporting event ${updated.flowId} (company ${updated.companyId}) came back with reporting status "${unknownStatus}", which this integration does not know. Events keep the status they had and are still being polled, so nothing is lost, but the status list needs to be checked against the reporting service.`,
+        "warning",
+      );
+    }
+  }
+
+  if (updated.nextCheckAt === null && !TERMINAL_REPORTING_STATUSES.has(updated.reportingStatus)) {
+    if (operationalAlerts.shouldSend(operationalAlertKey("stale", updated), now)) {
+      sendSystemAlert(
+        "French Reporting Event Stale",
+        `E-reporting event ${updated.flowId} (reference ${updated.reference}, company ${updated.companyId}) is still ${updated.reportingStatus} long after its period ended on ${updated.periodEnd}. Ask the reporting service what happened to it.`,
+        "warning",
+      );
+    }
   }
 
   if (!changed) {
@@ -347,10 +513,15 @@ export async function refreshFrenchReportingSubmission(
     );
   }
 
-  if (updated.reportingStatus === "rejected") {
+  // The outcome is the filing's, so every event that filing carries turns rejected at
+  // the same moment. Support hears about the filing rather than about each event.
+  if (
+    updated.reportingStatus === "rejected" &&
+    operationalAlerts.shouldSend(operationalAlertKey("rejected", updated), now)
+  ) {
     sendSystemAlert(
-      "French Reporting Event Rejected",
-      `The tax administration rejected e-reporting event ${updated.flowId} (reference ${updated.reference}, company ${updated.companyId}, period ending ${updated.periodEnd}). Outcome code: ${updated.outcomeCode ?? "unknown"}. The customer needs help correcting it.`,
+      "French Reporting Filing Rejected",
+      `The tax administration rejected the filing carrying e-reporting event ${updated.flowId} (reference ${updated.reference}, company ${updated.companyId}, period ending ${updated.periodEnd}${updated.submissionId ? `, filing ${updated.submissionId}` : ""}). Outcome code: ${updated.outcomeCode ?? "unknown"}. Every event on the same filing carries this outcome, so check what the customer has to correct for that period.`,
       "error",
     );
   }
