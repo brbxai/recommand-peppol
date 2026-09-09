@@ -17,7 +17,7 @@ import {
   submitArratechB2CReport,
   type FrenchReportingSubmissionResult,
 } from "@peppol/data/at/fr-reporting";
-import { getSendingCompanyIdentifier } from "@peppol/data/company-identifiers";
+import { getDefaultCompanyIdentifier } from "@peppol/data/company-identifiers";
 import {
   getReadyFrenchReportingDeclarant,
   isFrenchReportingSimulated,
@@ -287,9 +287,10 @@ async function fileFrenchReport({
     return c.json(actionSuccess({ id: existing.id, duplicate: true }));
   }
 
-  // The report is filed rather than transmitted, so it has no XML and no
-  // recipient. The sending identifier still records which company filed it.
-  const senderIdentifier = await getSendingCompanyIdentifier(company.id);
+  // The report is filed rather than transmitted, so it has no XML, no recipient and
+  // no transport sender. The company's default identifier records which company
+  // filed it.
+  const senderIdentifier = await getDefaultCompanyIdentifier(company.id);
   const transmittedDocument = await recordOutgoingDocument({
     c,
     id: "doc_" + ulid(),

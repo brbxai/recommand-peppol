@@ -6,6 +6,8 @@ import { db } from "@recommand/db";
 import { eq, and, asc, ne, or, isNull } from "drizzle-orm";
 import { unregisterCompanyIdentifier, upsertCompanyRegistration } from "./smp-providers";
 import { getTeamExtensionAndCompanyByCompanyId } from "./teams";
+import type { Company } from "./companies";
+import type { AccessPointProviderId } from "./peppol-providers";
 
 export type CompanyIdentifier = typeof companyIdentifiers.$inferSelect;
 export type InsertCompanyIdentifier = typeof companyIdentifiers.$inferInsert;
@@ -68,7 +70,11 @@ export async function getCompanyIdentifierBySchemeAndValue(
     .then((rows) => rows[0]);
 }
 
-export async function getSendingCompanyIdentifier(companyId: string): Promise<CompanyIdentifier> {
+/**
+ * The company's first identifier by scheme: the address a document of the company is
+ * attributed to when nothing about how it travels decides otherwise.
+ */
+export async function getDefaultCompanyIdentifier(companyId: string): Promise<CompanyIdentifier> {
   const identifiers = await db
     .select()
     .from(companyIdentifiers)
@@ -81,6 +87,59 @@ export async function getSendingCompanyIdentifier(companyId: string): Promise<Co
   }
 
   return identifiers[0];
+}
+
+/** The access point that sends for French companies, and requires a particular sender address. */
+const FRENCH_ACCESS_POINT_PROVIDER: AccessPointProviderId = "at-shared-ap-fr";
+
+/**
+ * The address a company sends under: the sender of the transport envelope and the
+ * seller's endpoint in the documents we write for it.
+ *
+ * Through the French access point the sender has to be the company's SIREN under the
+ * French electronic address scheme (0225), whatever other identifiers the company
+ * registered: that is the address the access point recognises the sender by. A
+ * SIRET or a suffixed electronic address under that scheme names an establishment
+ * rather than the company and is not accepted in its place. Every other access point
+ * takes the company's default identifier, as before.
+ */
+export async function getSendingCompanyIdentifier(
+  company: Pick<Company, "id" | "accessPointProvider">
+): Promise<CompanyIdentifier> {
+  if (company.accessPointProvider !== FRENCH_ACCESS_POINT_PROVIDER) {
+    return await getDefaultCompanyIdentifier(company.id);
+  }
+
+  return chooseSendingCompanyIdentifier(company, await getCompanyIdentifiers(company.id));
+}
+
+/**
+ * The choice getSendingCompanyIdentifier makes, given the company's identifiers in
+ * the order getCompanyIdentifiers lists them. Separate so the choice can be asserted
+ * without a database.
+ */
+export function chooseSendingCompanyIdentifier<T extends Pick<CompanyIdentifier, "scheme" | "identifier">>(
+  company: Pick<Company, "accessPointProvider">,
+  identifiers: T[]
+): T {
+  if (identifiers.length === 0) {
+    throw new UserFacingError("No sending company identifier found. Ensure you have added a company identifier to your company.");
+  }
+
+  if (company.accessPointProvider !== FRENCH_ACCESS_POINT_PROVIDER) {
+    return identifiers[0]!;
+  }
+
+  const sirenAddress = identifiers.find(
+    (identifier) => identifier.scheme === "0225" && isSiren(identifier.identifier)
+  );
+  if (!sirenAddress) {
+    throw new UserFacingError(
+      "Sending through the French access point requires a company identifier with scheme 0225 and the company's 9 digit SIREN as identifier (for example 0225:123456789). Add it to your company to send documents."
+    );
+  }
+
+  return sirenAddress;
 }
 
 /**
