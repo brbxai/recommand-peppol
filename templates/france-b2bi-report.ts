@@ -47,6 +47,12 @@ export const FRANCE_B2BI_REPORT_TEMPLATE = `<!DOCTYPE html>
                 <dt class="text-xs text-slate-500">Issue date</dt>
                 <dd class="text-slate-700">{{issueDate}}</dd>
               </div>
+              {{#billingMode}}
+                <div>
+                  <dt class="text-xs text-slate-500">Invoicing framework</dt>
+                  <dd class="text-slate-700">{{billingMode}}</dd>
+                </div>
+              {{/billingMode}}
               {{#dueDate}}
                 <div>
                   <dt class="text-xs text-slate-500">Due date</dt>

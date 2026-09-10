@@ -24,7 +24,10 @@ import {
   resolveFrenchReportingEnvironment,
   type FrenchReportingDeclarant,
 } from "@peppol/data/fr-reporting-declarants";
-import { recordFrenchReportingSubmission } from "@peppol/data/fr-reporting-submissions";
+import {
+  ensureFrenchReportingSubmissionRecord,
+  recordFrenchReportingSubmission,
+} from "@peppol/data/fr-reporting-submissions";
 import { recordOutgoingDocument } from "@peppol/data/record-outgoing-document";
 import { findOutgoingDocumentByExternalReference } from "@peppol/data/transmitted-documents";
 import {
@@ -43,6 +46,8 @@ import {
   getFrenchB2CReportDocumentProfile,
   type FrenchB2CReport,
 } from "@peppol/utils/parsing/b2c-reporting/france";
+import { assessFrenchReportDuplicate } from "@peppol/utils/parsing/fr-reporting/duplicates";
+import { sendSystemAlert } from "@peppol/utils/system-notifications/telegram";
 import type { ReportingDocumentTypeKey } from "@peppol/utils/type-repository/document-types/types";
 import { Server, type Context } from "@recommand/lib/api";
 import { actionFailure, actionSuccess } from "@recommand/lib/utils";
@@ -63,9 +68,17 @@ const frenchReportResponseSchema = z.object({
     description:
       "True when this reference was already filed, in which case the identifier of the existing report is returned and nothing was filed again.",
   }),
+  warning: z.string().optional().openapi({
+    description:
+      "Present only on a duplicate that is not a plain retry: the reference was already used for a report that differs from this request, so nothing was filed for this request. The text says what was found. A correction or a cancellation sent under the reference of the report it means to act on is the usual cause.",
+  }),
 });
 
-const referenceGuidance = `Choose a new, unique \`reference\` for every report, including corrections and cancellations. Retrying the exact same request with the same reference is safe: it returns the report filed the first time instead of filing a second one. A correction or cancellation acts on the report identified by the data in the request (the day and category of a daily total, or the document number of an invoice) and carries the optional \`action\` field.`;
+const referenceGuidance = `Choose a new, unique \`reference\` for every report, including corrections and cancellations. Retrying the exact same request with the same reference is safe: it returns the report filed the first time instead of filing a second one. A correction or cancellation acts on the report identified by the data in the request, and carries the optional \`action\` field.
+
+A report is matched on the declarant and on the data that identifies the operation, and never on the reference: an invoice report and its payments on the invoice number, a daily sales total on the day, category and currency, and a daily payment total on the day and currency. Neither the issue date nor the payment date is part of how an invoice or its payment is matched. A correction replaces the report it matches in full, so send the complete report rather than the fields that changed, and a cancellation carries the complete report as well. Both are refused once the filing for that period has been assembled, which happens after the period ends rather than on the last day itself.
+
+When the reference of an earlier report is reused, the earlier report is returned with \`duplicate: true\` and a \`warning\`, and nothing is filed: the correction or cancellation still has to be sent under a new reference.`;
 
 const registrationGuidance = `The company must be registered for French e-reporting first, through \`PUT /:companyId/reporting/fr/declarant\`. Reports for playground and test-network teams are recorded but not filed.`;
 
@@ -279,12 +292,53 @@ async function fileFrenchReport({
     }
   }
 
+  if (submission?.unknownReportingStatus) {
+    console.warn(
+      `French report ${externalReferenceId} was accepted with reporting status "${submission.unknownReportingStatus}", which this integration does not know`,
+    );
+  }
+
   const existing = await findOutgoingDocumentByExternalReference(
     company.id,
     externalReferenceId,
   );
   if (existing) {
-    return c.json(actionSuccess({ id: existing.id, duplicate: true }));
+    // The reference was used before. Two things can be true of the report on file: it
+    // may be the one this request is retrying, or it may be a different report whose
+    // reference was reused, in which case nothing was filed for this request. The
+    // stored report says which.
+    const assessment = assessFrenchReportDuplicate({
+      stored: existing.parsed,
+      submitted: report,
+    });
+    if (assessment.kind !== "retry") {
+      console.warn(
+        `French report reference ${report.reference} for company ${company.id} resolved to an earlier report (${assessment.kind})`,
+      );
+    }
+
+    // A report filed without its record here is never polled, so the retry that lands
+    // on the existing document is where the missing record is rebuilt.
+    await ensureFrenchReportingSubmissionRecord({
+      transmittedDocumentId: existing.id,
+      storedReport: existing.parsed,
+      declarantId: declarant.id,
+      teamId: team.id,
+      companyId: company.id,
+      environment,
+      flowId: externalReferenceId,
+      simulated,
+      ledgerStatus: submission?.status ?? null,
+      reportingStatus: submission?.reportingStatus ?? null,
+    });
+
+    return c.json(
+      actionSuccess({
+        id: existing.id,
+        duplicate: true,
+        ...(assessment.warning ? { warning: assessment.warning } : {}),
+      }),
+    );
   }
 
   // The report is filed rather than transmitted, so it has no XML, no recipient and
@@ -330,6 +384,13 @@ async function fileFrenchReport({
     });
   } catch (error) {
     console.error("Failed to record French reporting submission:", error);
+    // The report is filed and its document exists, but nothing follows it yet. A retry
+    // of the same reference repairs this; support is told in case none comes.
+    sendSystemAlert(
+      "French Reporting Record Not Written",
+      `E-reporting event ${externalReferenceId} (company ${company.id}) was filed and recorded as document ${transmittedDocument.id}, but its follow-up record could not be written, so its status is not being polled. A retry under the same reference restores it.`,
+      "error",
+    );
   }
 
   return c.json(actionSuccess({ id: transmittedDocument.id, duplicate }));
